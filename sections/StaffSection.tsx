@@ -151,13 +151,25 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
     );
   }
 
-  // Protection pour currentUser si nécessaire pour certaines fonctionnalités
-  if (!currentUser && (activeTab === 'planning' || activeTab === 'postingsManagement')) {
+  // Protection pour currentUser - requis pour toutes les fonctionnalités
+  if (!currentUser || typeof currentUser === 'undefined') {
     return (
       <SectionWrapper title="Gestion du Staff">
         <div className="text-center p-8 bg-gray-50 rounded-lg border">
           <h3 className="text-xl font-semibold text-gray-700">Chargement...</h3>
           <p className="mt-2 text-gray-500">Initialisation des données utilisateur...</p>
+        </div>
+      </SectionWrapper>
+    );
+  }
+
+  // Protection supplémentaire pour les propriétés critiques de currentUser
+  if (!currentUser.id || !currentUser.email) {
+    return (
+      <SectionWrapper title="Gestion du Staff">
+        <div className="text-center p-8 bg-gray-50 rounded-lg border">
+          <h3 className="text-xl font-semibold text-gray-700">Erreur de données utilisateur</h3>
+          <p className="mt-2 text-gray-500">Les informations utilisateur sont incomplètes. Veuillez vous reconnecter.</p>
         </div>
       </SectionWrapper>
     );
@@ -203,12 +215,15 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
   
   // Synchroniser les données locales avec les props
   React.useEffect(() => {
+    // Protection contre currentUser undefined
+    if (!currentUser) return;
+    
     if (staff) setLocalStaff(staff);
     if (raceEvents) setLocalRaceEvents(raceEvents);
     if (missions) setMissions(missions);
     if (eventStaffAvailabilities) setLocalEventStaffAvailabilities(eventStaffAvailabilities);
     if (permissionRoles) setLocalPermissionRoles(permissionRoles);
-  }, [staff, raceEvents, missions, eventStaffAvailabilities, permissionRoles]);
+  }, [currentUser, staff, raceEvents, missions, eventStaffAvailabilities, permissionRoles]);
   
 
   // Memo for details tab
@@ -465,6 +480,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
   );
 
   const renderMyApplicationsTab = () => {
+    if (!currentUser?.id) return <div className="text-center text-gray-500">Erreur: utilisateur non défini</div>;
     const myApplications = missions.filter(m => m.applicants?.includes(currentUser.id));
     return (
         <div className="space-y-3">
@@ -483,6 +499,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
   };
   
   const renderPostingsManagementTab = () => {
+    if (!currentUser?.permissionRole) return <div className="text-center text-gray-500">Erreur: utilisateur non défini</div>;
     if (currentUser.permissionRole !== TeamRole.ADMIN && currentUser.permissionRole !== TeamRole.EDITOR) {
       return null;
     }
