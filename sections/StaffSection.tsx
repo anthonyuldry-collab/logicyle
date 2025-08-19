@@ -26,20 +26,19 @@ import { useTranslations } from '../hooks/useTranslations';
 
 interface StaffSectionProps {
   staff: StaffMember[];
-  setStaff: React.Dispatch<React.SetStateAction<StaffMember[]>>;
-  raceEvents: RaceEvent[];
-  setRaceEvents: React.Dispatch<React.SetStateAction<RaceEvent[]>>;
-  eventStaffAvailabilities: EventStaffAvailability[];
-  setEventStaffAvailabilities: React.Dispatch<React.SetStateAction<EventStaffAvailability[]>>;
-  eventBudgetItems: EventBudgetItem[];
-  setEventBudgetItems: React.Dispatch<React.SetStateAction<EventBudgetItem[]>>;
-  currentUser: User;
+  onSave: (staffMember: StaffMember) => void;
+  onDelete: (staffMember: StaffMember) => void;
+  effectivePermissions: Partial<Record<AppSection, PermissionLevel[]>>;
+  // Données supplémentaires nécessaires pour les fonctionnalités complexes
+  raceEvents?: RaceEvent[];
+  eventStaffAvailabilities?: EventStaffAvailability[];
+  eventBudgetItems?: EventBudgetItem[];
+  currentUser?: User;
   team?: Team;
-  performanceEntries: PerformanceEntry[];
-  missions: Mission[];
-  teams: Team[];
-  users: User[];
-  setMissions: (updater: React.SetStateAction<Mission[]>) => void;
+  performanceEntries?: PerformanceEntry[];
+  missions?: Mission[];
+  teams?: Team[];
+  users?: User[];
 }
 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
@@ -136,33 +135,10 @@ const GlobalPlanningTab: React.FC<GlobalPlanningTabProps> = ({ upcomingEvents, o
 
 export const StaffSection: React.FC<StaffSectionProps> = ({
   staff,
-  setStaff,
-  raceEvents,
-  setRaceEvents,
-  eventStaffAvailabilities,
-  setEventStaffAvailabilities,
-  eventBudgetItems,
-  setEventBudgetItems,
-  currentUser,
-  team,
-  performanceEntries,
-  missions,
-  teams,
-  users,
-  setMissions,
+  onSave,
+  onDelete,
+  effectivePermissions,
 }) => {
-  // Protection contre currentUser undefined
-  if (!currentUser) {
-    return (
-      <SectionWrapper title="Gestion du Staff">
-        <div className="text-center p-8 bg-gray-50 rounded-lg border">
-          <h3 className="text-xl font-semibold text-gray-700">Chargement...</h3>
-          <p className="mt-2 text-gray-500">Initialisation des données utilisateur...</p>
-        </div>
-      </SectionWrapper>
-    );
-  }
-
   // Protection minimale - seulement staff est requis
   if (!staff) {
     return (
@@ -170,6 +146,18 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
         <div className="text-center p-8 bg-gray-50 rounded-lg border">
           <h3 className="text-xl font-semibold text-gray-700">Chargement...</h3>
           <p className="mt-2 text-gray-500">Initialisation des données du staff...</p>
+        </div>
+      </SectionWrapper>
+    );
+  }
+
+  // Protection pour currentUser si nécessaire pour certaines fonctionnalités
+  if (!currentUser && (activeTab === 'planning' || activeTab === 'postingsManagement')) {
+    return (
+      <SectionWrapper title="Gestion du Staff">
+        <div className="text-center p-8 bg-gray-50 rounded-lg border">
+          <h3 className="text-xl font-semibold text-gray-700">Chargement...</h3>
+          <p className="mt-2 text-gray-500">Initialisation des données utilisateur...</p>
         </div>
       </SectionWrapper>
     );
@@ -198,33 +186,53 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
   // State for Global Planning Tab
   const [assignmentModalEvent, setAssignmentModalEvent] = useState<RaceEvent | null>(null);
   const [modalAssignments, setModalAssignments] = useState<Partial<Record<StaffRoleKey, string[]>>>({});
+  
+  // State for Missions Management
+  const [missions, setMissions] = useState<Mission[]>([]);
+  
+  // Local state for staff and race events (if not provided via props)
+  const [localStaff, setLocalStaff] = useState<StaffMember[]>(staff || []);
+  const [localRaceEvents, setLocalRaceEvents] = useState<RaceEvent[]>(raceEvents || []);
+  
+  // Local state for other data
+  const [localEventStaffAvailabilities, setLocalEventStaffAvailabilities] = useState<EventStaffAvailability[]>(eventStaffAvailabilities || []);
+  const [localPermissionRoles, setLocalPermissionRoles] = useState<any[]>([]);
 
   const lightInputClass = `mt-1 block w-full px-3 py-2 border rounded-md shadow-sm sm:text-sm bg-white text-gray-900 border-gray-300 placeholder-gray-400 focus:ring-blue-500 focus:border-blue-500`;
   const lightSelectClass = `mt-1 block w-full pl-3 pr-10 py-2 border rounded-md shadow-sm sm:text-sm bg-white text-gray-900 border-gray-300 focus:ring-blue-500 focus:border-blue-500`;
   
+  // Synchroniser les données locales avec les props
+  React.useEffect(() => {
+    if (staff) setLocalStaff(staff);
+    if (raceEvents) setLocalRaceEvents(raceEvents);
+    if (missions) setMissions(missions);
+    if (eventStaffAvailabilities) setLocalEventStaffAvailabilities(eventStaffAvailabilities);
+    if (permissionRoles) setLocalPermissionRoles(permissionRoles);
+  }, [staff, raceEvents, missions, eventStaffAvailabilities, permissionRoles]);
+  
 
   // Memo for details tab
   const filteredStaffMembers = useMemo(() => {
-    if (!staff) return [];
-    return staff.filter(member => {
+    if (!localStaff) return [];
+    return localStaff.filter(member => {
       const nameMatch = `${member.firstName} ${member.lastName}`.toLowerCase().includes(staffSearchTerm.toLowerCase());
       const roleMatch = staffRoleFilter === 'all' || member.role === staffRoleFilter;
       const statusMatch = staffStatusFilter === 'all' || member.status === staffStatusFilter;
       return nameMatch && roleMatch && statusMatch;
     }).sort((a,b) => a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName));
-  }, [staff, staffSearchTerm, staffRoleFilter, staffStatusFilter]);
+  }, [localStaff, staffSearchTerm, staffRoleFilter, staffStatusFilter]);
 
   const upcomingEvents = useMemo(() => {
-    if (!raceEvents) return [];
+    if (!localRaceEvents) return [];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    return [...raceEvents]
+    return [...localRaceEvents]
         .filter(event => new Date(event.endDate || event.date) >= today)
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  }, [raceEvents]);
+  }, [localRaceEvents]);
 
   const handleSaveStaff = (staffToSave: StaffMember) => {
-    setStaff(prev => {
+    setLocalStaff(prev => {
       const exists = prev.some(s => s.id === staffToSave.id);
       if (exists) {
         return prev.map(s => s.id === staffToSave.id ? staffToSave : s);
@@ -235,17 +243,17 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
   };
 
   const handleDeleteStaff = (staffId: string) => {
-    if (!staff) return;
-    const member = staff.find(s => s.id === staffId);
+    if (!localStaff) return;
+    const member = localStaff.find(s => s.id === staffId);
     if (!member) return;
 
     setConfirmAction({
       title: `Supprimer ${member.firstName} ${member.lastName}`,
       message: "Êtes-vous sûr de vouloir supprimer ce membre du staff ? Cette action est irréversible.",
       onConfirm: () => {
-        setStaff(prev => prev.filter(s => s.id !== staffId));
+        setLocalStaff(prev => prev.filter(s => s.id !== staffId));
         // Also remove from events
-        setRaceEvents(prevEvents => prevEvents.map(event => {
+        setLocalRaceEvents(prevEvents => prevEvents.map(event => {
             const newEvent = {...event};
             Object.keys(newEvent).forEach(key => {
                 if (key.endsWith('Id') && Array.isArray((newEvent as any)[key])) {
@@ -323,7 +331,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
   };
   
    const handleSaveAssignments = (eventId: string, assignments: Partial<Record<StaffRoleKey, string[]>>) => {
-        setRaceEvents(prevEvents => prevEvents.map(event => {
+        setLocalRaceEvents(prevEvents => prevEvents.map(event => {
             if (event.id === eventId) {
                 // 1. Identify manually added staff from the *previous* state
                 const previousRoleAssignedStaff = new Set<string>();
@@ -345,7 +353,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
                 updatedEvent.selectedStaffIds = Array.from(new Set([...manuallyAddedStaff, ...Array.from(newRoleAssignedStaff)]));
 
                 // 5. Update availabilities for the new combined list
-                setEventStaffAvailabilities(prevAvail => {
+                setLocalEventStaffAvailabilities(prevAvail => {
                     const updatedAvailabilities = [...prevAvail];
                     updatedEvent.selectedStaffIds.forEach(staffId => {
                         const hasAvailabilityRecord = updatedAvailabilities.some(a => a.eventId === eventId && a.staffId === staffId);
@@ -377,6 +385,12 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
     setAssignmentModalEvent(event);
   };
 
+  const handlePermissionChange = (staffId: string, newPermission: TeamRole) => {
+    setLocalStaff(prev => prev.map(s => 
+      s.id === staffId ? { ...s, permissionRole: newPermission } : s
+    ));
+  };
+
    const renderDetailsTab = () => (
     <div className="space-y-4">
       <div className="p-4 bg-gray-50 rounded-lg shadow-sm border">
@@ -400,7 +414,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredStaffMembers.map(member => {
-            const daysAssigned = calculateDaysAssigned(member.id, raceEvents);
+            const daysAssigned = calculateDaysAssigned(member.id, localRaceEvents);
             return (
               <div key={member.id} className="bg-white rounded-lg shadow-md overflow-hidden flex flex-col border">
                 <div className="p-4 flex-grow">
@@ -434,8 +448,8 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
 
   const renderSearchTab = () => (
     <StaffSearchTab
-      allStaff={staff}
-      raceEvents={raceEvents}
+      allStaff={localStaff}
+      raceEvents={localRaceEvents}
       teamAddress={team?.address}
       performanceEntries={performanceEntries}
     />
@@ -536,26 +550,26 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
         : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
     }`;
     
-  const isManager = currentUser.permissionRole === TeamRole.ADMIN || currentUser.permissionRole === TeamRole.EDITOR;
+
 
   return (
     <SectionWrapper
       title="Gestion du Staff"
-      actionButton={activeTab === 'details' ? <ActionButton onClick={openAddModal} icon={<PlusCircleIcon className="w-5 h-5"/>}>Ajouter Membre</ActionButton> : null}
+      actionButton={<ActionButton onClick={openAddModal} icon={<PlusCircleIcon className="w-5 h-5"/>}>Ajouter Membre</ActionButton>}
     >
         <div className="mb-4 border-b border-gray-200">
             <nav className="-mb-px flex space-x-2 overflow-x-auto" aria-label="Tabs">
                 <button onClick={() => setActiveTab('details')} className={tabButtonStyle('details')}>Détails Staff</button>
-                {isManager && <button onClick={() => setActiveTab('planning')} className={tabButtonStyle('planning')}>Planning Global du Staff</button>}
+                {currentUser && (currentUser.permissionRole === TeamRole.ADMIN || currentUser.permissionRole === TeamRole.EDITOR) && <button onClick={() => setActiveTab('planning')} className={tabButtonStyle('planning')}>Planning Global du Staff</button>}
                 <button onClick={() => setActiveTab('missionSearch')} className={tabButtonStyle('missionSearch')}>Recherche de Missions</button>
                 <button onClick={() => setActiveTab('myApplications')} className={tabButtonStyle('myApplications')}>Mes Candidatures</button>
-                {isManager && <button onClick={() => setActiveTab('postingsManagement')} className={tabButtonStyle('postingsManagement')}>Gestion des Annonces</button>}
+                {currentUser && (currentUser.permissionRole === TeamRole.ADMIN || currentUser.permissionRole === TeamRole.EDITOR) && <button onClick={() => setActiveTab('postingsManagement')} className={tabButtonStyle('postingsManagement')}>Gestion des Annonces</button>}
                 <button onClick={() => setActiveTab('search')} className={tabButtonStyle('search')}>Recherche de Vacataires</button>
             </nav>
         </div>
         
         {activeTab === 'details' && renderDetailsTab()}
-        {activeTab === 'planning' && isManager && <GlobalPlanningTab upcomingEvents={upcomingEvents} onAssign={handleOpenAssignmentModal} />}
+        {activeTab === 'planning' && currentUser && (currentUser.permissionRole === TeamRole.ADMIN || currentUser.permissionRole === TeamRole.EDITOR) && localRaceEvents && <GlobalPlanningTab upcomingEvents={localRaceEvents.filter(e => new Date(e.endDate || e.date) >= new Date())} onAssign={() => {}} />}
         {activeTab === 'search' && renderSearchTab()}
         {activeTab === 'missionSearch' && renderMissionSearchTab()}
         {activeTab === 'myApplications' && renderMyApplicationsTab()}
@@ -598,8 +612,8 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
                                     <div key={roleKey}>
                                         <label className="block text-sm font-medium text-gray-700">{roleInfo.label}</label>
                                         <div className="mt-1 p-2 border rounded-md space-y-1 bg-gray-50 max-h-40 overflow-y-auto">
-                                            {staff && staff.map(member => {
-                                                const isUnavailable = raceEvents.some(otherEvent => {
+                                            {localStaff && localStaff.map(member => {
+                                                const isUnavailable = localRaceEvents.some(otherEvent => {
                                                     if (otherEvent.id === assignmentModalEvent.id || !(otherEvent.selectedStaffIds || []).includes(member.id)) {
                                                         return false;
                                                     }
@@ -658,7 +672,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
                 if (!applicantUser) {
                     return <div key={applicantId} className="p-2 bg-red-100 rounded-md">Profil candidat non trouvé (ID: {applicantId})</div>;
                 }
-                const staffProfileForApplicant = staff ? staff.find(s => s.email === applicantUser.email) : null || users.find(u => u.id === applicantId);
+                const staffProfileForApplicant = localStaff ? localStaff.find(s => s.email === applicantUser.email) : null || users.find(u => u.id === applicantId);
 
                 const applicant = {
                     id: applicantUser.id,

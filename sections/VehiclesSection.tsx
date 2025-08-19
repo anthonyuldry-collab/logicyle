@@ -291,7 +291,7 @@ const VehiclesSection: React.FC<VehiclesSectionProps> = ({
               <div key={dayNumber} className={`h-28 border rounded-md p-1 overflow-y-auto text-xs relative ${isToday ? 'bg-blue-50 border-blue-300' : 'bg-white'}`}>
                 <span className={`font-bold ${isToday ? 'text-blue-600' : 'text-gray-700'}`}>{dayNumber}</span>
                 <div className="mt-1 space-y-1">
-                  {itemsForDay.map((item, index) => {
+                  {itemsForDay && itemsForDay.map((item, index) => {
                     const bgColor = item!.status === 'Maintenance' 
                       ? 'bg-yellow-400 text-black' 
                       : (item!.eventType ? EVENT_TYPE_COLORS[item!.eventType] : 'bg-orange-400 text-white');
@@ -387,7 +387,7 @@ const VehiclesSection: React.FC<VehiclesSectionProps> = ({
                     <label htmlFor="driverIdModal" className="block text-sm font-medium text-gray-700">Chauffeur Principal</label>
                     <select name="driverId" id="driverIdModal" value={currentVehicle.driverId || ''} onChange={handleInputChange} className={lightSelectClass}>
                     <option value="">Sélectionner un chauffeur...</option>
-                    {staff.map(s => <option key={s.id} value={s.id}>{`${s.firstName} ${s.lastName}`} ({s.role})</option>)}
+                    {staff && staff.map(s => <option key={s.id} value={s.id}>{`${s.firstName} ${s.lastName}`} ({s.role})</option>)}
                     </select>
                 </div>
                 <div>
@@ -422,7 +422,7 @@ const VehiclesSection: React.FC<VehiclesSectionProps> = ({
           <fieldset className="border border-gray-300 p-3 rounded-md">
             <legend className="text-md font-medium text-gray-700 px-1">Historique de Maintenance</legend>
             <div className="space-y-2 mt-2 max-h-40 overflow-y-auto pr-2">
-            {((currentVehicle as Vehicle).maintenanceHistory || []).map((record, index) => (
+            {((currentVehicle as Vehicle).maintenanceHistory || []) && ((currentVehicle as Vehicle).maintenanceHistory || []).map((record, index) => (
                 <div key={record.id} className="p-2 border border-gray-200 rounded-md grid grid-cols-12 gap-x-2 gap-y-1 items-center">
                     <div className="col-span-12 sm:col-span-3">
                         <label className="text-xs text-gray-600">Date</label>

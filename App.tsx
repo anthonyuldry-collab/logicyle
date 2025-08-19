@@ -1071,6 +1071,15 @@ const App: React.FC = () => {
                       onSave={onSaveStaff}
                       onDelete={onDeleteStaff}
                       effectivePermissions={effectivePermissions}
+                      raceEvents={appState.raceEvents}
+                      eventStaffAvailabilities={appState.eventStaffAvailabilities}
+                      eventBudgetItems={appState.eventBudgetItems}
+                      currentUser={currentUser}
+                      team={appState.teams.find(t => t.id === appState.activeTeamId)}
+                      performanceEntries={appState.performanceEntries}
+                      missions={appState.missions}
+                      teams={appState.teams}
+                      users={appState.users}
                     />
                   )}
                   {currentSection === "vehicles" && (

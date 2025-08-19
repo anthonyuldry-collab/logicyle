@@ -183,7 +183,7 @@ const StocksSection: React.FC<StocksSectionProps> = ({ stockItems, setStockItems
   return (
     <SectionWrapper title="Gestion des Stocks" actionButton={<ActionButton onClick={openAddModal} icon={<PlusCircleIcon className="w-5 h-5"/>}>Ajouter Article</ActionButton>}>
         <div className="fixed top-24 right-6 w-full max-w-sm z-50 space-y-3">
-            {notifications.map(notification => (
+            {notifications && notifications.map(notification => (
                 <div key={notification.id} className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-800 p-4 rounded-lg shadow-lg flex justify-between items-start animate-fade-in-right">
                     <p className="text-sm font-medium">{notification.message}</p>
                     <button onClick={() => setNotifications(prev => prev.filter(n => n.id !== notification.id))} className="ml-4 -mt-1 -mr-1 text-yellow-600 hover:text-yellow-800" aria-label="Fermer la notification">
@@ -225,7 +225,7 @@ const StocksSection: React.FC<StocksSectionProps> = ({ stockItems, setStockItems
                     </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                {sortedItems.length > 0 ? (
+                {sortedItems && sortedItems.length > 0 ? (
                     sortedItems.map(item => {
                         const status = getStatus(item);
                         const stockPercentage = getStockLevelPercentage(item);
