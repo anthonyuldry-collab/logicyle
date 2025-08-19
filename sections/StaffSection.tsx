@@ -197,8 +197,8 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
   const [assignmentModalEvent, setAssignmentModalEvent] = useState<RaceEvent | null>(null);
   const [modalAssignments, setModalAssignments] = useState<Partial<Record<StaffRoleKey, string[]>>>({});
   
-  // State for Missions Management
-  const [missions, setMissions] = useState<Mission[]>([]);
+  // State for Missions Management (local state)
+  const [localMissions, setLocalMissions] = useState<Mission[]>([]);
   
   // Local state for staff and race events (if not provided via props)
   const [localStaff, setLocalStaff] = useState<StaffMember[]>(staff || []);
@@ -218,7 +218,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
     
     if (staff && Array.isArray(staff)) setLocalStaff(staff);
     if (raceEvents && Array.isArray(raceEvents)) setLocalRaceEvents(raceEvents);
-    if (missions && Array.isArray(missions)) setMissions(missions);
+    if (missions && Array.isArray(missions)) setLocalMissions(missions);
     if (eventStaffAvailabilities && Array.isArray(eventStaffAvailabilities)) setLocalEventStaffAvailabilities(eventStaffAvailabilities);
     if (permissionRoles && Array.isArray(permissionRoles)) setLocalPermissionRoles(permissionRoles);
   }, [currentUser, staff, raceEvents, missions, eventStaffAvailabilities, permissionRoles]);
@@ -310,13 +310,13 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
           title: `Supprimer l'annonce "${missionToDelete.title}"`,
           message: "Êtes-vous sûr de vouloir supprimer cette annonce ? Cette action est irréversible.",
           onConfirm: () => {
-              setMissions(prev => prev.filter(m => m.id !== missionToDelete.id));
+              setLocalMissions(prev => prev.filter(m => m.id !== missionToDelete.id));
           }
       });
   };
   
   const handleUpdateMissionStatus = (missionId: string, status: MissionStatus) => {
-    setMissions(prev => prev.map(m => m.id === missionId ? { ...m, status } : m));
+    setLocalMissions(prev => prev.map(m => m.id === missionId ? { ...m, status } : m));
   };
 
 
@@ -324,7 +324,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
     if (!team) return;
     
     if (editingMission) {
-        setMissions(prev => prev.map(m => 
+        setLocalMissions(prev => prev.map(m => 
             m.id === editingMission.id 
             ? { ...m, ...newMissionData, id: editingMission.id, teamId: team.id } 
             : m
@@ -337,7 +337,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
             status: MissionStatus.OPEN,
             applicants: []
         };
-        setMissions(prev => [...prev, newMission]);
+        setLocalMissions(prev => [...prev, newMission]);
     }
     setIsPostMissionModalOpen(false);
     setEditingMission(null);
@@ -473,13 +473,13 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
       missions={missions}
       teams={teams}
       currentUser={currentUser}
-      setMissions={setMissions}
+              setMissions={setLocalMissions}
     />
   );
 
   const renderMyApplicationsTab = () => {
-    if (!currentUser?.id || !Array.isArray(missions)) return <div className="text-center text-gray-500">Chargement des candidatures...</div>;
-    const myApplications = missions.filter(m => m.applicants?.includes(currentUser.id));
+    if (!currentUser?.id || !Array.isArray(localMissions)) return <div className="text-center text-gray-500">Chargement des candidatures...</div>;
+    const myApplications = localMissions.filter(m => m.applicants?.includes(currentUser.id));
     return (
         <div className="space-y-3">
             <h3 className="text-xl font-semibold">Mes Candidatures</h3>
@@ -497,11 +497,11 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
   };
   
   const renderPostingsManagementTab = () => {
-    if (!currentUser?.permissionRole || !Array.isArray(missions)) return <div className="text-center text-gray-500">Chargement des annonces...</div>;
+    if (!currentUser?.permissionRole || !Array.isArray(localMissions)) return <div className="text-center text-gray-500">Chargement des annonces...</div>;
     if (currentUser.permissionRole !== TeamRole.ADMIN && currentUser.permissionRole !== TeamRole.EDITOR) {
       return null;
     }
-    const myTeamMissions = missions.filter(m => m.teamId === team?.id);
+    const myTeamMissions = localMissions.filter(m => m.teamId === team?.id);
     const openMissions = myTeamMissions.filter(m => m.status === MissionStatus.OPEN).sort((a,b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
     const archivedMissions = myTeamMissions.filter(m => m.status !== MissionStatus.OPEN).sort((a,b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime());
     
