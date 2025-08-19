@@ -65,7 +65,7 @@ const getEventDisplayInfoForDay = (
     const currentDateStr = currentDateMidnight.toISOString().split('T')[0];
 
     // 1. Add ongoing events
-    allRaceEvents.forEach(event => {
+    allRaceEvents.forEach((event: RaceEvent) => {
         const eventStartDate = new Date(event.date + "T12:00:00Z");
         const eventEndDate = event.endDate ? new Date(event.endDate + "T23:59:59Z") : eventStartDate;
         if (currentDateMidnight >= eventStartDate && currentDateMidnight <= eventEndDate) {
@@ -74,7 +74,7 @@ const getEventDisplayInfoForDay = (
     });
 
     // 2. Add events with departures on this day
-    allTransportLegs.forEach(leg => {
+    allTransportLegs.forEach((leg: EventTransportLeg) => {
         if (leg.direction === TransportDirection.ALLER && leg.departureDate === currentDateStr) {
             const event = allRaceEvents.find(e => e.id === leg.eventId);
             if (event && !eventsForDay.has(event.id)) { // Add only if not already present
@@ -84,7 +84,7 @@ const getEventDisplayInfoForDay = (
     });
 
     // 3. Set indicators for all events on the list
-    return Array.from(eventsForDay.values()).map(event => {
+    return Array.from(eventsForDay.values()).map((event: EventDisplayInfo) => {
         const eventStartDate = new Date(event.date + "T12:00:00Z");
         const eventEndDate = event.endDate ? new Date(event.endDate + "T23:59:59Z") : eventStartDate;
         const isStartDay = currentDateMidnight.getTime() === eventStartDate.getTime();
@@ -95,7 +95,7 @@ const getEventDisplayInfoForDay = (
             showDepartureIndicator: event.isDepartureDay || (isStartDay && hasTransportLeg(event.id, TransportDirection.ALLER, allTransportLegs)),
             showReturnIndicator: isEndDay && hasTransportLeg(event.id, TransportDirection.RETOUR, allTransportLegs),
         };
-    }).sort((a,b) => a.name.localeCompare(b.name));
+    }).sort((a: EventDisplayInfo, b: EventDisplayInfo) => a.name.localeCompare(b.name));
 };
 
 const getCategoryLabel = (id: string = ''): string => {
@@ -198,7 +198,7 @@ export const EventsSection = ({
             selectedVehicleIds: [],
             checklistEmailSimulated: false,
         };
-        setRaceEvents(prevEvents => [...prevEvents, newEvent]);
+        setRaceEvents((prevEvents: RaceEvent[]) => [...prevEvents, newEvent]);
         
         // Generate PDF Roadbook
         const doc = new jsPDF();

@@ -12,6 +12,14 @@ export default defineConfig(({ mode }) => {
         alias: {
           '@': path.resolve(__dirname, '.'),
         }
+      },
+      // Configuration pour Node 20+
+      optimizeDeps: {
+        include: ['react', 'react-dom']
+      },
+      build: {
+        target: 'es2022',
+        minify: 'esbuild'
       }
     };
 });

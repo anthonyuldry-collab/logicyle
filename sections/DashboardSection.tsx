@@ -58,7 +58,12 @@ interface AthleteDashboardViewProps {
 }
 
 // Renamed to be a pure presentational component without hooks
-const OperationalDashboardView: React.FC<OperationalDashboardViewProps> = ({ stats, upcomingEvents, alerts, navigateTo }) => {
+const OperationalDashboardView: React.FC<OperationalDashboardViewProps> = ({ 
+  stats, 
+  upcomingEvents, 
+  alerts, 
+  navigateTo 
+}: OperationalDashboardViewProps) => {
   const { t } = useTranslations();
   return (
     <div className="space-y-6">
@@ -77,7 +82,7 @@ const OperationalDashboardView: React.FC<OperationalDashboardViewProps> = ({ sta
                 <h3 className="text-lg font-semibold text-gray-800 mb-3">Événements à Venir</h3>
                 <div className="space-y-3">
                     {upcomingEvents && upcomingEvents.length > 0 ? (
-                        upcomingEvents.map(event => (
+                        upcomingEvents.map((event: RaceEvent) => (
                             <div key={event.id} className="p-3 bg-gray-50 rounded-lg border border-gray-200 flex flex-col sm:flex-row justify-between sm:items-center gap-2 hover:bg-gray-100 transition-colors">
                                 <div>
                                     <p className="font-bold text-gray-800">{event.name}</p>

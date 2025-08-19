@@ -24,16 +24,17 @@ import CalendarDaysIcon from '../components/icons/CalendarDaysIcon';
 import BanknotesIcon from '../components/icons/BanknotesIcon';
 import { useTranslations } from '../hooks/useTranslations';
 
+
 interface StaffSectionProps {
   staff: StaffMember[];
   onSave: (staffMember: StaffMember) => void;
   onDelete: (staffMember: StaffMember) => void;
   effectivePermissions: Partial<Record<AppSection, PermissionLevel[]>>;
+  currentUser: User; // REQUIS - pas optionnel
   // Données supplémentaires nécessaires pour les fonctionnalités complexes
   raceEvents?: RaceEvent[];
   eventStaffAvailabilities?: EventStaffAvailability[];
   eventBudgetItems?: EventBudgetItem[];
-  currentUser?: User;
   team?: Team;
   performanceEntries?: PerformanceEntry[];
   missions?: Mission[];
@@ -138,38 +139,35 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
   onSave,
   onDelete,
   effectivePermissions,
+  raceEvents,
+  eventStaffAvailabilities,
+  eventBudgetItems,
+  currentUser,
+  team,
+  performanceEntries,
+  missions,
+  teams,
+  users,
 }) => {
-  // Protection minimale - seulement staff est requis
-  if (!staff) {
+  // Protection simplifiée - seulement staff et currentUser sont requis
+  if (!staff || !currentUser) {
     return (
       <SectionWrapper title="Gestion du Staff">
         <div className="text-center p-8 bg-gray-50 rounded-lg border">
           <h3 className="text-xl font-semibold text-gray-700">Chargement...</h3>
-          <p className="mt-2 text-gray-500">Initialisation des données du staff...</p>
+          <p className="mt-2 text-gray-500">Initialisation des données...</p>
         </div>
       </SectionWrapper>
     );
   }
 
-  // Protection pour currentUser - requis pour toutes les fonctionnalités
-  if (!currentUser || typeof currentUser === 'undefined' || !currentUser.id || !currentUser.email) {
+  // Vérification que staff est un tableau
+  if (!Array.isArray(staff)) {
     return (
       <SectionWrapper title="Gestion du Staff">
         <div className="text-center p-8 bg-gray-50 rounded-lg border">
-          <h3 className="text-xl font-semibold text-gray-700">Chargement...</h3>
-          <p className="mt-2 text-gray-500">Initialisation des données utilisateur...</p>
-        </div>
-      </SectionWrapper>
-    );
-  }
-
-  // Protection supplémentaire pour éviter les erreurs de rendu
-  if (!staff || !Array.isArray(staff)) {
-    return (
-      <SectionWrapper title="Gestion du Staff">
-        <div className="text-center p-8 bg-gray-50 rounded-lg border">
-          <h3 className="text-xl font-semibold text-gray-700">Chargement...</h3>
-          <p className="mt-2 text-gray-500">Initialisation des données du staff...</p>
+          <h3 className="text-xl font-semibold text-gray-700">Erreur de données</h3>
+          <p className="mt-2 text-gray-500">Format des données staff invalide.</p>
         </div>
       </SectionWrapper>
     );
@@ -574,6 +572,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
       title="Gestion du Staff"
       actionButton={<ActionButton onClick={openAddModal} icon={<PlusCircleIcon className="w-5 h-5"/>}>Ajouter Membre</ActionButton>}
     >
+        
         <div className="mb-4 border-b border-gray-200">
             <nav className="-mb-px flex space-x-2 overflow-x-auto" aria-label="Tabs">
                 <button onClick={() => setActiveTab('details')} className={tabButtonStyle('details')}>Détails Staff</button>
@@ -882,3 +881,5 @@ Expérience appréciée" value={Array.isArray(newMissionData.requirements) ? new
     </SectionWrapper>
   );
 };
+
+export default StaffSection;
