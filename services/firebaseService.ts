@@ -25,7 +25,7 @@ import {
   TeamLevel,
 } from '../types';
 import { SignupData } from '../sections/SignupView';
-import { SECTIONS, TEAM_STATE_COLLECTIONS } from '../constants';
+import { SECTIONS, TEAM_STATE_COLLECTIONS, getInitialGlobalState } from '../constants';
 
 // Reasonable default permissions when no permissions document is configured in Firestore
 const DEFAULT_ROLE_PERMISSIONS: AppPermissions = {
@@ -195,13 +195,17 @@ export const getGlobalData = async (): Promise<Partial<GlobalState>> => {
     const permissionRolesSnap = await getDocs(collection(db, 'permissionRoles'));
     
     const permissionsDoc = permissionsSnap.docs[0];
+    const fallbackPermissionRoles = getInitialGlobalState().permissionRoles;
+    const permissionRoles = permissionRolesSnap.size > 0
+        ? permissionRolesSnap.docs.map(d => ({ id: d.id, ...d.data() } as any))
+        : fallbackPermissionRoles;
 
     return {
         users: usersSnap.docs.map(d => ({ id: d.id, ...d.data() } as User)),
         teams: teamsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Team)),
         teamMemberships: membershipsSnap.docs.map(d => d.data() as TeamMembership),
         permissions: permissionsDoc ? (permissionsDoc.data() as AppPermissions) : {},
-        permissionRoles: permissionRolesSnap.docs.map(d => ({ id: d.id, ...d.data() } as any))
+        permissionRoles
     };
 };
 
@@ -216,7 +220,7 @@ export const getEffectivePermissions = (user: User, basePermissions: AppPermissi
 
     const effectiveRoleKey = user.permissionRole || TeamRole.VIEWER;
     const rolePerms = basePermissions[effectiveRoleKey] || DEFAULT_ROLE_PERMISSIONS[effectiveRoleKey] || {};
-    const effectivePerms = structuredClone(rolePerms);
+    const effectivePerms: Partial<Record<AppSection, PermissionLevel[]>> = structuredClone(rolePerms);
     
     if (user.customPermissions) {
         for (const sectionKey in user.customPermissions) {
@@ -225,6 +229,10 @@ export const getEffectivePermissions = (user: User, basePermissions: AppPermissi
         }
     }
     
+    // Final safety fallback: if still empty, grant minimal viewer access
+    if (!effectivePerms || Object.keys(effectivePerms).length === 0) {
+        return DEFAULT_ROLE_PERMISSIONS[TeamRole.VIEWER] || {};
+    }
     return effectivePerms;
 };
 
