@@ -532,7 +532,8 @@ const App: React.FC = () => {
     if (view === "app" && currentUser && appState.activeTeamId) {
       const effectivePermissions = firebaseService.getEffectivePermissions(
         currentUser,
-        appState.permissions
+        appState.permissions,
+        appState.staff
       );
       const activeEvent = appState.activeEventId
         ? appState.raceEvents.find((e) => e.id === appState.activeEventId)
