@@ -7,7 +7,8 @@ import {
   setDoc,
   addDoc,
   deleteDoc,
-  writeBatch
+  writeBatch,
+  updateDoc
 } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { 
@@ -407,4 +408,14 @@ export const deleteData = async (teamId: string, collectionName: string, docId: 
 export const saveTeamSettings = async (teamId: string, settings: Partial<Team>) => {
     const teamDocRef = doc(db, 'teams', teamId);
     await setDoc(teamDocRef, settings, { merge: true });
+};
+
+export const updateUserProfile = async (userId: string, updatedData: Partial<User>): Promise<void> => {
+    const userRef = doc(db, 'users', userId);
+    const updateData = {
+        ...updatedData,
+        updatedAt: new Date().toISOString()
+    };
+    
+    await updateDoc(userRef, updateData);
 };
