@@ -75,7 +75,7 @@ import { RosterSection } from "./sections/RosterSection";
 import { ScoutingSection } from "./sections/ScoutingSection";
 import SettingsSection from "./sections/SettingsSection";
 import SignupView, { SignupData } from "./sections/SignupView";
-import { StaffSection } from "./sections/StaffSection";
+import StaffSection from "./sections/StaffSection";
 import StocksSection from "./sections/StocksSection";
 import UserManagementSection from "./sections/UserManagementSection";
 import VehiclesSection from "./sections/VehiclesSection";
@@ -187,7 +187,7 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser: any) => {
       if (firebaseUser) {
         setIsLoading(true);
         let userProfile = await firebaseService.getUserProfile(
@@ -291,11 +291,11 @@ const App: React.FC = () => {
     );
     const finalItem = { ...item, id: item.id || savedId };
 
-    setAppState((prev) => {
+    setAppState((prev: AppState) => {
       const collection = prev.riders;
-      const exists = collection.some((i) => i.id === finalItem.id);
+      const exists = collection.some((i: Rider) => i.id === finalItem.id);
       const newCollection = exists
-        ? collection.map((i) => (i.id === finalItem.id ? finalItem : i))
+        ? collection.map((i: Rider) => (i.id === finalItem.id ? finalItem : i))
         : [...collection, finalItem];
       return { ...prev, riders: newCollection };
     });
@@ -309,11 +309,11 @@ const App: React.FC = () => {
       item.id
     );
 
-    setAppState((prev) => {
+    setAppState((prev: AppState) => {
       const collection = prev.riders;
       return {
         ...prev,
-        riders: collection.filter((i) => i.id !== item.id),
+        riders: collection.filter((i: Rider) => i.id !== item.id),
       };
     });
   }, [appState.activeTeamId]);
@@ -327,11 +327,11 @@ const App: React.FC = () => {
     );
     const finalItem = { ...item, id: item.id || savedId };
 
-    setAppState((prev) => {
+    setAppState((prev: AppState) => {
       const collection = prev.staff;
-      const exists = collection.some((i) => i.id === finalItem.id);
+      const exists = collection.some((i: StaffMember) => i.id === finalItem.id);
       const newCollection = exists
-        ? collection.map((i) => (i.id === finalItem.id ? finalItem : i))
+        ? collection.map((i: StaffMember) => (i.id === finalItem.id ? finalItem : i))
         : [...collection, finalItem];
       return { ...prev, staff: newCollection };
     });
@@ -345,11 +345,11 @@ const App: React.FC = () => {
       item.id
     );
 
-    setAppState((prev) => {
+    setAppState((prev: AppState) => {
       const collection = prev.staff;
       return {
         ...prev,
-        staff: collection.filter((i) => i.id !== item.id),
+        staff: collection.filter((i: StaffMember) => i.id !== item.id),
       };
     });
   }, [appState.activeTeamId]);
@@ -363,11 +363,11 @@ const App: React.FC = () => {
     );
     const finalItem = { ...item, id: item.id || savedId };
 
-    setAppState((prev) => {
+    setAppState((prev: AppState) => {
       const collection = prev.vehicles;
-      const exists = collection.some((i) => i.id === finalItem.id);
+      const exists = collection.some((i: Vehicle) => i.id === finalItem.id);
       const newCollection = exists
-        ? collection.map((i) => (i.id === finalItem.id ? finalItem : i))
+        ? collection.map((i: Vehicle) => (i.id === finalItem.id ? finalItem : i))
         : [...collection, finalItem];
       return { ...prev, vehicles: newCollection };
     });
@@ -381,11 +381,11 @@ const App: React.FC = () => {
       item.id
     );
 
-    setAppState((prev) => {
+    setAppState((prev: AppState) => {
       const collection = prev.vehicles;
       return {
         ...prev,
-        vehicles: collection.filter((i) => i.id !== item.id),
+        vehicles: collection.filter((i: Vehicle) => i.id !== item.id),
       };
     });
   }, [appState.activeTeamId]);
@@ -399,11 +399,11 @@ const App: React.FC = () => {
     );
     const finalItem = { ...item, id: item.id || savedId };
 
-    setAppState((prev) => {
+    setAppState((prev: AppState) => {
       const collection = prev.equipment;
-      const exists = collection.some((i) => i.id === finalItem.id);
+      const exists = collection.some((i: EquipmentItem) => i.id === finalItem.id);
       const newCollection = exists
-        ? collection.map((i) => (i.id === finalItem.id ? finalItem : i))
+        ? collection.map((i: EquipmentItem) => (i.id === finalItem.id ? finalItem : i))
         : [...collection, finalItem];
       return { ...prev, equipment: newCollection };
     });
@@ -417,11 +417,11 @@ const App: React.FC = () => {
       item.id
     );
 
-    setAppState((prev) => {
+    setAppState((prev: AppState) => {
       const collection = prev.equipment;
       return {
         ...prev,
-        equipment: collection.filter((i) => i.id !== item.id),
+        equipment: collection.filter((i: EquipmentItem) => i.id !== item.id),
       };
     });
   }, [appState.activeTeamId]);
@@ -435,11 +435,11 @@ const App: React.FC = () => {
     );
     const finalItem = { ...item, id: item.id || savedId };
 
-    setAppState((prev) => {
+    setAppState((prev: AppState) => {
       const collection = prev.raceEvents;
-      const exists = collection.some((i) => i.id === finalItem.id);
+      const exists = collection.some((i: RaceEvent) => i.id === finalItem.id);
       const newCollection = exists
-        ? collection.map((i) => (i.id === finalItem.id ? finalItem : i))
+        ? collection.map((i: RaceEvent) => (i.id === finalItem.id ? finalItem : i))
         : [...collection, finalItem];
       return { ...prev, raceEvents: newCollection };
     });
@@ -453,11 +453,11 @@ const App: React.FC = () => {
       item.id
     );
 
-    setAppState((prev) => {
+    setAppState((prev: AppState) => {
       const collection = prev.raceEvents;
       return {
         ...prev,
-        raceEvents: collection.filter((i) => i.id !== item.id),
+        raceEvents: collection.filter((i: RaceEvent) => i.id !== item.id),
       };
     });
   }, [appState.activeTeamId]);
@@ -471,11 +471,11 @@ const App: React.FC = () => {
       item
     );
     const finalItem = { ...item, id: item.id || savedId };
-    setAppState((prev) => {
+    setAppState((prev: AppState) => {
       const collection = prev.performanceEntries;
-      const exists = collection.some((i) => i.id === finalItem.id);
+      const exists = collection.some((i: PerformanceEntry) => i.id === finalItem.id);
       const newCollection = exists
-        ? collection.map((i) => (i.id === finalItem.id ? finalItem : i))
+        ? collection.map((i: PerformanceEntry) => (i.id === finalItem.id ? finalItem : i))
         : [...collection, finalItem];
       return { ...prev, performanceEntries: newCollection };
     });
@@ -488,9 +488,9 @@ const App: React.FC = () => {
       "performanceEntries",
       item.id
     );
-    setAppState((prev) => ({
+    setAppState((prev: AppState) => ({
       ...prev,
-      performanceEntries: prev.performanceEntries.filter((i) => i.id !== item.id),
+      performanceEntries: prev.performanceEntries.filter((i: PerformanceEntry) => i.id !== item.id),
     }));
   }, [appState.activeTeamId]);
 
@@ -502,11 +502,11 @@ const App: React.FC = () => {
       item
     );
     const finalItem = { ...item, id: item.id || savedId };
-    setAppState((prev) => {
+    setAppState((prev: AppState) => {
       const collection = prev.incomeItems;
-      const exists = collection.some((i) => i.id === finalItem.id);
+      const exists = collection.some((i: IncomeItem) => i.id === finalItem.id);
       const newCollection = exists
-        ? collection.map((i) => (i.id === finalItem.id ? finalItem : i))
+        ? collection.map((i: IncomeItem) => (i.id === finalItem.id ? finalItem : i))
         : [...collection, finalItem];
       return { ...prev, incomeItems: newCollection };
     });
@@ -519,9 +519,9 @@ const App: React.FC = () => {
       "incomeItems",
       item.id
     );
-    setAppState((prev) => ({
+    setAppState((prev: AppState) => ({
       ...prev,
-      incomeItems: prev.incomeItems.filter((i) => i.id !== item.id),
+      incomeItems: prev.incomeItems.filter((i: IncomeItem) => i.id !== item.id),
     }));
   }, [appState.activeTeamId]);
 
@@ -533,11 +533,11 @@ const App: React.FC = () => {
       item
     );
     const finalItem = { ...item, id: item.id || savedId };
-    setAppState((prev) => {
+    setAppState((prev: AppState) => {
       const collection = prev.eventBudgetItems;
-      const exists = collection.some((i) => i.id === finalItem.id);
+      const exists = collection.some((i: EventBudgetItem) => i.id === finalItem.id);
       const newCollection = exists
-        ? collection.map((i) => (i.id === finalItem.id ? finalItem : i))
+        ? collection.map((i: EventBudgetItem) => (i.id === finalItem.id ? finalItem : i))
         : [...collection, finalItem];
       return { ...prev, eventBudgetItems: newCollection };
     });
@@ -550,9 +550,9 @@ const App: React.FC = () => {
       "eventBudgetItems",
       item.id
     );
-    setAppState((prev) => ({
+    setAppState((prev: AppState) => ({
       ...prev,
-      eventBudgetItems: prev.eventBudgetItems.filter((i) => i.id !== item.id),
+      eventBudgetItems: prev.eventBudgetItems.filter((i: EventBudgetItem) => i.id !== item.id),
     }));
   }, [appState.activeTeamId]);
 
@@ -564,11 +564,11 @@ const App: React.FC = () => {
       item
     );
     const finalItem = { ...item, id: item.id || savedId };
-    setAppState((prev) => {
+    setAppState((prev: AppState) => {
       const collection = prev.scoutingProfiles;
-      const exists = collection.some((i) => i.id === finalItem.id);
+      const exists = collection.some((i: ScoutingProfile) => i.id === finalItem.id);
       const newCollection = exists
-        ? collection.map((i) => (i.id === finalItem.id ? finalItem : i))
+        ? collection.map((i: ScoutingProfile) => (i.id === finalItem.id ? finalItem : i))
         : [...collection, finalItem];
       return { ...prev, scoutingProfiles: newCollection };
     });
@@ -581,9 +581,9 @@ const App: React.FC = () => {
       "scoutingProfiles",
       item.id
     );
-    setAppState((prev) => ({
+    setAppState((prev: AppState) => ({
       ...prev,
-      scoutingProfiles: prev.scoutingProfiles.filter((i) => i.id !== item.id),
+      scoutingProfiles: prev.scoutingProfiles.filter((i: ScoutingProfile) => i.id !== item.id),
     }));
   }, [appState.activeTeamId]);
 
@@ -595,11 +595,11 @@ const App: React.FC = () => {
       item
     );
     const finalItem = { ...item, id: item.id || savedId };
-    setAppState((prev) => {
+    setAppState((prev: AppState) => {
       const collection = prev.stockItems;
-      const exists = collection.some((i) => i.id === finalItem.id);
+      const exists = collection.some((i: StockItem) => i.id === finalItem.id);
       const newCollection = exists
-        ? collection.map((i) => (i.id === finalItem.id ? finalItem : i))
+        ? collection.map((i: StockItem) => (i.id === finalItem.id ? finalItem : i))
         : [...collection, finalItem];
       return { ...prev, stockItems: newCollection };
     });
@@ -612,9 +612,9 @@ const App: React.FC = () => {
       "stockItems",
       item.id
     );
-    setAppState((prev) => ({
+    setAppState((prev: AppState) => ({
       ...prev,
-      stockItems: prev.stockItems.filter((i) => i.id !== item.id),
+      stockItems: prev.stockItems.filter((i: StockItem) => i.id !== item.id),
     }));
   }, [appState.activeTeamId]);
 
@@ -626,11 +626,11 @@ const App: React.FC = () => {
       item
     );
     const finalItem = { ...item, id: item.id || savedId };
-    setAppState((prev) => {
+    setAppState((prev: AppState) => {
       const collection = prev.checklistTemplates;
-      const exists = collection.some((i) => i.id === finalItem.id);
+      const exists = collection.some((i: ChecklistTemplate) => i.id === finalItem.id);
       const newCollection = exists
-        ? collection.map((i) => (i.id === finalItem.id ? finalItem : i))
+        ? collection.map((i: ChecklistTemplate) => (i.id === finalItem.id ? finalItem : i))
         : [...collection, finalItem];
       return { ...prev, checklistTemplates: newCollection };
     });
@@ -643,9 +643,9 @@ const App: React.FC = () => {
       "checklistTemplates",
       item.id
     );
-    setAppState((prev) => ({
+    setAppState((prev: AppState) => ({
       ...prev,
-      checklistTemplates: prev.checklistTemplates.filter((i) => i.id !== item.id),
+      checklistTemplates: prev.checklistTemplates.filter((i: ChecklistTemplate) => i.id !== item.id),
     }));
   }, [appState.activeTeamId]);
 
@@ -658,11 +658,11 @@ const App: React.FC = () => {
       item
     );
     const finalItem = { ...item, id: item.id || savedId };
-    setAppState((prev) => {
+    setAppState((prev: AppState) => {
       const collection = prev.teamProducts;
-      const exists = collection.some((i) => i.id === finalItem.id);
+      const exists = collection.some((i: TeamProduct) => i.id === finalItem.id);
       const newCollection = exists
-        ? collection.map((i) => (i.id === finalItem.id ? finalItem : i))
+        ? collection.map((i: TeamProduct) => (i.id === finalItem.id ? finalItem : i))
         : [...collection, finalItem];
       return { ...prev, teamProducts: newCollection };
     });
@@ -675,9 +675,9 @@ const App: React.FC = () => {
       "teamProducts",
       item.id
     );
-    setAppState((prev) => ({
+    setAppState((prev: AppState) => ({
       ...prev,
-      teamProducts: prev.teamProducts.filter((i) => i.id !== item.id),
+      teamProducts: prev.teamProducts.filter((i: TeamProduct) => i.id !== item.id),
     }));
   }, [appState.activeTeamId]);
 
@@ -686,7 +686,7 @@ const App: React.FC = () => {
     collectionName: keyof TeamState
   ): React.Dispatch<React.SetStateAction<T[]>> =>
     (updater) => {
-      setAppState((prev) => {
+      setAppState((prev: AppState) => {
         const currentItems = prev[collectionName] as T[];
         const newItems =
           typeof updater === "function"
@@ -826,9 +826,9 @@ const App: React.FC = () => {
 
   const navigateTo = (section: AppSection, eventId?: string) => {
     if (section === "eventDetail" && eventId) {
-      setAppState((prev) => ({ ...prev, activeEventId: eventId }));
+      setAppState((prev: AppState) => ({ ...prev, activeEventId: eventId }));
     } else {
-      setAppState((prev) => ({ ...prev, activeEventId: null }));
+      setAppState((prev: AppState) => ({ ...prev, activeEventId: null }));
     }
     setCurrentSection(section);
   };
