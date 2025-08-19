@@ -151,6 +151,18 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
   users,
   setMissions,
 }) => {
+  // Protection contre currentUser undefined
+  if (!currentUser) {
+    return (
+      <SectionWrapper title="Gestion du Staff">
+        <div className="text-center p-8 bg-gray-50 rounded-lg border">
+          <h3 className="text-xl font-semibold text-gray-700">Chargement...</h3>
+          <p className="mt-2 text-gray-500">Initialisation des données utilisateur...</p>
+        </div>
+      </SectionWrapper>
+    );
+  }
+
   // Protection minimale - seulement staff est requis
   if (!staff) {
     return (

@@ -38,6 +38,18 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
     onTransferUser
 }) => {
     const { users, teams, teamMemberships } = appState;
+    
+    // Protection contre users undefined
+    if (!users) {
+        return (
+            <SectionWrapper title="Gestion des Utilisateurs et des Accès">
+                <div className="text-center p-8 bg-gray-50 rounded-lg border">
+                    <h3 className="text-xl font-semibold text-gray-700">Chargement...</h3>
+                    <p className="mt-2 text-gray-500">Initialisation des données utilisateurs...</p>
+                </div>
+            </SectionWrapper>
+        );
+    }
     const [inviteEmail, setInviteEmail] = useState('');
     const [editingPermissionsForUser, setEditingPermissionsForUser] = useState<User | null>(null);
     const [transferModalOpen, setTransferModalOpen] = useState(false);
