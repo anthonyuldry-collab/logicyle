@@ -180,7 +180,7 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
   };
 
   const filteredEquipment = useMemo(() => {
-    if (!riders || !equipment) return [];
+    if (!riders || !equipment || !currentUser?.email || !currentUser?.permissionRole) return [];
     const riderForCurrentUser = riders.find(r => r.email === currentUser.email);
     const equipmentToDisplay = currentUser.permissionRole === TeamRole.VIEWER
         ? (riderForCurrentUser ? equipment.filter(eq => eq.assignedToRiderId === riderForCurrentUser.id) : [])
@@ -192,7 +192,7 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
         const statusMatch = statusFilter === 'all' || item.status === statusFilter;
         return nameMatch && typeMatch && statusMatch;
     }).sort((a,b) => a.name.localeCompare(b.name));
-  }, [equipment, riders, currentUser, searchTerm, typeFilter, statusFilter]);
+  }, [equipment, riders, currentUser?.email, currentUser?.permissionRole, searchTerm, typeFilter, statusFilter]);
 
   useEffect(() => {
     if (selectedRiderForSetup) {

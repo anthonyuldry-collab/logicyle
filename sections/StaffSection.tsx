@@ -1,7 +1,7 @@
 
 
 import React, { useState, useMemo } from 'react';
-import { StaffMember, RaceEvent, EventStaffAvailability, StaffRoleKey, EventBudgetItem, StaffRole, StaffStatus, AvailabilityStatus, EventType, ContractType, BudgetItemCategory, User, TeamRole, WorkExperience, Team, PerformanceEntry, Mission, MissionStatus, MissionCompensationType, Address, EducationOrCertification } from '../types'; 
+import { StaffMember, RaceEvent, EventStaffAvailability, StaffRoleKey, EventBudgetItem, StaffRole, StaffStatus, AvailabilityStatus, EventType, ContractType, BudgetItemCategory, User, TeamRole, WorkExperience, Team, PerformanceEntry, Mission, MissionStatus, MissionCompensationType, Address, EducationOrCertification, AppSection, PermissionLevel } from '../types'; 
 import { STAFF_ROLE_COLORS, STAFF_STATUS_COLORS, EVENT_TYPE_COLORS, STAFF_ROLES_CONFIG } from '../constants'; 
 import SectionWrapper from '../components/SectionWrapper';
 import ActionButton from '../components/ActionButton';
@@ -152,7 +152,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
   }
 
   // Protection pour currentUser - requis pour toutes les fonctionnalités
-  if (!currentUser || typeof currentUser === 'undefined') {
+  if (!currentUser || typeof currentUser === 'undefined' || !currentUser.id || !currentUser.email) {
     return (
       <SectionWrapper title="Gestion du Staff">
         <div className="text-center p-8 bg-gray-50 rounded-lg border">
@@ -163,13 +163,13 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
     );
   }
 
-  // Protection supplémentaire pour les propriétés critiques de currentUser
-  if (!currentUser.id || !currentUser.email) {
+  // Protection supplémentaire pour éviter les erreurs de rendu
+  if (!staff || !Array.isArray(staff)) {
     return (
       <SectionWrapper title="Gestion du Staff">
         <div className="text-center p-8 bg-gray-50 rounded-lg border">
-          <h3 className="text-xl font-semibold text-gray-700">Erreur de données utilisateur</h3>
-          <p className="mt-2 text-gray-500">Les informations utilisateur sont incomplètes. Veuillez vous reconnecter.</p>
+          <h3 className="text-xl font-semibold text-gray-700">Chargement...</h3>
+          <p className="mt-2 text-gray-500">Initialisation des données du staff...</p>
         </div>
       </SectionWrapper>
     );
@@ -215,14 +215,14 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
   
   // Synchroniser les données locales avec les props
   React.useEffect(() => {
-    // Protection contre currentUser undefined
-    if (!currentUser) return;
+    // Protection contre currentUser undefined ou incomplet
+    if (!currentUser || !currentUser.id || !currentUser.email) return;
     
-    if (staff) setLocalStaff(staff);
-    if (raceEvents) setLocalRaceEvents(raceEvents);
-    if (missions) setMissions(missions);
-    if (eventStaffAvailabilities) setLocalEventStaffAvailabilities(eventStaffAvailabilities);
-    if (permissionRoles) setLocalPermissionRoles(permissionRoles);
+    if (staff && Array.isArray(staff)) setLocalStaff(staff);
+    if (raceEvents && Array.isArray(raceEvents)) setLocalRaceEvents(raceEvents);
+    if (missions && Array.isArray(missions)) setMissions(missions);
+    if (eventStaffAvailabilities && Array.isArray(eventStaffAvailabilities)) setLocalEventStaffAvailabilities(eventStaffAvailabilities);
+    if (permissionRoles && Array.isArray(permissionRoles)) setLocalPermissionRoles(permissionRoles);
   }, [currentUser, staff, raceEvents, missions, eventStaffAvailabilities, permissionRoles]);
   
 
@@ -480,7 +480,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
   );
 
   const renderMyApplicationsTab = () => {
-    if (!currentUser?.id) return <div className="text-center text-gray-500">Erreur: utilisateur non défini</div>;
+    if (!currentUser?.id || !Array.isArray(missions)) return <div className="text-center text-gray-500">Chargement des candidatures...</div>;
     const myApplications = missions.filter(m => m.applicants?.includes(currentUser.id));
     return (
         <div className="space-y-3">
@@ -499,7 +499,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
   };
   
   const renderPostingsManagementTab = () => {
-    if (!currentUser?.permissionRole) return <div className="text-center text-gray-500">Erreur: utilisateur non défini</div>;
+    if (!currentUser?.permissionRole || !Array.isArray(missions)) return <div className="text-center text-gray-500">Chargement des annonces...</div>;
     if (currentUser.permissionRole !== TeamRole.ADMIN && currentUser.permissionRole !== TeamRole.EDITOR) {
       return null;
     }
@@ -577,16 +577,16 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
         <div className="mb-4 border-b border-gray-200">
             <nav className="-mb-px flex space-x-2 overflow-x-auto" aria-label="Tabs">
                 <button onClick={() => setActiveTab('details')} className={tabButtonStyle('details')}>Détails Staff</button>
-                {currentUser && (currentUser.permissionRole === TeamRole.ADMIN || currentUser.permissionRole === TeamRole.EDITOR) && <button onClick={() => setActiveTab('planning')} className={tabButtonStyle('planning')}>Planning Global du Staff</button>}
+                {currentUser?.permissionRole && (currentUser.permissionRole === TeamRole.ADMIN || currentUser.permissionRole === TeamRole.EDITOR) && <button onClick={() => setActiveTab('planning')} className={tabButtonStyle('planning')}>Planning Global du Staff</button>}
                 <button onClick={() => setActiveTab('missionSearch')} className={tabButtonStyle('missionSearch')}>Recherche de Missions</button>
                 <button onClick={() => setActiveTab('myApplications')} className={tabButtonStyle('myApplications')}>Mes Candidatures</button>
-                {currentUser && (currentUser.permissionRole === TeamRole.ADMIN || currentUser.permissionRole === TeamRole.EDITOR) && <button onClick={() => setActiveTab('postingsManagement')} className={tabButtonStyle('postingsManagement')}>Gestion des Annonces</button>}
+                {currentUser?.permissionRole && (currentUser.permissionRole === TeamRole.ADMIN || currentUser.permissionRole === TeamRole.EDITOR) && <button onClick={() => setActiveTab('postingsManagement')} className={tabButtonStyle('postingsManagement')}>Gestion des Annonces</button>}
                 <button onClick={() => setActiveTab('search')} className={tabButtonStyle('search')}>Recherche de Vacataires</button>
             </nav>
         </div>
         
         {activeTab === 'details' && renderDetailsTab()}
-        {activeTab === 'planning' && currentUser && (currentUser.permissionRole === TeamRole.ADMIN || currentUser.permissionRole === TeamRole.EDITOR) && localRaceEvents && <GlobalPlanningTab upcomingEvents={localRaceEvents.filter(e => new Date(e.endDate || e.date) >= new Date())} onAssign={() => {}} />}
+        {activeTab === 'planning' && currentUser?.permissionRole && (currentUser.permissionRole === TeamRole.ADMIN || currentUser.permissionRole === TeamRole.EDITOR) && localRaceEvents && Array.isArray(localRaceEvents) && <GlobalPlanningTab upcomingEvents={localRaceEvents.filter(e => new Date(e.endDate || e.date) >= new Date())} onAssign={() => {}} />}
         {activeTab === 'search' && renderSearchTab()}
         {activeTab === 'missionSearch' && renderMissionSearchTab()}
         {activeTab === 'myApplications' && renderMyApplicationsTab()}

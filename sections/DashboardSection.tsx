@@ -132,6 +132,11 @@ const OperationalDashboardView: React.FC<OperationalDashboardViewProps> = ({ sta
 
 // Renamed to be a pure presentational component without hooks
 const AthleteDashboardView: React.FC<AthleteDashboardViewProps> = ({ currentUser, upcomingRaces, navigateTo }) => {
+    // Protection contre currentUser undefined
+    if (!currentUser?.firstName) {
+        return <div className="text-center text-gray-500">Chargement...</div>;
+    }
+    
     return (
         <div className="space-y-6">
             <h3 className="text-2xl font-bold text-gray-800">Bonjour, {currentUser.firstName} !</h3>

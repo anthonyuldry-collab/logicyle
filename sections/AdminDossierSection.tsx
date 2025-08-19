@@ -20,6 +20,12 @@ const AdminDossierSection: React.FC<AdminDossierSectionProps> = ({ riders, staff
   const { t } = useTranslations();
 
   useEffect(() => {
+    // Protection contre currentUser undefined
+    if (!currentUser || !currentUser.userRole || !currentUser.email) {
+      setIsLoading(false);
+      return;
+    }
+
     let userProfile: Rider | StaffMember | undefined;
 
     if (currentUser.userRole === UserRole.COUREUR) {
@@ -73,7 +79,7 @@ const AdminDossierSection: React.FC<AdminDossierSectionProps> = ({ riders, staff
   };
 
   const handleSave = () => {
-    if (!profileData) return;
+    if (!profileData || !currentUser?.userRole) return;
     if ('licenseNumber' in profileData) {
       if (currentUser.userRole === UserRole.COUREUR) {
         setRiders(prevRiders => prevRiders.map(r => r.id === (profileData as Rider).id ? (profileData as Rider) : r));

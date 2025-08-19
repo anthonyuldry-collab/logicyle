@@ -834,14 +834,14 @@ export const PerformancePoleSection: React.FC<PerformancePoleSectionProps> = ({ 
               </div>
               <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Référentiel</label>
-                  <select value={genderReference} onChange={e => setGenderReference(e.target.value as any)} className="w-full text-xs py-1.5 border-gray-300 bg-white rounded-md">
+                                        <select value={genderReference} onChange={e => setGenderReference(e.target.value as 'women' | 'men')} className="w-full text-xs py-1.5 border-gray-300 bg-white rounded-md">
                       <option value="women">Femmes</option>
                       <option value="men">Hommes</option>
                   </select>
               </div>
               <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Unité</label>
-                  <select value={analysisDisplayUnit} onChange={e => setAnalysisDisplayUnit(e.target.value as any)} className="w-full text-xs py-1.5 border-gray-300 bg-white rounded-md">
+                                        <select value={analysisDisplayUnit} onChange={e => setAnalysisDisplayUnit(e.target.value as 'W/kg' | 'W')} className="w-full text-xs py-1.5 border-gray-300 bg-white rounded-md">
                       <option value="W/kg">W/kg</option>
                       <option value="W">Watts</option>
                   </select>

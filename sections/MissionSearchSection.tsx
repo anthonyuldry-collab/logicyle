@@ -50,12 +50,24 @@ const MissionSearchSection: React.FC<MissionSearchSectionProps> = ({ missions, t
     
     const [selectedMission, setSelectedMission] = useState<Mission | null>(null);
 
+    // Protection contre currentUser undefined
+    if (!currentUser || !currentUser.id) {
+        return (
+            <SectionWrapper title="Recherche de Missions">
+                <div className="text-center p-8 bg-gray-50 rounded-lg border">
+                    <h3 className="text-xl font-semibold text-gray-700">Chargement...</h3>
+                    <p className="mt-2 text-gray-500">Initialisation des données utilisateur...</p>
+                </div>
+            </SectionWrapper>
+        );
+    }
+
     const getTeamName = (teamId: string) => teams.find(t => t.id === teamId)?.name || 'Équipe Inconnue';
     
     const myApplications = useMemo(() => {
-        if (!missions) return new Set();
+        if (!missions || !currentUser?.id) return new Set();
         return new Set(missions.filter(m => m.applicants?.includes(currentUser.id)).map(m => m.id));
-    }, [missions, currentUser.id]);
+    }, [missions, currentUser?.id]);
 
     const filteredMissions = useMemo(() => {
         if (!missions) return [];
@@ -68,6 +80,7 @@ const MissionSearchSection: React.FC<MissionSearchSectionProps> = ({ missions, t
     }, [missions, roleFilter, startDateFilter]);
 
     const handleApply = (missionToApply: Mission) => {
+        if (!currentUser?.id) return;
         setMissions(prevMissions => prevMissions.map(m => 
             m.id === missionToApply.id 
             ? { ...m, applicants: [...(m.applicants || []), currentUser.id] } 
