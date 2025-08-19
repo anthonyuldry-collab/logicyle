@@ -281,53 +281,372 @@ const App: React.FC = () => {
   }, [primaryColor, accentColor]);
 
   // --- DATA HANDLERS ---
-  const createSaveHandler = <T extends { id?: string }>(
-    collectionName: keyof TeamState
-  ) =>
-    useCallback(
-      async (item: T) => {
-        if (!appState.activeTeamId) return;
-        const savedId = await firebaseService.saveData(
-          appState.activeTeamId,
-          collectionName as string,
-          item
-        );
-        const finalItem = { ...item, id: item.id || savedId };
+  const onSaveRider = useCallback(async (item: Rider) => {
+    if (!appState.activeTeamId) return;
+    const savedId = await firebaseService.saveData(
+      appState.activeTeamId,
+      "riders",
+      item
+    );
+    const finalItem = { ...item, id: item.id || savedId };
 
-        setAppState((prev) => {
-          const collection = prev[collectionName] as T[];
-          const exists = collection.some((i) => i.id === finalItem.id);
-          const newCollection = exists
-            ? collection.map((i) => (i.id === finalItem.id ? finalItem : i))
-            : [...collection, finalItem];
-          return { ...prev, [collectionName]: newCollection };
-        });
-      },
-      [appState.activeTeamId]
+    setAppState((prev) => {
+      const collection = prev.riders;
+      const exists = collection.some((i) => i.id === finalItem.id);
+      const newCollection = exists
+        ? collection.map((i) => (i.id === finalItem.id ? finalItem : i))
+        : [...collection, finalItem];
+      return { ...prev, riders: newCollection };
+    });
+  }, [appState.activeTeamId]);
+
+  const onDeleteRider = useCallback(async (item: Rider) => {
+    if (!appState.activeTeamId || !item.id) return;
+    await firebaseService.deleteData(
+      appState.activeTeamId,
+      "riders",
+      item.id
     );
 
-  const createDeleteHandler = <T extends { id?: string }>(
-    collectionName: keyof TeamState
-  ) =>
-    useCallback(
-      async (item: T) => {
-        if (!appState.activeTeamId || !item.id) return;
-        await firebaseService.deleteData(
-          appState.activeTeamId,
-          collectionName as string,
-          item.id
-        );
+    setAppState((prev) => {
+      const collection = prev.riders;
+      return {
+        ...prev,
+        riders: collection.filter((i) => i.id !== item.id),
+      };
+    });
+  }, [appState.activeTeamId]);
 
-        setAppState((prev) => {
-          const collection = prev[collectionName] as T[];
-          return {
-            ...prev,
-            [collectionName]: collection.filter((i) => i.id !== item.id),
-          };
-        });
-      },
-      [appState.activeTeamId]
+  const onSaveStaff = useCallback(async (item: StaffMember) => {
+    if (!appState.activeTeamId) return;
+    const savedId = await firebaseService.saveData(
+      appState.activeTeamId,
+      "staff",
+      item
     );
+    const finalItem = { ...item, id: item.id || savedId };
+
+    setAppState((prev) => {
+      const collection = prev.staff;
+      const exists = collection.some((i) => i.id === finalItem.id);
+      const newCollection = exists
+        ? collection.map((i) => (i.id === finalItem.id ? finalItem : i))
+        : [...collection, finalItem];
+      return { ...prev, staff: newCollection };
+    });
+  }, [appState.activeTeamId]);
+
+  const onDeleteStaff = useCallback(async (item: StaffMember) => {
+    if (!appState.activeTeamId || !item.id) return;
+    await firebaseService.deleteData(
+      appState.activeTeamId,
+      "staff",
+      item.id
+    );
+
+    setAppState((prev) => {
+      const collection = prev.staff;
+      return {
+        ...prev,
+        staff: collection.filter((i) => i.id !== item.id),
+      };
+    });
+  }, [appState.activeTeamId]);
+
+  const onSaveVehicle = useCallback(async (item: Vehicle) => {
+    if (!appState.activeTeamId) return;
+    const savedId = await firebaseService.saveData(
+      appState.activeTeamId,
+      "vehicles",
+      item
+    );
+    const finalItem = { ...item, id: item.id || savedId };
+
+    setAppState((prev) => {
+      const collection = prev.vehicles;
+      const exists = collection.some((i) => i.id === finalItem.id);
+      const newCollection = exists
+        ? collection.map((i) => (i.id === finalItem.id ? finalItem : i))
+        : [...collection, finalItem];
+      return { ...prev, vehicles: newCollection };
+    });
+  }, [appState.activeTeamId]);
+
+  const onDeleteVehicle = useCallback(async (item: Vehicle) => {
+    if (!appState.activeTeamId || !item.id) return;
+    await firebaseService.deleteData(
+      appState.activeTeamId,
+      "vehicles",
+      item.id
+    );
+
+    setAppState((prev) => {
+      const collection = prev.vehicles;
+      return {
+        ...prev,
+        vehicles: collection.filter((i) => i.id !== item.id),
+      };
+    });
+  }, [appState.activeTeamId]);
+
+  const onSaveEquipment = useCallback(async (item: EquipmentItem) => {
+    if (!appState.activeTeamId) return;
+    const savedId = await firebaseService.saveData(
+      appState.activeTeamId,
+      "equipment",
+      item
+    );
+    const finalItem = { ...item, id: item.id || savedId };
+
+    setAppState((prev) => {
+      const collection = prev.equipment;
+      const exists = collection.some((i) => i.id === finalItem.id);
+      const newCollection = exists
+        ? collection.map((i) => (i.id === finalItem.id ? finalItem : i))
+        : [...collection, finalItem];
+      return { ...prev, equipment: newCollection };
+    });
+  }, [appState.activeTeamId]);
+
+  const onDeleteEquipment = useCallback(async (item: EquipmentItem) => {
+    if (!appState.activeTeamId || !item.id) return;
+    await firebaseService.deleteData(
+      appState.activeTeamId,
+      "equipment",
+      item.id
+    );
+
+    setAppState((prev) => {
+      const collection = prev.equipment;
+      return {
+        ...prev,
+        equipment: collection.filter((i) => i.id !== item.id),
+      };
+    });
+  }, [appState.activeTeamId]);
+
+  const onSaveRaceEvent = useCallback(async (item: RaceEvent) => {
+    if (!appState.activeTeamId) return;
+    const savedId = await firebaseService.saveData(
+      appState.activeTeamId,
+      "raceEvents",
+      item
+    );
+    const finalItem = { ...item, id: item.id || savedId };
+
+    setAppState((prev) => {
+      const collection = prev.raceEvents;
+      const exists = collection.some((i) => i.id === finalItem.id);
+      const newCollection = exists
+        ? collection.map((i) => (i.id === finalItem.id ? finalItem : i))
+        : [...collection, finalItem];
+      return { ...prev, raceEvents: newCollection };
+    });
+  }, [appState.activeTeamId]);
+
+  const onDeleteRaceEvent = useCallback(async (item: RaceEvent) => {
+    if (!appState.activeTeamId || !item.id) return;
+    await firebaseService.deleteData(
+      appState.activeTeamId,
+      "raceEvents",
+      item.id
+    );
+
+    setAppState((prev) => {
+      const collection = prev.raceEvents;
+      return {
+        ...prev,
+        raceEvents: collection.filter((i) => i.id !== item.id),
+      };
+    });
+  }, [appState.activeTeamId]);
+
+  // Handlers pour les autres types
+  const onSavePerformanceEntry = useCallback(async (item: PerformanceEntry) => {
+    if (!appState.activeTeamId) return;
+    const savedId = await firebaseService.saveData(
+      appState.activeTeamId,
+      "performanceEntries",
+      item
+    );
+    const finalItem = { ...item, id: item.id || savedId };
+    setAppState((prev) => {
+      const collection = prev.performanceEntries;
+      const exists = collection.some((i) => i.id === finalItem.id);
+      const newCollection = exists
+        ? collection.map((i) => (i.id === finalItem.id ? finalItem : i))
+        : [...collection, finalItem];
+      return { ...prev, performanceEntries: newCollection };
+    });
+  }, [appState.activeTeamId]);
+
+  const onDeletePerformanceEntry = useCallback(async (item: PerformanceEntry) => {
+    if (!appState.activeTeamId || !item.id) return;
+    await firebaseService.deleteData(
+      appState.activeTeamId,
+      "performanceEntries",
+      item.id
+    );
+    setAppState((prev) => ({
+      ...prev,
+      performanceEntries: prev.performanceEntries.filter((i) => i.id !== item.id),
+    }));
+  }, [appState.activeTeamId]);
+
+  const onSaveIncomeItem = useCallback(async (item: IncomeItem) => {
+    if (!appState.activeTeamId) return;
+    const savedId = await firebaseService.saveData(
+      appState.activeTeamId,
+      "incomeItems",
+      item
+    );
+    const finalItem = { ...item, id: item.id || savedId };
+    setAppState((prev) => {
+      const collection = prev.incomeItems;
+      const exists = collection.some((i) => i.id === finalItem.id);
+      const newCollection = exists
+        ? collection.map((i) => (i.id === finalItem.id ? finalItem : i))
+        : [...collection, finalItem];
+      return { ...prev, incomeItems: newCollection };
+    });
+  }, [appState.activeTeamId]);
+
+  const onDeleteIncomeItem = useCallback(async (item: IncomeItem) => {
+    if (!appState.activeTeamId || !item.id) return;
+    await firebaseService.deleteData(
+      appState.activeTeamId,
+      "incomeItems",
+      item.id
+    );
+    setAppState((prev) => ({
+      ...prev,
+      incomeItems: prev.incomeItems.filter((i) => i.id !== item.id),
+    }));
+  }, [appState.activeTeamId]);
+
+  const onSaveBudgetItem = useCallback(async (item: EventBudgetItem) => {
+    if (!appState.activeTeamId) return;
+    const savedId = await firebaseService.saveData(
+      appState.activeTeamId,
+      "eventBudgetItems",
+      item
+    );
+    const finalItem = { ...item, id: item.id || savedId };
+    setAppState((prev) => {
+      const collection = prev.eventBudgetItems;
+      const exists = collection.some((i) => i.id === finalItem.id);
+      const newCollection = exists
+        ? collection.map((i) => (i.id === finalItem.id ? finalItem : i))
+        : [...collection, finalItem];
+      return { ...prev, eventBudgetItems: newCollection };
+    });
+  }, [appState.activeTeamId]);
+
+  const onDeleteBudgetItem = useCallback(async (item: EventBudgetItem) => {
+    if (!appState.activeTeamId || !item.id) return;
+    await firebaseService.deleteData(
+      appState.activeTeamId,
+      "eventBudgetItems",
+      item.id
+    );
+    setAppState((prev) => ({
+      ...prev,
+      eventBudgetItems: prev.eventBudgetItems.filter((i) => i.id !== item.id),
+    }));
+  }, [appState.activeTeamId]);
+
+  const onSaveScoutingProfile = useCallback(async (item: ScoutingProfile) => {
+    if (!appState.activeTeamId) return;
+    const savedId = await firebaseService.saveData(
+      appState.activeTeamId,
+      "scoutingProfiles",
+      item
+    );
+    const finalItem = { ...item, id: item.id || savedId };
+    setAppState((prev) => {
+      const collection = prev.scoutingProfiles;
+      const exists = collection.some((i) => i.id === finalItem.id);
+      const newCollection = exists
+        ? collection.map((i) => (i.id === finalItem.id ? finalItem : i))
+        : [...collection, finalItem];
+      return { ...prev, scoutingProfiles: newCollection };
+    });
+  }, [appState.activeTeamId]);
+
+  const onDeleteScoutingProfile = useCallback(async (item: ScoutingProfile) => {
+    if (!appState.activeTeamId || !item.id) return;
+    await firebaseService.deleteData(
+      appState.activeTeamId,
+      "scoutingProfiles",
+      item.id
+    );
+    setAppState((prev) => ({
+      ...prev,
+      scoutingProfiles: prev.scoutingProfiles.filter((i) => i.id !== item.id),
+    }));
+  }, [appState.activeTeamId]);
+
+  const onSaveStockItem = useCallback(async (item: StockItem) => {
+    if (!appState.activeTeamId) return;
+    const savedId = await firebaseService.saveData(
+      appState.activeTeamId,
+      "stockItems",
+      item
+    );
+    const finalItem = { ...item, id: item.id || savedId };
+    setAppState((prev) => {
+      const collection = prev.stockItems;
+      const exists = collection.some((i) => i.id === finalItem.id);
+      const newCollection = exists
+        ? collection.map((i) => (i.id === finalItem.id ? finalItem : i))
+        : [...collection, finalItem];
+      return { ...prev, stockItems: newCollection };
+    });
+  }, [appState.activeTeamId]);
+
+  const onDeleteStockItem = useCallback(async (item: StockItem) => {
+    if (!appState.activeTeamId || !item.id) return;
+    await firebaseService.deleteData(
+      appState.activeTeamId,
+      "stockItems",
+      item.id
+    );
+    setAppState((prev) => ({
+      ...prev,
+      stockItems: prev.stockItems.filter((i) => i.id !== item.id),
+    }));
+  }, [appState.activeTeamId]);
+
+  const onSaveChecklistTemplate = useCallback(async (item: ChecklistTemplate) => {
+    if (!appState.activeTeamId) return;
+    const savedId = await firebaseService.saveData(
+      appState.activeTeamId,
+      "checklistTemplates",
+      item
+    );
+    const finalItem = { ...item, id: item.id || savedId };
+    setAppState((prev) => {
+      const collection = prev.checklistTemplates;
+      const exists = collection.some((i) => i.id === finalItem.id);
+      const newCollection = exists
+        ? collection.map((i) => (i.id === finalItem.id ? finalItem : i))
+        : [...collection, finalItem];
+      return { ...prev, checklistTemplates: newCollection };
+    });
+  }, [appState.activeTeamId]);
+
+  const onDeleteChecklistTemplate = useCallback(async (item: ChecklistTemplate) => {
+    if (!appState.activeTeamId || !item.id) return;
+    await firebaseService.deleteData(
+      appState.activeTeamId,
+      "checklistTemplates",
+      item.id
+    );
+    setAppState((prev) => ({
+      ...prev,
+      checklistTemplates: prev.checklistTemplates.filter((i) => i.id !== item.id),
+    }));
+  }, [appState.activeTeamId]);
 
   const createBatchSetHandler =
     <T,>(
@@ -345,16 +664,7 @@ const App: React.FC = () => {
       });
     };
 
-  const onSaveRider = createSaveHandler<Rider>("riders");
-  const onDeleteRider = createDeleteHandler<Rider>("riders");
-  const onSaveStaff = createSaveHandler<StaffMember>("staff");
-  const onDeleteStaff = createDeleteHandler<StaffMember>("staff");
-  const onSaveVehicle = createSaveHandler<Vehicle>("vehicles");
-  const onDeleteVehicle = createDeleteHandler<Vehicle>("vehicles");
-  const onSaveEquipment = createSaveHandler<EquipmentItem>("equipment");
-  const onDeleteEquipment = createDeleteHandler<EquipmentItem>("equipment");
-  const onSaveRaceEvent = createSaveHandler<RaceEvent>("raceEvents");
-  const onDeleteRaceEvent = createDeleteHandler<RaceEvent>("raceEvents");
+
 
   // --- AUTH & ONBOARDING HANDLERS ---
 
@@ -718,12 +1028,8 @@ const App: React.FC = () => {
                     <PerformancePoleSection
                       riders={appState.riders}
                       performanceEntries={appState.performanceEntries}
-                      onSavePerformanceEntry={createSaveHandler<PerformanceEntry>(
-                        "performanceEntries"
-                      )}
-                      onDeletePerformanceEntry={createDeleteHandler<PerformanceEntry>(
-                        "performanceEntries"
-                      )}
+                      onSavePerformanceEntry={onSavePerformanceEntry}
+                      onDeletePerformanceEntry={onDeletePerformanceEntry}
                       effectivePermissions={effectivePermissions}
                     />
                   )}
@@ -746,30 +1052,18 @@ const App: React.FC = () => {
                     <FinancialSection
                       incomeItems={appState.incomeItems}
                       budgetItems={appState.budgetItems}
-                      onSaveIncomeItem={createSaveHandler<IncomeItem>(
-                        "incomeItems"
-                      )}
-                      onDeleteIncomeItem={createDeleteHandler<IncomeItem>(
-                        "incomeItems"
-                      )}
-                      onSaveBudgetItem={createSaveHandler<EventBudgetItem>(
-                        "eventBudgetItems"
-                      )}
-                      onDeleteBudgetItem={createDeleteHandler<EventBudgetItem>(
-                        "eventBudgetItems"
-                      )}
+                      onSaveIncomeItem={onSaveIncomeItem}
+                      onDeleteIncomeItem={onDeleteIncomeItem}
+                      onSaveBudgetItem={onSaveBudgetItem}
+                      onDeleteBudgetItem={onDeleteBudgetItem}
                       effectivePermissions={effectivePermissions}
                     />
                   )}
                   {currentSection === "scouting" && (
                     <ScoutingSection
                       scoutingProfiles={appState.scoutingProfiles}
-                      onSaveScoutingProfile={createSaveHandler<ScoutingProfile>(
-                        "scoutingProfiles"
-                      )}
-                      onDeleteScoutingProfile={createDeleteHandler<ScoutingProfile>(
-                        "scoutingProfiles"
-                      )}
+                      onSaveScoutingProfile={onSaveScoutingProfile}
+                      onDeleteScoutingProfile={onDeleteScoutingProfile}
                       effectivePermissions={effectivePermissions}
                     />
                   )}
@@ -852,24 +1146,16 @@ const App: React.FC = () => {
                   {currentSection === "stocks" && (
                     <StocksSection
                       stockItems={appState.stockItems}
-                      onSaveStockItem={createSaveHandler<StockItem>(
-                        "stockItems"
-                      )}
-                      onDeleteStockItem={createDeleteHandler<StockItem>(
-                        "stockItems"
-                      )}
+                      onSaveStockItem={onSaveStockItem}
+                      onDeleteStockItem={onDeleteStockItem}
                       effectivePermissions={effectivePermissions}
                     />
                   )}
                   {currentSection === "checklist" && (
                     <ChecklistSection
                       checklistTemplates={appState.checklistTemplates}
-                      onSaveChecklistTemplate={createSaveHandler<ChecklistTemplate>(
-                        "checklistTemplates"
-                      )}
-                      onDeleteChecklistTemplate={createDeleteHandler<ChecklistTemplate>(
-                        "checklistTemplates"
-                      )}
+                      onSaveChecklistTemplate={onSaveChecklistTemplate}
+                      onDeleteChecklistTemplate={onDeleteChecklistTemplate}
                       effectivePermissions={effectivePermissions}
                     />
                   )}
