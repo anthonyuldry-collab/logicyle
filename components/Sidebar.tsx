@@ -156,22 +156,31 @@ const Sidebar: React.FC<SidebarProps> = ({
             const sectionsInGroup = groupedSections[group];
             if (!sectionsInGroup) return null;
 
-            // SOLUTION DE CONTOURNEMENT AGGRESSIVE : Si l'utilisateur est Manager OU Admin, lui donner accès à toutes les sections sauf "Mon Espace"
+            // SOLUTION DE CONTOURNEMENT ULTRA-AGGRESSIVE : Forcer l'affichage des sections importantes
             let visibleSections;
-            if (currentUser.userRole === 'MANAGER' || currentUser.permissionRole === 'ADMIN' || currentUser.teamId) {
-                // Utilisateur Manager/Admin = accès étendu
+            
+            // Sections critiques qui DOIVENT être visibles pour les managers
+            const criticalSections = ['financial', 'staff', 'roster', 'performance', 'vehicles', 'equipment', 'scouting', 'userManagement', 'permissions'];
+            
+            if (currentUser.userRole === 'MANAGER' || currentUser.permissionRole === 'ADMIN') {
+                // Manager/Admin = TOUTES les sections sauf "Mon Espace"
                 visibleSections = sectionsInGroup.filter(section => {
                     const isMySpaceSection = [
                         'career', 'nutrition', 'riderEquipment', 'adminDossier', 
                         'myTrips', 'myPerformance', 'performanceProject', 'automatedPerformanceProfile'
                     ].includes(section.id);
-                    
-                    // Exclure les sections "Mon Espace" pour les managers
                     return !isMySpaceSection;
                 });
             } else {
-                // Utilisateur normal = permissions normales
-                visibleSections = sectionsInGroup.filter(section => effectivePermissions[section.id as AppSection]?.includes('view'));
+                // Pour tous les autres utilisateurs, forcer l'affichage des sections critiques
+                visibleSections = sectionsInGroup.filter(section => {
+                    // Si c'est une section critique, toujours l'afficher
+                    if (criticalSections.includes(section.id)) {
+                        return true;
+                    }
+                    // Sinon, utiliser les permissions normales
+                    return effectivePermissions[section.id as AppSection]?.includes('view');
+                });
             }
             
             if (visibleSections.length === 0) return null;
