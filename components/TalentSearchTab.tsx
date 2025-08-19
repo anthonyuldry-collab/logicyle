@@ -53,7 +53,7 @@ const TalentSearchTab: React.FC<TalentSearchTabProps> = ({ appState, onProfileSe
     const [nationalityFilter, setNationalityFilter] = useState('all');
 
     const filteredTalents = useMemo(() => {
-        if (!currentTeamId) return [];
+        if (!currentTeamId || !appState.teamMemberships || !appState.users || !appState.scoutingRequests) return [];
 
         const currentTeamUserIds = new Set(
             appState.teamMemberships

@@ -1052,15 +1052,15 @@ const App: React.FC = () => {
                   {currentSection === "roster" && appState.riders && (
                     <RosterSection
                       riders={appState.riders}
-                      onSave={onSaveRider}
-                      onDelete={onDeleteRider}
-                      effectivePermissions={effectivePermissions}
+                      onSaveRider={onSaveRider}
+                      onDeleteRider={onDeleteRider}
                       raceEvents={appState.raceEvents}
                       setRaceEvents={createBatchSetHandler<RaceEvent>("raceEvents")}
                       riderEventSelections={appState.riderEventSelections}
                       setRiderEventSelections={createBatchSetHandler<RiderEventSelection>("riderEventSelections")}
                       performanceEntries={appState.performanceEntries}
                       scoutingProfiles={appState.scoutingProfiles}
+                      teamProducts={appState.teamProducts}
                       currentUser={currentUser}
                       appState={appState}
                     />
@@ -1089,13 +1089,13 @@ const App: React.FC = () => {
                       effectivePermissions={effectivePermissions}
                     />
                   )}
-                  {currentSection === "performance" && appState.riders && (
+                  {currentSection === "performance" && appState.riders && currentUser && (
                     <PerformancePoleSection
-                      riders={appState.riders}
-                      performanceEntries={appState.performanceEntries}
-                      onSavePerformanceEntry={onSavePerformanceEntry}
-                      onDeletePerformanceEntry={onDeletePerformanceEntry}
-                      effectivePermissions={effectivePermissions}
+                      appState={appState}
+                      navigateTo={navigateTo}
+                      setTeamProducts={createBatchSetHandler<TeamProduct>("teamProducts")}
+                      setRiders={createBatchSetHandler<Rider>("riders")}
+                      currentUser={currentUser}
                     />
                   )}
                   {currentSection === "settings" && (

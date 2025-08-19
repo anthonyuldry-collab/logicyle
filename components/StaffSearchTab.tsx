@@ -39,11 +39,12 @@ const StaffSearchTab: React.FC<StaffSearchTabProps> = ({ allStaff, raceEvents, t
     const [contactInfo, setContactInfo] = useState<StaffMember | null>(null);
 
     const availableVacataires = useMemo(() => {
+        if (!allStaff) return [];
         return allStaff.filter(s => s.openToExternalMissions);
     }, [allStaff]);
     
     const searchResults = useMemo(() => {
-        if (!missionStartDate || !missionEndDate) return [];
+        if (!missionStartDate || !missionEndDate || !allStaff || !raceEvents || !performanceEntries) return [];
 
         let baseAddress: Address | undefined;
         if (searchLocation === 'teamBase') {

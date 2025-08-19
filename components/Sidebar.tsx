@@ -162,11 +162,17 @@ const Sidebar: React.FC<SidebarProps> = ({
             const sectionsInGroup = groupedSections[group];
             if (!sectionsInGroup) return null;
 
-            // SOLUTION ULTRA-SIMPLE : Afficher toutes les sections pour les managers
+            // Filtrer les sections selon le rôle de l'utilisateur
             let visibleSections = sectionsInGroup;
             
-            // Si l'utilisateur n'est PAS manager, filtrer selon les permissions
-            if (currentUser && currentUser.userRole !== 'Manager' && currentUser.permissionRole && currentUser.permissionRole !== 'Administrateur') {
+            // Si l'utilisateur est Manager/Admin, exclure les sections "Mon Espace"
+            if (currentUser && (currentUser.userRole === 'Manager' || currentUser.permissionRole === 'Administrateur')) {
+                visibleSections = sectionsInGroup.filter(section => 
+                    section.group[language] !== t('sidebarGroupMySpace') && 
+                    effectivePermissions[section.id as AppSection]?.includes('view')
+                );
+            } else {
+                // Pour les coureurs et autres rôles, filtrer selon les permissions
                 visibleSections = sectionsInGroup.filter(section => 
                     effectivePermissions[section.id as AppSection]?.includes('view')
                 );
