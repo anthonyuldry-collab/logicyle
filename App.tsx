@@ -30,6 +30,7 @@ import {
   TeamMembershipStatus,
   TeamState,
   User,
+  UserRole,
   Vehicle,
 } from "./types";
 
@@ -125,7 +126,7 @@ function lightenDarkenColor(col: string, amt: number): string {
   return `#${rHex}${gHex}${bHex}`;
 }
 
-const App = () => {
+const App: React.FC = () => {
   const [appState, setAppState] = useState<AppState>({
     ...getInitialGlobalState(),
     ...getInitialTeamState(),
@@ -139,6 +140,7 @@ const App = () => {
   const [view, setView] = useState<
     "login" | "signup" | "app" | "pending" | "no_team"
   >("login");
+  const [pendingSignupData, setPendingSignupData] = useState<SignupData | null>(null); // Nouvel état pour stocker les données d'inscription
 
   const [language, setLanguageState] = useState<"fr" | "en">("fr");
 
@@ -193,20 +195,31 @@ const App = () => {
         // If profile doesn't exist (e.g., first login after signup), create it. This makes the app more robust.
         if (!userProfile) {
           try {
-            const { email } = firebaseUser;
-            const firstName = email?.split("@")[0] || "Nouveau";
-            const lastName = "Utilisateur";
-            // We need a dummy password for the type, but it's not used for profile creation.
-            const newProfileData: SignupData = {
-              email: email || "",
-              firstName,
-              lastName,
-              password: "",
-            };
-            await firebaseService.createUserProfile(
-              firebaseUser.uid,
-              newProfileData
-            );
+            // Utiliser les données d'inscription stockées si disponibles
+            if (pendingSignupData) {
+              await firebaseService.createUserProfile(
+                firebaseUser.uid,
+                pendingSignupData
+              );
+              // Nettoyer les données temporaires après utilisation
+              setPendingSignupData(null);
+            } else {
+              // Fallback pour les utilisateurs existants sans données d'inscription
+              const { email } = firebaseUser;
+              const firstName = email?.split("@")[0] || "Nouveau";
+              const lastName = "Utilisateur";
+              const newProfileData: SignupData = {
+                email: email || "",
+                firstName,
+                lastName,
+                password: "",
+                userRole: UserRole.COUREUR, // Rôle par défaut pour les utilisateurs existants
+              };
+              await firebaseService.createUserProfile(
+                firebaseUser.uid,
+                newProfileData
+              );
+            }
             userProfile = await firebaseService.getUserProfile(
               firebaseUser.uid
             ); // Re-fetch the newly created profile
@@ -391,11 +404,15 @@ const App = () => {
     data: SignupData
   ): Promise<{ success: boolean; message: string }> => {
     try {
+      // Stocker les données d'inscription temporairement
+      setPendingSignupData(data);
       await createUserWithEmailAndPassword(auth, data.email, data.password);
       // The onAuthStateChanged listener will now handle creating the user profile.
       // This prevents race conditions and centralizes profile creation logic.
       return { success: true, message: "" };
     } catch (error: any) {
+      // En cas d'erreur, nettoyer les données temporaires
+      setPendingSignupData(null);
       if (error.code === "auth/email-already-in-use") {
         return {
           success: false,
@@ -437,10 +454,11 @@ const App = () => {
   }) => {
     if (!currentUser) return;
     try {
+      // Forcer le rôle Manager lors de la création d'équipe
       await firebaseService.createTeamForUser(
         currentUser.id,
         teamData,
-        currentUser.userRole
+        UserRole.MANAGER // Forcer le rôle Manager
       );
       // Refresh user profile to pick up new roles (Admin/Manager)
       const refreshedProfile = await firebaseService.getUserProfile(currentUser.id);
