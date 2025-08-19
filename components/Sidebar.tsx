@@ -156,22 +156,11 @@ const Sidebar: React.FC<SidebarProps> = ({
             const sectionsInGroup = groupedSections[group];
             if (!sectionsInGroup) return null;
 
-            // DEBUG : Afficher les informations de débogage
-            if (group === 'Données Générales' && (currentUser.userRole === 'Manager' || currentUser.permissionRole === 'Administrateur')) {
-                console.log('🔍 DEBUG Sidebar - Groupe:', group);
-                console.log('🔍 DEBUG Sidebar - Sections dans le groupe:', sectionsInGroup.map(s => s.id));
-                console.log('🔍 DEBUG Sidebar - Utilisateur:', currentUser.userRole, currentUser.permissionRole);
-            }
-
-            // SOLUTION DE CONTOURNEMENT ULTRA-AGGRESSIVE : Forcer l'affichage des sections importantes
+            // SOLUTION SIMPLIFIÉE : Forcer l'affichage des sections importantes pour les managers
             let visibleSections;
             
-            // Sections critiques qui DOIVENT être visibles pour les managers
-            const criticalSections = ['financial', 'staff', 'roster', 'performance', 'vehicles', 'equipment', 'scouting', 'userManagement', 'permissions'];
-            
-            // FORÇAGE ULTRA-AGGRESSIF : Si l'utilisateur est Manager/Admin, TOUT afficher sauf "Mon Espace"
             if (currentUser.userRole === 'Manager' || currentUser.permissionRole === 'Administrateur') {
-                console.log('🚨 FORÇAGE ULTRA-AGGRESSIF des sections pour Manager/Admin');
+                // Manager/Admin = TOUTES les sections sauf "Mon Espace"
                 visibleSections = sectionsInGroup.filter(section => {
                     const isMySpaceSection = [
                         'career', 'nutrition', 'riderEquipment', 'adminDossier', 
@@ -179,17 +168,9 @@ const Sidebar: React.FC<SidebarProps> = ({
                     ].includes(section.id);
                     return !isMySpaceSection;
                 });
-                console.log('🚨 Sections forcées:', visibleSections.map(s => s.id));
             } else {
-                // Pour tous les autres utilisateurs, forcer l'affichage des sections critiques
-                visibleSections = sectionsInGroup.filter(section => {
-                    // Si c'est une section critique, toujours l'afficher
-                    if (criticalSections.includes(section.id)) {
-                        return true;
-                    }
-                    // Sinon, utiliser les permissions normales
-                    return effectivePermissions[section.id as AppSection]?.includes('view');
-                });
+                // Utilisateur normal = permissions normales
+                visibleSections = sectionsInGroup.filter(section => effectivePermissions[section.id as AppSection]?.includes('view'));
             }
             
             if (visibleSections.length === 0) return null;
