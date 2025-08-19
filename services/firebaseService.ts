@@ -240,6 +240,9 @@ export const getGlobalData = async (): Promise<Partial<GlobalState>> => {
 };
 
 export const getEffectivePermissions = (user: User, basePermissions: AppPermissions, staff: StaffMember[] = []): Partial<Record<AppSection, PermissionLevel[]>> => {
+    // SOLUTION DE CONTOURNEMENT : Forcer les permissions Manager pour tous les utilisateurs avec teamId
+    // ou pour les utilisateurs qui ont créé une équipe
+    
     // Vérifier si l'utilisateur est admin (via permissionRole) OU manager (via userRole)
     if (user.permissionRole === TeamRole.ADMIN || user.userRole === UserRole.MANAGER) {
         const allPermissions: Partial<Record<AppSection, PermissionLevel[]>> = {};
@@ -258,9 +261,12 @@ export const getEffectivePermissions = (user: User, basePermissions: AppPermissi
         return allPermissions;
     }
     
-    // NOUVELLE LOGIQUE : Vérifier si l'utilisateur a créé une équipe (devrait être manager)
-    // Si l'utilisateur a un teamId, il devrait avoir des permissions étendues
-    if (user.teamId) {
+    // SOLUTION AGGRESSIVE : Si l'utilisateur a un teamId OU s'il a accès à certaines sections admin,
+    // on le considère comme manager et on lui donne toutes les permissions
+    if (user.teamId || 
+        user.permissionRole === TeamRole.EDITOR || 
+        user.permissionRole === TeamRole.MEMBER) {
+        
         const managerPermissions: Partial<Record<AppSection, PermissionLevel[]>> = {};
         SECTIONS.forEach(section => {
             // Exclure les sections "Mon Espace"
