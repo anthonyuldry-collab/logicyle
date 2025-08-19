@@ -156,21 +156,22 @@ const Sidebar: React.FC<SidebarProps> = ({
             const sectionsInGroup = groupedSections[group];
             if (!sectionsInGroup) return null;
 
+            // DEBUG : Afficher les informations de débogage
+            if (group === 'Données Générales' && (currentUser.userRole === 'Manager' || currentUser.permissionRole === 'Administrateur')) {
+                console.log('🔍 DEBUG Sidebar - Groupe:', group);
+                console.log('🔍 DEBUG Sidebar - Sections dans le groupe:', sectionsInGroup.map(s => s.id));
+                console.log('🔍 DEBUG Sidebar - Utilisateur:', currentUser.userRole, currentUser.permissionRole);
+            }
+
             // SOLUTION DE CONTOURNEMENT ULTRA-AGGRESSIVE : Forcer l'affichage des sections importantes
             let visibleSections;
             
             // Sections critiques qui DOIVENT être visibles pour les managers
             const criticalSections = ['financial', 'staff', 'roster', 'performance', 'vehicles', 'equipment', 'scouting', 'userManagement', 'permissions'];
             
-            // SOLUTION DE CONTOURNEMENT ULTRA-AGGRESSIVE : Comparaison insensible à la casse et aux accents
-            if (currentUser.userRole?.toLowerCase().includes('manager') || 
-                currentUser.permissionRole?.toLowerCase().includes('admin') ||
-                currentUser.userRole === 'MANAGER' || 
-                currentUser.permissionRole === 'ADMIN' ||
-                currentUser.userRole === 'Manager' ||
-                currentUser.permissionRole === 'Administrateur') {
-                
-                // Manager/Admin = TOUTES les sections sauf "Mon Espace"
+            // FORÇAGE ULTRA-AGGRESSIF : Si l'utilisateur est Manager/Admin, TOUT afficher sauf "Mon Espace"
+            if (currentUser.userRole === 'Manager' || currentUser.permissionRole === 'Administrateur') {
+                console.log('🚨 FORÇAGE ULTRA-AGGRESSIF des sections pour Manager/Admin');
                 visibleSections = sectionsInGroup.filter(section => {
                     const isMySpaceSection = [
                         'career', 'nutrition', 'riderEquipment', 'adminDossier', 
@@ -178,6 +179,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     ].includes(section.id);
                     return !isMySpaceSection;
                 });
+                console.log('🚨 Sections forcées:', visibleSections.map(s => s.id));
             } else {
                 // Pour tous les autres utilisateurs, forcer l'affichage des sections critiques
                 visibleSections = sectionsInGroup.filter(section => {

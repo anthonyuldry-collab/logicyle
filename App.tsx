@@ -609,6 +609,7 @@ const App: React.FC = () => {
                       <p><strong>Rôle Utilisateur:</strong> {currentUser.userRole}</p>
                       <p><strong>Rôle Permission:</strong> {currentUser.permissionRole}</p>
                       <p><strong>Team ID:</strong> {currentUser.teamId || 'Aucun'}</p>
+                      <p><strong>Section Active:</strong> {currentSection}</p>
                     </div>
                     <div>
                       <p><strong>Test de Logique:</strong></p>
@@ -632,6 +633,10 @@ const App: React.FC = () => {
                         <div><strong>Permissions forcées :</strong></div>
                         <div>Permissions calculées: {Object.keys(effectivePermissions).length} sections</div>
                         <div>Sections disponibles: {Object.keys(effectivePermissions).join(', ')}</div>
+                        <hr className="my-1" />
+                        <div><strong>Debug Section :</strong></div>
+                        <div>Section cliquée: {currentSection}</div>
+                        <div>Section définie: {currentSection === 'financial' ? '✅ FinancialSection' : currentSection === 'staff' ? '✅ StaffSection' : currentSection === 'roster' ? '✅ RosterSection' : '❌ Non définie'}</div>
                       </div>
                       <button
                         onClick={async () => {
