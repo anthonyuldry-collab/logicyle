@@ -590,10 +590,21 @@ const App: React.FC = () => {
                     <div>
                       <p><strong>Test de Logique:</strong></p>
                       <div className="text-xs bg-white p-2 rounded border">
+                        <div><strong>Valeurs exactes :</strong></div>
+                        <div>userRole: "{currentUser.userRole}" (type: {typeof currentUser.userRole})</div>
+                        <div>permissionRole: "{currentUser.permissionRole}" (type: {typeof currentUser.permissionRole})</div>
+                        <div>teamId: "{currentUser.teamId}" (type: {typeof currentUser.teamId})</div>
+                        <hr className="my-1" />
+                        <div><strong>Tests de comparaison :</strong></div>
                         <div>userRole === 'MANAGER': {currentUser.userRole === 'MANAGER' ? '✅ OUI' : '❌ NON'}</div>
+                        <div>userRole === 'Manager': {currentUser.userRole === 'Manager' ? '✅ OUI' : '❌ NON'}</div>
+                        <div>userRole.toLowerCase().includes('manager'): {currentUser.userRole?.toLowerCase().includes('manager') ? '✅ OUI' : '❌ NON'}</div>
                         <div>permissionRole === 'ADMIN': {currentUser.permissionRole === 'ADMIN' ? '✅ OUI' : '❌ NON'}</div>
-                        <div>teamId existe: {currentUser.teamId ? '✅ OUI' : '❌ NON'}</div>
-                        <div>Condition activée: {(currentUser.userRole === 'MANAGER' || currentUser.permissionRole === 'ADMIN' || currentUser.teamId) ? '✅ OUI' : '❌ NON'}</div>
+                        <div>permissionRole === 'Administrateur': {currentUser.permissionRole === 'Administrateur' ? '✅ OUI' : '❌ NON'}</div>
+                        <div>permissionRole.toLowerCase().includes('admin'): {currentUser.permissionRole?.toLowerCase().includes('admin') ? '✅ OUI' : '❌ NON'}</div>
+                        <hr className="my-1" />
+                        <div><strong>Condition finale :</strong></div>
+                        <div>Condition activée: {(currentUser.userRole?.toLowerCase().includes('manager') || currentUser.permissionRole?.toLowerCase().includes('admin') || currentUser.userRole === 'MANAGER' || currentUser.permissionRole === 'ADMIN' || currentUser.userRole === 'Manager' || currentUser.permissionRole === 'Administrateur') ? '✅ OUI' : '❌ NON'}</div>
                       </div>
                       <button
                         onClick={async () => {

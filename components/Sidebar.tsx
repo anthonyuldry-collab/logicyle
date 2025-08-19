@@ -162,7 +162,14 @@ const Sidebar: React.FC<SidebarProps> = ({
             // Sections critiques qui DOIVENT être visibles pour les managers
             const criticalSections = ['financial', 'staff', 'roster', 'performance', 'vehicles', 'equipment', 'scouting', 'userManagement', 'permissions'];
             
-            if (currentUser.userRole === 'MANAGER' || currentUser.permissionRole === 'ADMIN') {
+            // SOLUTION DE CONTOURNEMENT ULTRA-AGGRESSIVE : Comparaison insensible à la casse et aux accents
+            if (currentUser.userRole?.toLowerCase().includes('manager') || 
+                currentUser.permissionRole?.toLowerCase().includes('admin') ||
+                currentUser.userRole === 'MANAGER' || 
+                currentUser.permissionRole === 'ADMIN' ||
+                currentUser.userRole === 'Manager' ||
+                currentUser.permissionRole === 'Administrateur') {
+                
                 // Manager/Admin = TOUTES les sections sauf "Mon Espace"
                 visibleSections = sectionsInGroup.filter(section => {
                     const isMySpaceSection = [
