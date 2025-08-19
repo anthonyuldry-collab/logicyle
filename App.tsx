@@ -46,7 +46,7 @@ import { auth, db } from "./firebaseConfig";
 import { doc, setDoc } from "firebase/firestore";
 import * as firebaseService from "./services/firebaseService";
 
-import FirebaseDebug from "./components/FirebaseDebug";
+
 import Sidebar from "./components/Sidebar";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import EventDetailView from "./EventDetailView";
@@ -834,14 +834,26 @@ const App: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-screen bg-gray-900 text-white">
-        {t("loading")}
-        <FirebaseDebug />
-      </div>
+              <div className="flex items-center justify-center h-screen bg-gray-900 text-white">
+          {t("loading")}
+        </div>
     );
   }
 
   const renderContent = () => {
+    // Protection globale contre appState undefined
+    if (!appState) {
+      return (
+        <div className="flex items-center justify-center h-screen bg-gray-50">
+          <div className="text-center p-8 bg-white rounded-lg shadow-lg border">
+            <h3 className="text-xl font-semibold text-gray-700 mb-4">Chargement de l'application...</h3>
+            <p className="text-gray-500 mb-4">Initialisation de l'état de l'application...</p>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+          </div>
+        </div>
+      );
+    }
+
     if (view === "login") {
       return (
         <LoginView
@@ -923,23 +935,25 @@ const App: React.FC = () => {
           }}
         >
           <div className="flex">
-            <Sidebar
-              currentSection={currentSection}
-              onSelectSection={navigateTo}
-              teamLogoUrl={appState.teamLogoUrl}
-              onLogout={handleLogout}
-              currentUser={currentUser}
-              effectivePermissions={effectivePermissions}
-              staff={appState.staff}
-              permissionRoles={appState.permissionRoles}
-              userTeams={userTeams}
-              currentTeamId={appState.activeTeamId}
-              onTeamSwitch={() => {
-                /* TODO */
-              }}
-              isIndependent={false}
-              onGoToLobby={() => setView("no_team")}
-            />
+            {appState && (
+              <Sidebar
+                currentSection={currentSection}
+                onSelectSection={navigateTo}
+                teamLogoUrl={appState.teamLogoUrl}
+                onLogout={handleLogout}
+                currentUser={currentUser}
+                effectivePermissions={effectivePermissions}
+                staff={appState.staff}
+                permissionRoles={appState.permissionRoles}
+                userTeams={userTeams}
+                currentTeamId={appState.activeTeamId}
+                onTeamSwitch={() => {
+                  /* TODO */
+                }}
+                isIndependent={false}
+                onGoToLobby={() => setView("no_team")}
+              />
+            )}
             <main className="flex-grow ml-64 p-6 bg-gray-100 min-h-screen">
 
               
@@ -986,7 +1000,7 @@ const App: React.FC = () => {
               ) : (
                 <div>
                   {/* Protection globale contre l'état non initialisé */}
-                  {(!appState || !appState.riders || !appState.staff || !appState.incomeItems) ? (
+                  {(!appState || !appState.riders || !appState.staff || !appState.incomeItems || !appState.teams || !appState.teamMemberships) ? (
                     <div className="flex items-center justify-center min-h-screen bg-gray-50">
                       <div className="text-center p-8 bg-white rounded-lg shadow-lg border">
                         <h3 className="text-xl font-semibold text-gray-700 mb-4">Chargement de l'application...</h3>
@@ -1075,7 +1089,7 @@ const App: React.FC = () => {
                       effectivePermissions={effectivePermissions}
                     />
                   )}
-                  {currentSection === "performance" && (
+                  {currentSection === "performance" && appState.riders && (
                     <PerformancePoleSection
                       riders={appState.riders}
                       performanceEntries={appState.performanceEntries}

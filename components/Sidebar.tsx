@@ -94,6 +94,8 @@ const Sidebar: React.FC<SidebarProps> = ({
 }) => {
   const { t, language } = useTranslations();
   
+
+  
   const groupedSections = useMemo(() => {
     return SECTIONS.reduce((acc, section) => {
         const group = section.group[language] || section.group['en'];
@@ -110,6 +112,10 @@ const Sidebar: React.FC<SidebarProps> = ({
   const displayRole = useMemo(() => {
     if (isIndependent) {
         return currentUser.userRole || 'Indépendant';
+    }
+    // Protection contre currentUser.permissionRole undefined
+    if (!currentUser || !currentUser.permissionRole) {
+        return 'Rôle en cours de chargement...';
     }
     const role = permissionRoles.find(r => r.id === currentUser.permissionRole);
     return role?.name || 'Role inconnu';
@@ -156,21 +162,14 @@ const Sidebar: React.FC<SidebarProps> = ({
             const sectionsInGroup = groupedSections[group];
             if (!sectionsInGroup) return null;
 
-            // SOLUTION SIMPLIFIÉE : Forcer l'affichage des sections importantes pour les managers
-            let visibleSections;
+            // SOLUTION ULTRA-SIMPLE : Afficher toutes les sections pour les managers
+            let visibleSections = sectionsInGroup;
             
-            if (currentUser.userRole === 'Manager' || currentUser.permissionRole === 'Administrateur') {
-                // Manager/Admin = TOUTES les sections sauf "Mon Espace"
-                visibleSections = sectionsInGroup.filter(section => {
-                    const isMySpaceSection = [
-                        'career', 'nutrition', 'riderEquipment', 'adminDossier', 
-                        'myTrips', 'myPerformance', 'performanceProject', 'automatedPerformanceProfile'
-                    ].includes(section.id);
-                    return !isMySpaceSection;
-                });
-            } else {
-                // Utilisateur normal = permissions normales
-                visibleSections = sectionsInGroup.filter(section => effectivePermissions[section.id as AppSection]?.includes('view'));
+            // Si l'utilisateur n'est PAS manager, filtrer selon les permissions
+            if (currentUser && currentUser.userRole !== 'Manager' && currentUser.permissionRole && currentUser.permissionRole !== 'Administrateur') {
+                visibleSections = sectionsInGroup.filter(section => 
+                    effectivePermissions[section.id as AppSection]?.includes('view')
+                );
             }
             
             if (visibleSections.length === 0) return null;
