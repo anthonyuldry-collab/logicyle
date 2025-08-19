@@ -240,18 +240,8 @@ export const getGlobalData = async (): Promise<Partial<GlobalState>> => {
 };
 
 export const getEffectivePermissions = (user: User, basePermissions: AppPermissions, staff: StaffMember[] = []): Partial<Record<AppSection, PermissionLevel[]>> => {
-    // Debug: Log les informations utilisateur
-    console.log('🔍 DEBUG - Utilisateur:', {
-        email: user.email,
-        permissionRole: user.permissionRole,
-        userRole: user.userRole,
-        firstName: user.firstName,
-        lastName: user.lastName
-    });
-    
     // Vérifier si l'utilisateur est admin (via permissionRole) OU manager (via userRole)
     if (user.permissionRole === TeamRole.ADMIN || user.userRole === UserRole.MANAGER) {
-        console.log('🎯 DEBUG - Utilisateur identifié comme Admin/Manager');
         const allPermissions: Partial<Record<AppSection, PermissionLevel[]>> = {};
         SECTIONS.forEach(section => {
             // Exclure TOUJOURS les sections "Mon Espace" pour les managers/admins
@@ -263,12 +253,27 @@ export const getEffectivePermissions = (user: User, basePermissions: AppPermissi
             // Seules les sections NON "Mon Espace" sont accessibles aux managers/admins
             if (!isMySpaceSection) {
                 allPermissions[section.id as AppSection] = ['view', 'edit'];
-                console.log(`✅ DEBUG - Section ajoutée: ${section.id}`);
             }
-            // Note: Les sections "Mon Espace" ne sont JAMAIS ajoutées pour les managers/admins
         });
-        console.log('🎯 DEBUG - Permissions finales Admin/Manager:', allPermissions);
         return allPermissions;
+    }
+    
+    // NOUVELLE LOGIQUE : Vérifier si l'utilisateur a créé une équipe (devrait être manager)
+    // Si l'utilisateur a un teamId, il devrait avoir des permissions étendues
+    if (user.teamId) {
+        const managerPermissions: Partial<Record<AppSection, PermissionLevel[]>> = {};
+        SECTIONS.forEach(section => {
+            // Exclure les sections "Mon Espace"
+            const isMySpaceSection = [
+                'career', 'nutrition', 'riderEquipment', 'adminDossier', 
+                'myTrips', 'myPerformance', 'performanceProject', 'automatedPerformanceProfile'
+            ].includes(section.id);
+            
+            if (!isMySpaceSection) {
+                managerPermissions[section.id as AppSection] = ['view', 'edit'];
+            }
+        });
+        return managerPermissions;
     }
     
     console.log('⚠️ DEBUG - Utilisateur NOT Admin/Manager, utilisation des permissions par défaut');
