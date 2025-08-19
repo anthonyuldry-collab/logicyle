@@ -533,11 +533,34 @@ const App: React.FC = () => {
     }
 
     if (view === "app" && currentUser && appState.activeTeamId) {
-      const effectivePermissions = firebaseService.getEffectivePermissions(
+      // SOLUTION DE CONTOURNEMENT : Forcer les permissions Manager si l'utilisateur est Manager/Admin
+      let effectivePermissions = firebaseService.getEffectivePermissions(
         currentUser,
         appState.permissions,
         appState.staff
       );
+      
+      // FORCER les permissions si l'utilisateur est Manager/Admin
+      if (currentUser.userRole === 'Manager' || currentUser.permissionRole === 'Administrateur') {
+        console.log('🔧 FORÇAGE des permissions Manager');
+        effectivePermissions = {
+          dashboard: ['view', 'edit'],
+          events: ['view', 'edit'],
+          financial: ['view', 'edit'],
+          performance: ['view', 'edit'],
+          staff: ['view', 'edit'],
+          roster: ['view', 'edit'],
+          vehicles: ['view', 'edit'],
+          equipment: ['view', 'edit'],
+          stocks: ['view', 'edit'],
+          scouting: ['view', 'edit'],
+          userManagement: ['view', 'edit'],
+          permissions: ['view', 'edit'],
+          checklist: ['view', 'edit'],
+          settings: ['view', 'edit'],
+          // Exclure les sections "Mon Espace"
+        };
+      }
       const activeEvent = appState.activeEventId
         ? appState.raceEvents.find((e) => e.id === appState.activeEventId)
         : null;
@@ -605,6 +628,10 @@ const App: React.FC = () => {
                         <hr className="my-1" />
                         <div><strong>Condition finale :</strong></div>
                         <div>Condition activée: {(currentUser.userRole?.toLowerCase().includes('manager') || currentUser.permissionRole?.toLowerCase().includes('admin') || currentUser.userRole === 'MANAGER' || currentUser.permissionRole === 'ADMIN' || currentUser.userRole === 'Manager' || currentUser.permissionRole === 'Administrateur') ? '✅ OUI' : '❌ NON'}</div>
+                        <hr className="my-1" />
+                        <div><strong>Permissions forcées :</strong></div>
+                        <div>Permissions calculées: {Object.keys(effectivePermissions).length} sections</div>
+                        <div>Sections disponibles: {Object.keys(effectivePermissions).join(', ')}</div>
                       </div>
                       <button
                         onClick={async () => {
