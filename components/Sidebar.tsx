@@ -52,7 +52,7 @@ interface SidebarProps {
   onGoToLobby: () => void;
 }
 
-const iconMap: { [key: string]: React.ElementType } = {
+const iconMap: Record<string, React.ComponentType<any>> = {
   HomeIcon,
   UsersIcon,
   UserGroupIcon,
@@ -105,7 +105,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         acc[group].push(section);
         return acc;
     }, {} as Record<string, typeof SECTIONS>);
-  }, [language, t]);
+  }, [language]);
 
   const groupOrder = [t('sidebarGroupPilotage'), t('sidebarGroupMySpace'), t('sidebarGroupGeneralData'), t('sidebarGroupAnalysis'), t('sidebarGroupLogistics'), t('sidebarGroupApplication')];
   
