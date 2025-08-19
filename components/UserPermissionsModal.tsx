@@ -13,6 +13,11 @@ interface UserPermissionsModalProps {
 }
 
 const getEffectivePermissions = (user: User, basePermissions: AppPermissions): Partial<Record<AppSection, PermissionLevel[]>> => {
+    // Protection contre permissionRole undefined
+    if (!user || !user.permissionRole) {
+        return {};
+    }
+    
     if (user.permissionRole === TeamRole.ADMIN) {
         const allPermissions: Partial<Record<AppSection, PermissionLevel[]>> = {};
         SECTIONS.forEach(section => {
@@ -94,7 +99,7 @@ const UserPermissionsModal: React.FC<UserPermissionsModalProps> = ({ isOpen, onC
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={`Permissions pour ${user.firstName} ${user.lastName}`}>
         <div className="text-sm text-gray-600 mb-4">
-            <p>Rôle de base : <strong className="font-semibold">{user.permissionRole}</strong>. Les permissions ci-dessous outrepassent celles définies pour ce rôle.</p>
+            <p>Rôle de base : <strong className="font-semibold">{user.permissionRole || 'En cours de chargement...'}</strong>. Les permissions ci-dessous outrepassent celles définies pour ce rôle.</p>
         </div>
         <div className="max-h-[60vh] overflow-y-auto pr-2">
             <table className="min-w-full text-sm">

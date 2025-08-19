@@ -648,10 +648,42 @@ const App: React.FC = () => {
     }));
   }, [appState.activeTeamId]);
 
-  const createBatchSetHandler =
-    <T,>(
-      collectionName: keyof TeamState
-    ): React.Dispatch<React.SetStateAction<T[]>> =>
+  // Handlers pour TeamProduct
+  const onSaveTeamProduct = useCallback(async (item: TeamProduct) => {
+    if (!appState.activeTeamId) return;
+    const savedId = await firebaseService.saveData(
+      appState.activeTeamId,
+      "teamProducts",
+      item
+    );
+    const finalItem = { ...item, id: item.id || savedId };
+    setAppState((prev) => {
+      const collection = prev.teamProducts;
+      const exists = collection.some((i) => i.id === finalItem.id);
+      const newCollection = exists
+        ? collection.map((i) => (i.id === finalItem.id ? finalItem : i))
+        : [...collection, finalItem];
+      return { ...prev, teamProducts: newCollection };
+    });
+  }, [appState.activeTeamId]);
+
+  const onDeleteTeamProduct = useCallback(async (item: TeamProduct) => {
+    if (!appState.activeTeamId || !item.id) return;
+    await firebaseService.deleteData(
+      appState.activeTeamId,
+      "teamProducts",
+      item.id
+    );
+    setAppState((prev) => ({
+      ...prev,
+      teamProducts: prev.teamProducts.filter((i) => i.id !== item.id),
+    }));
+  }, [appState.activeTeamId]);
+
+  // Fonction utilitaire pour remplacer createBatchSetHandler
+  const createBatchSetHandler = <T,>(
+    collectionName: keyof TeamState
+  ): React.Dispatch<React.SetStateAction<T[]>> =>
     (updater) => {
       setAppState((prev) => {
         const currentItems = prev[collectionName] as T[];
@@ -953,7 +985,18 @@ const App: React.FC = () => {
                 />
               ) : (
                 <div>
-                  {currentSection === "dashboard" && (
+                  {/* Protection globale contre l'état non initialisé */}
+                  {(!appState || !appState.riders || !appState.staff || !appState.incomeItems) ? (
+                    <div className="flex items-center justify-center min-h-screen bg-gray-50">
+                      <div className="text-center p-8 bg-white rounded-lg shadow-lg border">
+                        <h3 className="text-xl font-semibold text-gray-700 mb-4">Chargement de l'application...</h3>
+                        <p className="text-gray-500 mb-4">Initialisation des données...</p>
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      {currentSection === "dashboard" && (
                     <DashboardSection
                       navigateTo={navigateTo}
                       currentUser={currentUser}
@@ -992,7 +1035,7 @@ const App: React.FC = () => {
                       currentUser={currentUser}
                     />
                   )}
-                  {currentSection === "roster" && (
+                  {currentSection === "roster" && appState.riders && (
                     <RosterSection
                       riders={appState.riders}
                       onSave={onSaveRider}
@@ -1008,7 +1051,7 @@ const App: React.FC = () => {
                       appState={appState}
                     />
                   )}
-                  {currentSection === "staff" && (
+                  {currentSection === "staff" && appState.staff && (
                     <StaffSection
                       staff={appState.staff}
                       onSave={onSaveStaff}
@@ -1056,7 +1099,7 @@ const App: React.FC = () => {
                       effectivePermissions={effectivePermissions}
                     />
                   )}
-                  {currentSection === "financial" && (
+                  {currentSection === "financial" && appState.incomeItems && appState.eventBudgetItems && (
                     <FinancialSection
                       incomeItems={appState.incomeItems}
                       budgetItems={appState.eventBudgetItems}
@@ -1075,7 +1118,7 @@ const App: React.FC = () => {
                       effectivePermissions={effectivePermissions}
                     />
                   )}
-                  {currentSection === "userManagement" && (
+                  {currentSection === "userManagement" && appState.users && appState.teamMemberships && (
                     <UserManagementSection
                       users={appState.users}
                       teamMemberships={appState.teamMemberships}
@@ -1151,7 +1194,7 @@ const App: React.FC = () => {
                       currentUser={currentUser}
                     />
                   )}
-                  {currentSection === "stocks" && (
+                  {currentSection === "stocks" && appState.stockItems && (
                     <StocksSection
                       stockItems={appState.stockItems}
                       onSaveStockItem={onSaveStockItem}
@@ -1189,6 +1232,8 @@ const App: React.FC = () => {
                       rider={appState.riders.find((r) => r.email === currentUser.email)}
                       setRiders={createBatchSetHandler<Rider>("riders")}
                     />
+                  )}
+                    </>
                   )}
                 </div>
               )}

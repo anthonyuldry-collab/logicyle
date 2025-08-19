@@ -139,8 +139,8 @@ const SpiderChart: React.FC<{ data: { axis: string; value: number }[]; size?: nu
 };
 
 export const ScoutingSection: React.FC<ScoutingSectionProps> = ({ scoutingProfiles, setScoutingProfiles, setRiders, users, onSendScoutingRequest, appState, currentTeamId }) => {
-  // Protection contre les données non initialisées
-  if (!scoutingProfiles || !users || !appState) {
+  // Protection minimale - seulement scoutingProfiles est requis
+  if (!scoutingProfiles) {
     return (
       <SectionWrapper title="Scouting">
         <div className="text-center p-8 bg-gray-50 rounded-lg border">

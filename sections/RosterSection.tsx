@@ -355,8 +355,8 @@ export const RosterSection: React.FC<RosterSectionProps> = ({
   currentUser,
   appState
 }) => {
-  // Protection contre les données non initialisées
-  if (!riders || !raceEvents || !riderEventSelections || !performanceEntries || !scoutingProfiles) {
+  // Protection minimale - seulement riders est requis
+  if (!riders) {
     return (
       <SectionWrapper title="Gestion de l'Effectif">
         <div className="text-center p-8 bg-gray-50 rounded-lg border">
