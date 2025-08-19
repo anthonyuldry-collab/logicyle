@@ -22,6 +22,7 @@ import {
   PeerRating,
   RaceEvent,
   Rider,
+  RiderEventSelection,
   ScoutingProfile,
   StaffMember,
   StockItem,
@@ -1267,10 +1268,6 @@ const App: React.FC = () => {
     }
     return null; // Should not be reached if logic is correct
   };
-
-  const riderForCurrentUser = appState.riders.find(
-    (r) => r.email === currentUser?.email
-  );
 
   return <>{renderContent()}</>;
 };
