@@ -479,36 +479,7 @@ const App: React.FC = () => {
     signOut(auth);
   };
 
-  // Fonction de débogage pour forcer le rôle Manager
-  const forceManagerRole = async () => {
-    if (!currentUser) return;
-    try {
-      console.log('🔧 DEBUG - Tentative de forçage du rôle Manager');
-      console.log('🔧 DEBUG - Utilisateur actuel:', currentUser);
-      
-      // Mettre à jour le profil utilisateur avec le rôle Manager
-      const updatedUser = {
-        ...currentUser,
-        userRole: UserRole.MANAGER,
-        permissionRole: TeamRole.ADMIN
-      };
-      
-      // Sauvegarder dans Firestore
-      await firebaseService.updateUserProfile(currentUser.id, updatedUser);
-      
-      // Mettre à jour l'état local
-      setCurrentUser(updatedUser);
-      
-      // Recharger les données
-      await loadDataForUser(updatedUser);
-      
-      console.log('✅ DEBUG - Rôle Manager forcé avec succès');
-      alert('Rôle Manager forcé avec succès ! Rechargez la page.');
-    } catch (error) {
-      console.error('❌ DEBUG - Erreur lors du forçage du rôle:', error);
-      alert('Erreur lors du forçage du rôle: ' + error);
-    }
-  };
+
 
   const navigateTo = (section: AppSection, eventId?: string) => {
     if (section === "eventDetail" && eventId) {
@@ -605,23 +576,6 @@ const App: React.FC = () => {
               onGoToLobby={() => setView("no_team")}
             />
             <main className="flex-grow ml-64 p-6 bg-gray-100 min-h-screen">
-              {/* Bouton de débogage pour forcer le rôle Manager */}
-              {currentUser && (
-                <div className="mb-4 p-4 bg-yellow-100 border border-yellow-300 rounded-lg">
-                  <h3 className="text-lg font-semibold text-yellow-800 mb-2">🔧 Debug - Rôle Utilisateur</h3>
-                  <p className="text-yellow-700 mb-2">
-                    Rôle actuel: <strong>{currentUser.userRole}</strong> | 
-                    Permission: <strong>{currentUser.permissionRole}</strong>
-                  </p>
-                  <button
-                    onClick={forceManagerRole}
-                    className="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700 transition-colors"
-                  >
-                    Forcer le rôle Manager
-                  </button>
-                </div>
-              )}
-              
               {activeEvent ? (
                 <EventDetailView
                   event={activeEvent}
