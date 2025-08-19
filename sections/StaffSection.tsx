@@ -134,10 +134,10 @@ const GlobalPlanningTab: React.FC<GlobalPlanningTabProps> = ({ upcomingEvents, o
 };
 
 
-export const StaffSection: React.FC<StaffSectionProps> = ({ 
-  staff, 
-  setStaff, 
-  raceEvents, 
+export const StaffSection: React.FC<StaffSectionProps> = ({
+  staff,
+  setStaff,
+  raceEvents,
   setRaceEvents,
   eventStaffAvailabilities,
   setEventStaffAvailabilities,
@@ -151,6 +151,17 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
   users,
   setMissions,
 }) => {
+  // Protection contre les données non initialisées
+  if (!staff || !raceEvents || !eventStaffAvailabilities || !eventBudgetItems || !performanceEntries || !missions || !teams || !users) {
+    return (
+      <SectionWrapper title="Gestion du Staff">
+        <div className="text-center p-8 bg-gray-50 rounded-lg border">
+          <h3 className="text-xl font-semibold text-gray-700">Chargement...</h3>
+          <p className="mt-2 text-gray-500">Initialisation des données du staff...</p>
+        </div>
+      </SectionWrapper>
+    );
+  }
   const { language } = useTranslations();
   // --- STATE FOR ALL TABS ---
   const [activeTab, setActiveTab] = useState<'details' | 'planning' | 'missionSearch' | 'myApplications' | 'postingsManagement' | 'search'>('details');

@@ -4,18 +4,33 @@ import SectionWrapper from '../components/SectionWrapper';
 import { useTranslations } from '../hooks/useTranslations';
 
 interface FinancialSectionProps {
-  appState: AppState;
-  setIncomeItems: React.Dispatch<React.SetStateAction<IncomeItem[]>>;
-  setCategoryBudgets: (updater: React.SetStateAction<Partial<Record<BudgetItemCategory, number>>>) => void;
-  navigateTo: (section: 'eventDetail', eventId: string) => void;
+  incomeItems: IncomeItem[];
+  budgetItems: EventBudgetItem[];
+  onSaveIncomeItem: (item: IncomeItem) => Promise<void>;
+  onDeleteIncomeItem: (item: IncomeItem) => Promise<void>;
+  onSaveBudgetItem: (item: EventBudgetItem) => Promise<void>;
+  onDeleteBudgetItem: (item: EventBudgetItem) => Promise<void>;
+  effectivePermissions: Record<string, string[]>;
 }
 
-export const FinancialSection: React.FC<FinancialSectionProps> = ({ appState, setIncomeItems, setCategoryBudgets, navigateTo }) => {
+export const FinancialSection: React.FC<FinancialSectionProps> = ({ incomeItems, budgetItems, onSaveIncomeItem, onDeleteIncomeItem, onSaveBudgetItem, onDeleteBudgetItem, effectivePermissions }) => {
     const { t } = useTranslations();
     const [activeTab, setActiveTab] = useState<'overview' | 'income' | 'expenses'>('overview');
 
-    const totalIncome = useMemo(() => appState.incomeItems.reduce((sum, item) => sum + item.amount, 0), [appState.incomeItems]);
-    const totalExpenses = useMemo(() => appState.eventBudgetItems.reduce((sum, item) => sum + (item.actualCost ?? item.estimatedCost), 0), [appState.eventBudgetItems]);
+    // Protection contre les données non initialisées
+    if (!incomeItems || !budgetItems) {
+        return (
+            <SectionWrapper title={t('titleFinancial')}>
+                <div className="text-center p-8 bg-gray-50 rounded-lg border">
+                    <h3 className="text-xl font-semibold text-gray-700">Chargement...</h3>
+                    <p className="mt-2 text-gray-500">Initialisation des données financières...</p>
+                </div>
+            </SectionWrapper>
+        );
+    }
+
+    const totalIncome = useMemo(() => incomeItems.reduce((sum, item) => sum + item.amount, 0), [incomeItems]);
+    const totalExpenses = useMemo(() => budgetItems.reduce((sum, item) => sum + (item.actualCost ?? item.estimatedCost), 0), [budgetItems]);
     const balance = totalIncome - totalExpenses;
 
     return (

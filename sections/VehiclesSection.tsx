@@ -96,6 +96,18 @@ const VehiclesSection: React.FC<VehiclesSectionProps> = ({
     raceEvents, 
     navigateTo 
 }) => {
+  // Protection contre les données non initialisées
+  if (!vehicles || !staff || !eventTransportLegs || !raceEvents) {
+    return (
+      <SectionWrapper title="Gestion des Véhicules">
+        <div className="text-center p-8 bg-gray-50 rounded-lg border">
+          <h3 className="text-xl font-semibold text-gray-700">Chargement...</h3>
+          <p className="mt-2 text-gray-500">Initialisation des données des véhicules...</p>
+        </div>
+      </SectionWrapper>
+    );
+  }
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentVehicle, setCurrentVehicle] = useState<Omit<Vehicle, 'id'> | Vehicle>(initialVehicleFormState);
   const [isEditing, setIsEditing] = useState(false);

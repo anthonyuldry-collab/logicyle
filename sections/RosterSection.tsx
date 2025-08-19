@@ -355,6 +355,18 @@ export const RosterSection: React.FC<RosterSectionProps> = ({
   currentUser,
   appState
 }) => {
+  // Protection contre les données non initialisées
+  if (!riders || !raceEvents || !riderEventSelections || !performanceEntries || !scoutingProfiles) {
+    return (
+      <SectionWrapper title="Gestion de l'Effectif">
+        <div className="text-center p-8 bg-gray-50 rounded-lg border">
+          <h3 className="text-xl font-semibold text-gray-700">Chargement...</h3>
+          <p className="mt-2 text-gray-500">Initialisation des données de l'effectif...</p>
+        </div>
+      </SectionWrapper>
+    );
+  }
+
   const { t } = useTranslations();
   const [activeTab, setActiveTab] = useState<'roster' | 'selectionGrid' | 'groupMonitoring' | 'seasonPlanning'>('roster');
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);

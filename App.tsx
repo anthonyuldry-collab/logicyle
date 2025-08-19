@@ -998,6 +998,14 @@ const App: React.FC = () => {
                       onSave={onSaveRider}
                       onDelete={onDeleteRider}
                       effectivePermissions={effectivePermissions}
+                      raceEvents={appState.raceEvents}
+                      setRaceEvents={createBatchSetHandler<RaceEvent>("raceEvents")}
+                      riderEventSelections={appState.riderEventSelections}
+                      setRiderEventSelections={createBatchSetHandler<RiderEventSelection>("riderEventSelections")}
+                      performanceEntries={appState.performanceEntries}
+                      scoutingProfiles={appState.scoutingProfiles}
+                      currentUser={currentUser}
+                      appState={appState}
                     />
                   )}
                   {currentSection === "staff" && (
@@ -1051,7 +1059,7 @@ const App: React.FC = () => {
                   {currentSection === "financial" && (
                     <FinancialSection
                       incomeItems={appState.incomeItems}
-                      budgetItems={appState.budgetItems}
+                      budgetItems={appState.eventBudgetItems}
                       onSaveIncomeItem={onSaveIncomeItem}
                       onDeleteIncomeItem={onDeleteIncomeItem}
                       onSaveBudgetItem={onSaveBudgetItem}

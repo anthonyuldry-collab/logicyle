@@ -139,6 +139,18 @@ const SpiderChart: React.FC<{ data: { axis: string; value: number }[]; size?: nu
 };
 
 export const ScoutingSection: React.FC<ScoutingSectionProps> = ({ scoutingProfiles, setScoutingProfiles, setRiders, users, onSendScoutingRequest, appState, currentTeamId }) => {
+  // Protection contre les données non initialisées
+  if (!scoutingProfiles || !users || !appState) {
+    return (
+      <SectionWrapper title="Scouting">
+        <div className="text-center p-8 bg-gray-50 rounded-lg border">
+          <h3 className="text-xl font-semibold text-gray-700">Chargement...</h3>
+          <p className="mt-2 text-gray-500">Initialisation des données de scouting...</p>
+        </div>
+      </SectionWrapper>
+    );
+  }
+
   const [activeTab, setActiveTab] = useState<'profiles' | 'search' | 'analysis'>('profiles');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentItem, setCurrentItem] = useState<Omit<ScoutingProfile, 'id'> | ScoutingProfile>(initialScoutingProfileFormState);
