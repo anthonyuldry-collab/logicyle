@@ -207,11 +207,15 @@ export const createTeamForUser = async (userId: string, teamData: { name: string
         startDate: new Date().toISOString().split('T')[0],
     });
 
-    // Update user permission role
+    // Update user permission role AND teamId
     const userDocRef = doc(db, 'users', userId);
     await setDoc(
         userDocRef,
-        { permissionRole: TeamRole.ADMIN, userRole: UserRole.MANAGER },
+        { 
+            permissionRole: TeamRole.ADMIN, 
+            userRole: UserRole.MANAGER,
+            teamId: newTeamRef.id  // AJOUTER le teamId !
+        },
         { merge: true }
     );
 };
