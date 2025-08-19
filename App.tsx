@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React from "react";
 import {
   DEFAULT_THEME_ACCENT_COLOR,
   DEFAULT_THEME_PRIMARY_COLOR,
@@ -12,6 +12,14 @@ import {
   EquipmentItem,
   IncomeItem,
   PerformanceEntry,
+  EventTransportLeg,
+  EventAccommodation,
+  EventRaceDocument,
+  EventRadioEquipment,
+  EventRadioAssignment,
+  EventBudgetItem,
+  EventChecklistItem,
+  PeerRating,
   RaceEvent,
   Rider,
   ScoutingProfile,
@@ -32,7 +40,8 @@ import {
   signInWithEmailAndPassword,
   signOut,
 } from "firebase/auth";
-import { auth } from "./firebaseConfig";
+import { auth, db } from "./firebaseConfig";
+import { doc, setDoc } from "firebase/firestore";
 import * as firebaseService from "./services/firebaseService";
 
 import FirebaseDebug from "./components/FirebaseDebug";
@@ -433,8 +442,14 @@ const App = () => {
         teamData,
         currentUser.userRole
       );
-      // After creation, reload user data to get the new active team
-      await loadDataForUser(currentUser);
+      // Refresh user profile to pick up new roles (Admin/Manager)
+      const refreshedProfile = await firebaseService.getUserProfile(currentUser.id);
+      if (refreshedProfile) {
+        setCurrentUser(refreshedProfile);
+        await loadDataForUser(refreshedProfile);
+      } else {
+        await loadDataForUser(currentUser);
+      }
     } catch (error) {
       console.error("Failed to create team:", error);
       alert(t("errorCreateTeam"));
@@ -853,3 +868,4 @@ const App = () => {
 };
 
 export default App;
+
