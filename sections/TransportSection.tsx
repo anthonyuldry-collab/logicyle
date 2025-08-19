@@ -48,9 +48,10 @@ const TransportSection: React.FC<TransportSectionProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const { t } = useTranslations();
 
-  const availablePeople = useMemo(() => 
-    [...riders.map(r => `${r.firstName} ${r.lastName}`), ...staff.map(s => `${s.firstName} ${s.lastName}`), "Groupe/Véhicule"]
-  , [riders, staff]);
+  const availablePeople = useMemo(() => {
+    if (!riders || !staff) return ["Groupe/Véhicule"];
+    return [...riders.map(r => `${r.firstName} ${r.lastName}`), ...staff.map(s => `${s.firstName} ${s.lastName}`), "Groupe/Véhicule"];
+  }, [riders, staff]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;

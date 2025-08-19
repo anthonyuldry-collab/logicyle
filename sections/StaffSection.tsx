@@ -193,6 +193,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
 
   // Memo for details tab
   const filteredStaffMembers = useMemo(() => {
+    if (!staff) return [];
     return staff.filter(member => {
       const nameMatch = `${member.firstName} ${member.lastName}`.toLowerCase().includes(staffSearchTerm.toLowerCase());
       const roleMatch = staffRoleFilter === 'all' || member.role === staffRoleFilter;
@@ -202,6 +203,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
   }, [staff, staffSearchTerm, staffRoleFilter, staffStatusFilter]);
 
   const upcomingEvents = useMemo(() => {
+    if (!raceEvents) return [];
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     return [...raceEvents]
@@ -221,6 +223,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
   };
 
   const handleDeleteStaff = (staffId: string) => {
+    if (!staff) return;
     const member = staff.find(s => s.id === staffId);
     if (!member) return;
 
@@ -583,7 +586,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
                                     <div key={roleKey}>
                                         <label className="block text-sm font-medium text-gray-700">{roleInfo.label}</label>
                                         <div className="mt-1 p-2 border rounded-md space-y-1 bg-gray-50 max-h-40 overflow-y-auto">
-                                            {staff.map(member => {
+                                            {staff && staff.map(member => {
                                                 const isUnavailable = raceEvents.some(otherEvent => {
                                                     if (otherEvent.id === assignmentModalEvent.id || !(otherEvent.selectedStaffIds || []).includes(member.id)) {
                                                         return false;
@@ -643,7 +646,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
                 if (!applicantUser) {
                     return <div key={applicantId} className="p-2 bg-red-100 rounded-md">Profil candidat non trouvé (ID: {applicantId})</div>;
                 }
-                const staffProfileForApplicant = staff.find(s => s.email === applicantUser.email) || users.find(u => u.id === applicantId);
+                const staffProfileForApplicant = staff ? staff.find(s => s.email === applicantUser.email) : null || users.find(u => u.id === applicantId);
 
                 const applicant = {
                     id: applicantUser.id,

@@ -165,6 +165,18 @@ const calculateOverallPerformanceScore = (
 };
 
 export const PerformancePoleSection: React.FC<PerformancePoleSectionProps> = ({ appState, navigateTo, setTeamProducts, setRiders, currentUser }) => {
+  // Protection contre les données non initialisées
+  if (!appState || !appState.riders || !currentUser) {
+    return (
+      <SectionWrapper title="Pôle Performance">
+        <div className="text-center p-8 bg-gray-50 rounded-lg border">
+          <h3 className="text-xl font-semibold text-gray-700">Chargement...</h3>
+          <p className="mt-2 text-gray-500">Initialisation des données de performance...</p>
+        </div>
+      </SectionWrapper>
+    );
+  }
+
   const showGlobalTab = currentUser.permissionRole !== TeamRole.VIEWER;
   
   // Rider-specific view state
@@ -219,6 +231,7 @@ export const PerformancePoleSection: React.FC<PerformancePoleSectionProps> = ({ 
   };
 
   const allAgeCategoriesForFilter = useMemo(() => {
+    if (!riders) return ['all'];
     const ageCats = new Set<string>();
     riders.forEach(r => {
         const { category } = getAgeCategory(r.birthDate);
@@ -236,6 +249,7 @@ export const PerformancePoleSection: React.FC<PerformancePoleSectionProps> = ({ 
   }, [riders]);
 
   const allLevelCategoriesForFilter = useMemo(() => {
+    if (!riders) return ['all'];
     const levelCats = new Set<string>();
     riders.forEach(r => {
       (r.categories || []).forEach(cat => {
@@ -313,33 +327,37 @@ export const PerformancePoleSection: React.FC<PerformancePoleSectionProps> = ({ 
     });
         
     let result: PowerProfileTableRowItem[] = [];
-    ridersToAnalyze.forEach(rider => {
-      const profilesToShow: ProfileFilterKeys[] =
-        powerProfileDisplayMode === 'all'
-          ? ['powerProfileFresh', 'powerProfile15KJ', 'powerProfile30KJ', 'powerProfile45KJ']
-          : [
-                powerProfileDisplayMode === 'fresh' ? 'powerProfileFresh' 
-                : powerProfileDisplayMode === 'kj15' ? 'powerProfile15KJ' 
-                : powerProfileDisplayMode === 'kj30' ? 'powerProfile30KJ'
-                : 'powerProfile45KJ'
-            ];
-            
-      const validProfiles = profilesToShow.filter(pk => {
-          const profile = rider[pk];
-          return profile && Object.values(profile).some(v => v !== undefined && v !== null && v > 0);
-      });
-      
-      const validProfilesCount = validProfiles.length;
-
-      validProfiles.forEach(profileKey => {
-          result.push({
-              rider,
-              profileKey,
-              isFirstProfileRowForRider: result.filter(r => r.rider.id === rider.id).length === 0,
-              numProfilesForRider: validProfilesCount,
+    if (ridersToAnalyze) {
+        ridersToAnalyze.forEach(rider => {
+          const profilesToShow: ProfileFilterKeys[] =
+            powerProfileDisplayMode === 'all'
+              ? ['powerProfileFresh', 'powerProfile15KJ', 'powerProfile30KJ', 'powerProfile45KJ']
+              : [
+                    powerProfileDisplayMode === 'fresh' ? 'powerProfileFresh' 
+                    : powerProfileDisplayMode === 'kj15' ? 'powerProfile15KJ' 
+                    : powerProfileDisplayMode === 'kj30' ? 'powerProfile30KJ'
+                    : 'powerProfile45KJ'
+                ];
+                
+          const validProfiles = profilesToShow.filter(pk => {
+              const profile = rider[pk];
+              return profile && Object.values(profile).some(v => v !== undefined && v !== null && v > 0);
           });
-      });
-    });
+          
+          const validProfilesCount = validProfiles.length;
+
+          if (validProfiles) {
+              validProfiles.forEach(profileKey => {
+                  result.push({
+                      rider,
+                      profileKey,
+                      isFirstProfileRowForRider: result.filter(r => r.rider.id === rider.id).length === 0,
+                      numProfilesForRider: validProfilesCount,
+                  });
+              });
+          }
+        });
+    }
 
     if (sortConfig) {
       result.sort((a, b) => {
@@ -472,14 +490,16 @@ export const PerformancePoleSection: React.FC<PerformancePoleSectionProps> = ({ 
 
       const totalQuantities: Record<string, { product: TeamProduct; quantity: number }> = {};
 
-      plan.hourly.forEach(item => {
-          const totalQty = item.quantity * duration;
-          if (totalQuantities[item.product.id]) {
-              totalQuantities[item.product.id].quantity += totalQty;
-          } else {
-              totalQuantities[item.product.id] = { product: item.product, quantity: totalQty };
-          }
-      });
+      if (plan.hourly) {
+          plan.hourly.forEach(item => {
+              const totalQty = item.quantity * duration;
+              if (totalQuantities[item.product.id]) {
+                  totalQuantities[item.product.id].quantity += totalQty;
+              } else {
+                  totalQuantities[item.product.id] = { product: item.product, quantity: totalQty };
+              }
+          });
+      }
       
       plan.total = Object.values(totalQuantities);
 
@@ -500,13 +520,17 @@ export const PerformancePoleSection: React.FC<PerformancePoleSectionProps> = ({ 
     planText += `Objectifs: ${generatedPlan.target.carbs}g glucides/h, ${generatedPlan.target.hydration}ml/h, ${generatedPlan.target.sodium}mg sodium/h\n`;
     planText += `Durée: ${duration}h\n\n`;
     planText += "Plan Horaire:\n";
-    generatedPlan.hourly.forEach(item => {
-        planText += `- ${item.quantity}x ${item.product.name}\n`;
-    });
+    if (generatedPlan.hourly) {
+        generatedPlan.hourly.forEach(item => {
+            planText += `- ${item.quantity}x ${item.product.name}\n`;
+        });
+    }
     planText += "\nTotal Course:\n";
-    generatedPlan.total.forEach(item => {
-        planText += `- ${item.quantity}x ${item.product.name}\n`;
-    });
+    if (generatedPlan.total) {
+        generatedPlan.total.forEach(item => {
+            planText += `- ${item.quantity}x ${item.product.name}\n`;
+        });
+    }
     planText += "\nRésumé Total:\n";
     planText += `- Glucides: ${generatedPlan.summary.carbs.toFixed(0)}g\n`;
     planText += `- Sodium: ${generatedPlan.summary.sodium.toFixed(0)}mg\n`;

@@ -171,6 +171,7 @@ export const ScoutingSection: React.FC<ScoutingSectionProps> = ({ scoutingProfil
   const [selectedProfileIdsForAnalysis, setSelectedProfileIdsForAnalysis] = useState<string[]>([]);
 
   const filteredProfiles = useMemo(() => {
+    if (!scoutingProfiles) return [];
     let profiles = [...scoutingProfiles];
     if (filters.name) {
         profiles = profiles.filter(p => `${p.firstName} ${p.lastName}`.toLowerCase().includes(filters.name.toLowerCase()));

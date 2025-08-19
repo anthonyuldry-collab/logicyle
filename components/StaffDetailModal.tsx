@@ -256,7 +256,7 @@ const handleRemoveListItem = (listName: 'workHistory' | 'education' | 'languages
   };
 
   const assignedEvents = useMemo(() => {
-    if (!staffMember) return [];
+    if (!staffMember || !allRaceEvents) return [];
     return allRaceEvents
       .map(event => {
         const rolesInEvent: string[] = [];
@@ -280,7 +280,7 @@ const handleRemoveListItem = (listName: 'workHistory' | 'education' | 'languages
   }, [staffMember, allRaceEvents]);
   
   const staffRatings = useMemo(() => {
-    if (!staffMember) return { ratings: [], average: 0, count: 0 };
+    if (!staffMember || !performanceEntries) return { ratings: [], average: 0, count: 0 };
     const ratings = performanceEntries.flatMap(entry =>
         (entry.staffRatings || [])
             .filter(rating => rating.staffId === staffMember.id && rating.rating > 0)

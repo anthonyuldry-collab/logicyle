@@ -168,6 +168,7 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
   };
 
   const filteredEquipment = useMemo(() => {
+    if (!riders || !equipment) return [];
     const riderForCurrentUser = riders.find(r => r.email === currentUser.email);
     const equipmentToDisplay = currentUser.permissionRole === TeamRole.VIEWER
         ? (riderForCurrentUser ? equipment.filter(eq => eq.assignedToRiderId === riderForCurrentUser.id) : [])
@@ -244,6 +245,7 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
   };
 
   const sortedStockItems = useMemo(() => {
+    if (!equipmentStockItems) return [];
     let sortableItems = [...equipmentStockItems].filter(item => 
       (item.name.toLowerCase().includes(stockSearchTerm.toLowerCase())) &&
       (stockCategoryFilter === 'all' || item.category === stockCategoryFilter)

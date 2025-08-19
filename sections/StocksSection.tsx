@@ -75,6 +75,7 @@ const StocksSection: React.FC<StocksSectionProps> = ({ stockItems, setStockItems
   };
 
   const sortedItems = useMemo(() => {
+    if (!stockItems) return [];
     let sortableItems = [...stockItems].filter(item => 
         (item.name.toLowerCase().includes(searchTerm.toLowerCase())) &&
         (categoryFilter === 'all' || item.category === categoryFilter)
@@ -157,7 +158,7 @@ const StocksSection: React.FC<StocksSectionProps> = ({ stockItems, setStockItems
     const newQuantity = Math.max(0, oldQuantity + change);
     
     if (newQuantity <= itemToUpdate.lowStockThreshold && oldQuantity > itemToUpdate.lowStockThreshold) {
-      const assistants = staff.filter(s => s.role === StaffRole.ASSISTANT);
+      const assistants = staff ? staff.filter(s => s.role === StaffRole.ASSISTANT) : [];
       const assistantNames = assistants.length > 0 ? assistants.map(a => `${a.firstName} ${a.lastName}`).join(', ') : "aucun assistant configuré";
       
       const message = `Alerte stock faible: "${itemToUpdate.name}" (${newQuantity} restants). Notification (simulée) envoyée à: ${assistantNames}.`;

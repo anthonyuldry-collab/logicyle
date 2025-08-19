@@ -84,9 +84,12 @@ const CareerSection: React.FC<CareerSectionProps> = ({
     return { wins, podiums, top10s };
   }, [riderProfile?.resultsHistory]);
   
-  const pendingScoutingRequests = useMemo(() => scoutingRequests.filter(
-      req => req.athleteId === currentUser.id && req.status === ScoutingRequestStatus.PENDING
-  ), [scoutingRequests, currentUser.id]);
+  const pendingScoutingRequests = useMemo(() => {
+    if (!scoutingRequests) return [];
+    return scoutingRequests.filter(
+        req => req.athleteId === currentUser.id && req.status === ScoutingRequestStatus.PENDING
+    );
+  }, [scoutingRequests, currentUser.id]);
 
   const handleSaveResult = (resultToSave: ResultItem) => {
     if (!riderProfile) return;

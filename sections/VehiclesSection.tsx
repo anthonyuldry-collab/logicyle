@@ -213,7 +213,7 @@ const VehiclesSection: React.FC<VehiclesSectionProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {vehicles.map((vehicle) => {
+              {vehicles && vehicles.map((vehicle) => {
                 const todayStatus = getVehicleStatusForDay(vehicle, new Date(), eventTransportLegs, raceEvents);
                 const lastMaintenance = vehicle.maintenanceHistory && vehicle.maintenanceHistory.length > 0
                     ? [...vehicle.maintenanceHistory].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
@@ -281,7 +281,7 @@ const VehiclesSection: React.FC<VehiclesSectionProps> = ({
             const currentDate = new Date(year, month, dayNumber);
             const isToday = new Date().toDateString() === currentDate.toDateString();
             
-            const itemsForDay = vehicles.map(vehicle => {
+            const itemsForDay = vehicles && vehicles.map(vehicle => {
                 const statusInfo = getVehicleStatusForDay(vehicle, currentDate, eventTransportLegs, raceEvents);
                 if (statusInfo.status === 'Disponible') return null;
                 return { vehicleName: vehicle.name, ...statusInfo };
@@ -301,7 +301,7 @@ const VehiclesSection: React.FC<VehiclesSectionProps> = ({
                         key={index}
                         title={`${item!.vehicleName}: ${item!.details}`}
                         className={`p-1 rounded text-[10px] leading-tight truncate cursor-pointer hover:opacity-80 ${bgColor}`}
-                        onClick={() => item!.status === 'Assigné' && navigateTo('eventDetail', eventTransportLegs.find(leg => leg.assignedVehicleId === vehicles.find(v => v.name === item!.vehicleName)?.id && datesOverlap(currentDate.toISOString().split('T')[0], currentDate.toISOString().split('T')[0], leg.departureDate, leg.arrivalDate || leg.departureDate))?.eventId)}
+                        onClick={() => item!.status === 'Assigné' && navigateTo('eventDetail', eventTransportLegs.find(leg => leg.assignedVehicleId === vehicles && vehicles.find(v => v.name === item!.vehicleName)?.id && datesOverlap(currentDate.toISOString().split('T')[0], currentDate.toISOString().split('T')[0], leg.departureDate, leg.arrivalDate || leg.departureDate))?.eventId)}
                       >
                         <span className="font-medium">{item!.vehicleName}</span>
                       </div>

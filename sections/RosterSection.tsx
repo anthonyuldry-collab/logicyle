@@ -132,6 +132,7 @@ const SeasonPlanningTab: React.FC<SeasonPlanningTabProps> = ({
     const [calendarDate, setCalendarDate] = useState(new Date());
 
     const futureEvents = useMemo(() => {
+        if (!raceEvents) return [];
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         return raceEvents
@@ -144,20 +145,26 @@ const SeasonPlanningTab: React.FC<SeasonPlanningTabProps> = ({
         if (!riders || !riderEventSelections || !raceEvents) return raceDays;
 
         const eventDurations = new Map<string, number>();
-        raceEvents.forEach(event => {
-            eventDurations.set(event.id, getEventDuration(event));
-        });
+        if (raceEvents) {
+            raceEvents.forEach(event => {
+                eventDurations.set(event.id, getEventDuration(event));
+            });
+        }
 
-        riders.forEach(rider => {
-            raceDays[rider.id] = 0;
-        });
+        if (riders) {
+            riders.forEach(rider => {
+                raceDays[rider.id] = 0;
+            });
+        }
 
-        riderEventSelections.forEach(selection => {
-            if (selection.status === RiderEventStatus.TITULAIRE && raceDays.hasOwnProperty(selection.riderId)) {
-                const duration = eventDurations.get(selection.eventId) || 0;
-                raceDays[selection.riderId] += duration;
-            }
-        });
+        if (riderEventSelections) {
+            riderEventSelections.forEach(selection => {
+                if (selection.status === RiderEventStatus.TITULAIRE && raceDays.hasOwnProperty(selection.riderId)) {
+                    const duration = eventDurations.get(selection.eventId) || 0;
+                    raceDays[selection.riderId] += duration;
+                }
+            });
+        }
 
         return raceDays;
     }, [riders, riderEventSelections, raceEvents]);
@@ -204,7 +211,7 @@ const SeasonPlanningTab: React.FC<SeasonPlanningTabProps> = ({
                     <tr>
                         <th className="p-2 border text-sm font-semibold text-gray-600 w-48 z-20" style={{ position: 'sticky', left: 0, backgroundColor: 'inherit' }}>Coureur</th>
                         <th className="p-2 border text-sm font-semibold text-gray-600 w-28 z-20" style={{ position: 'sticky', left: '12rem', backgroundColor: 'inherit' }}>Jours Course</th>
-                        {futureEvents.map(event => (
+                        {futureEvents && futureEvents.map(event => (
                             <th key={event.id} className="p-2 border text-xs font-semibold text-gray-600 min-w-[150px]">
                                 <div className="font-bold">{event.name}</div>
                                 <div className="font-normal">{new Date(event.date + 'T12:00:00Z').toLocaleDateString('fr-CA')}</div>
@@ -214,11 +221,11 @@ const SeasonPlanningTab: React.FC<SeasonPlanningTabProps> = ({
                     </tr>
                 </thead>
                 <tbody>
-                    {riders.map(rider => (
+                    {riders && riders.map(rider => (
                         <tr key={rider.id} className="hover:bg-gray-50">
                             <td className="p-2 border font-medium text-gray-800 w-48 z-10" style={{ position: 'sticky', left: 0, backgroundColor: 'inherit' }}>{rider.firstName} {rider.lastName}</td>
                             <td className="p-2 border font-bold text-center text-lg text-gray-800 w-28 z-10" style={{ position: 'sticky', left: '12rem', backgroundColor: 'inherit' }}>{raceDaysByRider[rider.id] || 0}</td>
-                            {futureEvents.map(event => {
+                            {futureEvents && futureEvents.map(event => {
                                 const selection = riderEventSelections.find(s => s.riderId === rider.id && s.eventId === event.id);
                                 const status = selection?.status || RiderEventStatus.NON_RETENU;
                                 return (

@@ -53,10 +53,12 @@ const MissionSearchSection: React.FC<MissionSearchSectionProps> = ({ missions, t
     const getTeamName = (teamId: string) => teams.find(t => t.id === teamId)?.name || 'Équipe Inconnue';
     
     const myApplications = useMemo(() => {
+        if (!missions) return new Set();
         return new Set(missions.filter(m => m.applicants?.includes(currentUser.id)).map(m => m.id));
     }, [missions, currentUser.id]);
 
     const filteredMissions = useMemo(() => {
+        if (!missions) return [];
         return missions.filter(mission => {
             if (mission.status !== MissionStatus.OPEN) return false;
             if (roleFilter !== 'all' && mission.role !== roleFilter) return false;

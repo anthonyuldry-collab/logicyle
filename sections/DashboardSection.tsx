@@ -76,7 +76,7 @@ const OperationalDashboardView: React.FC<OperationalDashboardViewProps> = ({ sta
             <div className="lg:col-span-2 bg-white p-4 rounded-xl shadow-md">
                 <h3 className="text-lg font-semibold text-gray-800 mb-3">Événements à Venir</h3>
                 <div className="space-y-3">
-                    {upcomingEvents.length > 0 ? (
+                    {upcomingEvents && upcomingEvents.length > 0 ? (
                         upcomingEvents.map(event => (
                             <div key={event.id} className="p-3 bg-gray-50 rounded-lg border border-gray-200 flex flex-col sm:flex-row justify-between sm:items-center gap-2 hover:bg-gray-100 transition-colors">
                                 <div>
@@ -108,7 +108,7 @@ const OperationalDashboardView: React.FC<OperationalDashboardViewProps> = ({ sta
             <div className="bg-white p-4 rounded-xl shadow-md">
                  <h3 className="text-lg font-semibold text-gray-800 mb-3">Alertes & Actions Requises</h3>
                  <div className="space-y-2 max-h-96 overflow-y-auto">
-                    {alerts.length > 0 ? (
+                    {alerts && alerts.length > 0 ? (
                         alerts.map(alert => (
                              <div key={alert.id} className="flex items-center p-2 bg-red-50 border-l-4 border-red-400 rounded">
                                 <ExclamationTriangleIcon className="w-5 h-5 text-red-500 mr-3 flex-shrink-0"/>
@@ -142,7 +142,7 @@ const AthleteDashboardView: React.FC<AthleteDashboardViewProps> = ({ currentUser
                     Mes Prochaines Courses
                 </h3>
                 <div className="space-y-3">
-                    {upcomingRaces.length > 0 ? (
+                    {upcomingRaces && upcomingRaces.length > 0 ? (
                         upcomingRaces.map(event => (
                             <div key={event.id} className="p-3 bg-gray-50 rounded-lg border border-gray-200 flex flex-col sm:flex-row justify-between sm:items-center gap-2 hover:bg-gray-100 transition-colors">
                                 <div>
@@ -176,7 +176,7 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({ navigateTo, 
   }, []);
 
   const nextRace = useMemo(() => {
-    if (isViewer) return null;
+    if (isViewer || !raceEvents) return null;
     return [...raceEvents]
       .filter(event => {
         const eventEndDate = new Date((event.endDate || event.date) + "T23:59:59Z");
@@ -186,12 +186,12 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({ navigateTo, 
   }, [raceEvents, isViewer, today]);
 
   const stats = useMemo(() => {
-    if (isViewer) return null;
+    if (isViewer || !riders || !incomeItems || !eventBudgetItems) return null;
     const injuredRiders = riders.filter(r => 
         r.healthCondition && r.healthCondition !== HealthCondition.PRET_A_COURIR && r.healthCondition !== HealthCondition.INCONNU && r.healthCondition !== HealthCondition.EN_RECUPERATION
     ).length;
 
-    const totalIncome = (incomeItems || []).reduce((sum, item) => sum + item.amount, 0);
+    const totalIncome = incomeItems.reduce((sum, item) => sum + item.amount, 0);
 
     const budget = eventBudgetItems.reduce((acc, item) => {
         acc.estimated += item.estimatedCost;
@@ -215,7 +215,7 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({ navigateTo, 
   }, [isViewer, riders, staff, vehicles, scoutingProfiles, eventBudgetItems, incomeItems, nextRace]);
 
   const upcomingEvents = useMemo(() => {
-     if (isViewer) return [];
+     if (isViewer || !raceEvents) return [];
      return [...raceEvents]
       .filter(event => {
         const eventEndDate = new Date((event.endDate || event.date) + "T23:59:59Z");
@@ -226,7 +226,7 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({ navigateTo, 
   }, [raceEvents, isViewer, today]);
 
   const alerts = useMemo(() => {
-    if (isViewer) return [];
+    if (isViewer || !raceEvents || !eventTransportLegs || !eventChecklistItems) return [];
     const twoWeeksFromNow = new Date(today);
     twoWeeksFromNow.setUTCDate(today.getUTCDate() + 14);
 
@@ -237,30 +237,34 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({ navigateTo, 
         return eventDate >= today && eventDate <= twoWeeksFromNow;
     });
 
-    eventsInAlertWindow.forEach(event => {
-        if (!event.directeurSportifId || event.directeurSportifId.length === 0) {
-            alertsList.push({ id: `alert-ds-${event.id}`, text: `DS manquant pour ${event.name}`, eventId: event.id });
-        }
-        if (!event.selectedRiderIds || event.selectedRiderIds.length === 0) {
-            alertsList.push({ id: `alert-riders-${event.id}`, text: `Aucun coureur sélectionné pour ${event.name}`, eventId: event.id });
-        }
-        const checklist = eventChecklistItems.filter(c => c.eventId === event.id);
-        if (checklist.length > 0 && checklist.some(c => c.status !== ChecklistItemStatus.FAIT)) {
-             alertsList.push({ id: `alert-checklist-${event.id}`, text: `Checklist incomplète pour ${event.name}`, eventId: event.id });
-        }
-    });
+    if (eventsInAlertWindow) {
+        eventsInAlertWindow.forEach(event => {
+            if (!event.directeurSportifId || event.directeurSportifId.length === 0) {
+                alertsList.push({ id: `alert-ds-${event.id}`, text: `DS manquant pour ${event.name}`, eventId: event.id });
+            }
+            if (!event.selectedRiderIds || event.selectedRiderIds.length === 0) {
+                alertsList.push({ id: `alert-riders-${event.id}`, text: `Aucun coureur sélectionné pour ${event.name}`, eventId: event.id });
+            }
+            const checklist = eventChecklistItems.filter(c => c.eventId === event.id);
+            if (checklist.length > 0 && checklist.some(c => c.status !== ChecklistItemStatus.FAIT)) {
+                 alertsList.push({ id: `alert-checklist-${event.id}`, text: `Checklist incomplète pour ${event.name}`, eventId: event.id });
+            }
+        });
+    }
     
-    eventTransportLegs.forEach(leg => {
-        const event = raceEvents.find(e => e.id === leg.eventId);
-        if (event) {
-            const eventDate = new Date(event.date + "T00:00:00Z");
-            if (eventDate >= today && eventDate <= twoWeeksFromNow) {
-                if (!leg.assignedVehicleId && leg.mode !== TransportMode.VOITURE_PERSO && leg.mode !== TransportMode.TRAIN && leg.mode !== TransportMode.VOL) {
-                    alertsList.push({ id: `alert-transport-${leg.id}`, text: `Véhicule non assigné pour ${event.name}`, eventId: event.id });
+    if (eventTransportLegs) {
+        eventTransportLegs.forEach(leg => {
+            const event = raceEvents.find(e => e.id === leg.eventId);
+            if (event) {
+                const eventDate = new Date(event.date + "T00:00:00Z");
+                if (eventDate >= today && eventDate <= twoWeeksFromNow) {
+                    if (!leg.assignedVehicleId && leg.mode !== TransportMode.VOITURE_PERSO && leg.mode !== TransportMode.TRAIN && leg.mode !== TransportMode.VOL) {
+                        alertsList.push({ id: `alert-transport-${leg.id}`, text: `Véhicule non assigné pour ${event.name}`, eventId: event.id });
+                    }
                 }
             }
-        }
-    });
+        });
+    }
 
     return alertsList;
   }, [raceEvents, eventTransportLegs, eventChecklistItems, isViewer, today]);
@@ -277,7 +281,7 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({ navigateTo, 
   }, [riderEventSelections, riderForCurrentUser, isViewer]);
 
   const upcomingRaces = useMemo(() => {
-    if (!isViewer) return [];
+    if (!isViewer || !raceEvents) return [];
     return raceEvents.filter(event => 
         upcomingSelections.some(sel => sel.eventId === event.id) &&
         new Date((event.endDate || event.date) + 'T23:59:59Z') >= today
