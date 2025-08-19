@@ -22,21 +22,7 @@ export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
 
-// Enable Firestore offline persistence
-enableIndexedDbPersistence(db)
-  .then(() => {
-    console.log("✅ Persistance Firestore activée avec succès");
-  })
-  .catch((err) => {
-    if (err.code == 'failed-precondition') {
-      // Multiple tabs open, persistence can only be enabled in one.
-      // This is a normal scenario, so we can handle it gracefully.
-      console.warn("⚠️ La persistance Firestore n'a pas pu être activée, probablement car plusieurs onglets sont ouverts.");
-    } else if (err.code == 'unimplemented') {
-      // The current browser does not support all of the
-      // features required to enable persistence.
-      console.warn("⚠️ La persistance Firestore n'est pas supportée sur ce navigateur.");
-    } else {
-        console.error("❌ Erreur d'activation de la persistance Firestore:", err);
-    }
-  });
+// Enable Firestore offline persistence (silent)
+enableIndexedDbPersistence(db).catch(() => {
+  // Silently ignore persistence errors (multi-tab or unsupported browser)
+});
