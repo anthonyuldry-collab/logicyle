@@ -49,17 +49,6 @@ const DEFAULT_ROLE_PERMISSIONS: AppPermissions = {
         dashboard: ['view'],
         events: ['view'],
         
-        // Sections "Mon Espace" réservées aux coureurs uniquement
-        career: ['view', 'edit'],
-        nutrition: ['view', 'edit'],
-        riderEquipment: ['view', 'edit'],
-        adminDossier: ['view', 'edit'],
-        myTrips: ['view', 'edit'],
-        myPerformance: ['view', 'edit'],
-        performanceProject: ['view', 'edit'],
-        automatedPerformanceProfile: ['view', 'edit'],
-        // missionSearch sera géré dynamiquement selon le rôle de staff
-        
         // Sections logistiques de base
         vehicles: ['view'],
         equipment: ['view'],
@@ -67,6 +56,8 @@ const DEFAULT_ROLE_PERMISSIONS: AppPermissions = {
         
         // Section Scouting accessible à tous (lecture seule)
         scouting: ['view'],
+        
+        // Note: Sections "Mon Espace" ajoutées dynamiquement pour les coureurs uniquement
     },
     [TeamRole.MEMBER]: {
         // Sections de base
@@ -248,10 +239,19 @@ export const getGlobalData = async (): Promise<Partial<GlobalState>> => {
 };
 
 export const getEffectivePermissions = (user: User, basePermissions: AppPermissions, staff: StaffMember[] = []): Partial<Record<AppSection, PermissionLevel[]>> => {
-    if (user.permissionRole === TeamRole.ADMIN) {
+    // Vérifier si l'utilisateur est admin (via permissionRole) OU manager (via userRole)
+    if (user.permissionRole === TeamRole.ADMIN || user.userRole === UserRole.MANAGER) {
         const allPermissions: Partial<Record<AppSection, PermissionLevel[]>> = {};
         SECTIONS.forEach(section => {
-            allPermissions[section.id as AppSection] = ['view', 'edit'];
+            // Exclure les sections "Mon Espace" pour les managers/admins
+            const isMySpaceSection = [
+                'career', 'nutrition', 'riderEquipment', 'adminDossier', 
+                'myTrips', 'myPerformance', 'performanceProject', 'automatedPerformanceProfile'
+            ].includes(section.id);
+            
+            if (!isMySpaceSection) {
+                allPermissions[section.id as AppSection] = ['view', 'edit'];
+            }
         });
         return allPermissions;
     }
@@ -266,12 +266,7 @@ export const getEffectivePermissions = (user: User, basePermissions: AppPermissi
     
     const effectivePerms: Partial<Record<AppSection, PermissionLevel[]>> = structuredClone(rolePerms);
     
-    // Logique spéciale pour les Managers (UserRole.MANAGER)
-    if (user.userRole === UserRole.MANAGER) {
-        // Managers ont accès aux Finances et Staff
-        effectivePerms.financial = ['view', 'edit'];
-        effectivePerms.staff = ['view', 'edit'];
-    }
+    // Note: Les Managers ont déjà un accès complet via la condition admin/manager ci-dessus
     
     // Logique spéciale pour les coureurs (UserRole.COUREUR)
     if (user.userRole === UserRole.COUREUR) {
@@ -293,9 +288,19 @@ export const getEffectivePermissions = (user: User, basePermissions: AppPermissi
         delete effectivePerms.missionSearch; // Missions pas pour les coureurs
     }
     
-    // Logique pour les Staff (UserRole.STAFF) - pas d'accès aux finances
+    // Logique pour les Staff (UserRole.STAFF) - pas d'accès aux finances ni aux sections "Mon Espace"
     if (user.userRole === UserRole.STAFF) {
         delete effectivePerms.financial;
+        
+        // Staff n'a pas accès aux sections "Mon Espace" réservées aux coureurs
+        delete effectivePerms.career;
+        delete effectivePerms.nutrition;
+        delete effectivePerms.riderEquipment;
+        delete effectivePerms.adminDossier;
+        delete effectivePerms.myTrips;
+        delete effectivePerms.myPerformance;
+        delete effectivePerms.performanceProject;
+        delete effectivePerms.automatedPerformanceProfile;
     }
     
     // Logique spéciale pour les missions : uniquement DS, Entraîneur, Assistant et Mécano
