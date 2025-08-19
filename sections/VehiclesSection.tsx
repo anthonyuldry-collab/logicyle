@@ -96,8 +96,8 @@ const VehiclesSection: React.FC<VehiclesSectionProps> = ({
     raceEvents, 
     navigateTo 
 }) => {
-  // Protection contre les données non initialisées
-  if (!vehicles || !staff || !eventTransportLegs || !raceEvents) {
+  // Protection minimale - seulement vehicles est requis
+  if (!vehicles) {
     return (
       <SectionWrapper title="Gestion des Véhicules">
         <div className="text-center p-8 bg-gray-50 rounded-lg border">

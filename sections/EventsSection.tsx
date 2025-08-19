@@ -133,6 +133,18 @@ export const EventsSection = ({
     teamLevel,
     currentUser,
 }: EventsSectionProps): JSX.Element => {
+  // Protection minimale - seulement raceEvents est requis
+  if (!raceEvents) {
+    return (
+      <SectionWrapper title="Gestion des Événements">
+        <div className="text-center p-8 bg-gray-50 rounded-lg border">
+          <h3 className="text-xl font-semibold text-gray-700">Chargement...</h3>
+          <p className="mt-2 text-gray-500">Initialisation des données des événements...</p>
+        </div>
+      </SectionWrapper>
+    );
+  }
+
   const { t } = useTranslations();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentEventForModal, setCurrentEventForModal] = useState<Omit<RaceEvent, 'id' | 'raceInfo' | 'operationalLogistics' | 'selectedRiderIds' | 'selectedStaffIds' | 'selectedVehicleIds' | 'checklistEmailSimulated'> & { eligibleCategory: string; discipline: Discipline; endDate?: string }>(

@@ -151,8 +151,8 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
   users,
   setMissions,
 }) => {
-  // Protection contre les données non initialisées
-  if (!staff || !raceEvents || !eventStaffAvailabilities || !eventBudgetItems || !performanceEntries || !missions || !teams || !users) {
+  // Protection minimale - seulement staff est requis
+  if (!staff) {
     return (
       <SectionWrapper title="Gestion du Staff">
         <div className="text-center p-8 bg-gray-50 rounded-lg border">

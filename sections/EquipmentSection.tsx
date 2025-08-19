@@ -44,6 +44,18 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
     equipment, setEquipment, riders, setRiders, currentUser,
     equipmentStockItems, setEquipmentStockItems 
 }) => {
+  // Protection minimale - seulement equipment est requis
+  if (!equipment) {
+    return (
+      <SectionWrapper title="Gestion de l'Équipement">
+        <div className="text-center p-8 bg-gray-50 rounded-lg border">
+          <h3 className="text-xl font-semibold text-gray-700">Chargement...</h3>
+          <p className="mt-2 text-gray-500">Initialisation des données de l'équipement...</p>
+        </div>
+      </SectionWrapper>
+    );
+  }
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentItem, setCurrentItem] = useState<Omit<EquipmentItem, 'id'> | EquipmentItem>(initialEquipmentFormState);
   const [isEditing, setIsEditing] = useState(false);

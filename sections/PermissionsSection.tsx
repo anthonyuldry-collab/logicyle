@@ -179,7 +179,7 @@ const PermissionsSection: React.FC<PermissionsSectionProps> = ({
     });
   };
 
-  const isRoleInUse = (roleId: string) => users.some(u => u.permissionRole === roleId);
+  const isRoleInUse = (roleId: string) => users.some(u => u.permissionRole && u.permissionRole === roleId);
 
   return (
     <SectionWrapper 
