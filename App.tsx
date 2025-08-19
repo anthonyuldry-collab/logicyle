@@ -576,10 +576,10 @@ const App: React.FC = () => {
               onGoToLobby={() => setView("no_team")}
             />
             <main className="flex-grow ml-64 p-6 bg-gray-100 min-h-screen">
-              {/* Diagnostic des permissions - TEMPORAIRE */}
+              {/* Debug temporaire pour voir le problème */}
               {currentUser && (
-                <div className="mb-4 p-4 bg-blue-100 border border-blue-300 rounded-lg">
-                  <h3 className="text-lg font-semibold text-blue-800 mb-2">🔍 Diagnostic des Permissions</h3>
+                <div className="mb-4 p-4 bg-red-100 border border-red-300 rounded-lg">
+                  <h3 className="text-lg font-semibold text-red-800 mb-2">🚨 Debug - Problème de Permissions</h3>
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div>
                       <p><strong>Email:</strong> {currentUser.email}</p>
@@ -588,15 +588,44 @@ const App: React.FC = () => {
                       <p><strong>Team ID:</strong> {currentUser.teamId || 'Aucun'}</p>
                     </div>
                     <div>
-                      <p><strong>Permissions Actives:</strong></p>
+                      <p><strong>Test de Logique:</strong></p>
                       <div className="text-xs bg-white p-2 rounded border">
-                        {Object.entries(firebaseService.getEffectivePermissions(currentUser, appState.permissions, appState.staff))
-                          .map(([section, perms]) => (
-                            <div key={section} className="text-green-600">
-                              ✅ {section}: {perms.join(', ')}
-                            </div>
-                          ))}
+                        <div>userRole === 'MANAGER': {currentUser.userRole === 'MANAGER' ? '✅ OUI' : '❌ NON'}</div>
+                        <div>permissionRole === 'ADMIN': {currentUser.permissionRole === 'ADMIN' ? '✅ OUI' : '❌ NON'}</div>
+                        <div>teamId existe: {currentUser.teamId ? '✅ OUI' : '❌ NON'}</div>
+                        <div>Condition activée: {(currentUser.userRole === 'MANAGER' || currentUser.permissionRole === 'ADMIN' || currentUser.teamId) ? '✅ OUI' : '❌ NON'}</div>
                       </div>
+                      <button
+                        onClick={async () => {
+                          try {
+                            // Trouver votre équipe
+                            const userTeam = appState.teams.find(team => 
+                              appState.teamMemberships.some(m => 
+                                m.teamId === team.id && m.userId === currentUser.id
+                              )
+                            );
+                            if (userTeam) {
+                              // Mettre à jour votre profil avec le teamId
+                              await firebaseService.updateUserProfile(currentUser.id, {
+                                ...currentUser,
+                                teamId: userTeam.id
+                              });
+                              // Recharger les données
+                              const updatedUser = { ...currentUser, teamId: userTeam.id };
+                              setCurrentUser(updatedUser);
+                              await loadDataForUser(updatedUser);
+                              alert('TeamId mis à jour ! Rechargez la page.');
+                            } else {
+                              alert('Aucune équipe trouvée pour cet utilisateur.');
+                            }
+                          } catch (error) {
+                            alert('Erreur lors de la mise à jour: ' + error);
+                          }
+                        }}
+                        className="mt-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                      >
+                        🔧 Réparer le TeamId
+                      </button>
                     </div>
                   </div>
                 </div>

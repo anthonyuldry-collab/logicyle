@@ -156,10 +156,10 @@ const Sidebar: React.FC<SidebarProps> = ({
             const sectionsInGroup = groupedSections[group];
             if (!sectionsInGroup) return null;
 
-            // SOLUTION DE CONTOURNEMENT : Si l'utilisateur a un teamId, lui donner accès à toutes les sections sauf "Mon Espace"
+            // SOLUTION DE CONTOURNEMENT AGGRESSIVE : Si l'utilisateur est Manager OU Admin, lui donner accès à toutes les sections sauf "Mon Espace"
             let visibleSections;
-            if (currentUser.teamId) {
-                // Utilisateur avec équipe = accès étendu
+            if (currentUser.userRole === 'MANAGER' || currentUser.permissionRole === 'ADMIN' || currentUser.teamId) {
+                // Utilisateur Manager/Admin = accès étendu
                 visibleSections = sectionsInGroup.filter(section => {
                     const isMySpaceSection = [
                         'career', 'nutrition', 'riderEquipment', 'adminDossier', 
@@ -170,7 +170,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     return !isMySpaceSection;
                 });
             } else {
-                // Utilisateur sans équipe = permissions normales
+                // Utilisateur normal = permissions normales
                 visibleSections = sectionsInGroup.filter(section => effectivePermissions[section.id as AppSection]?.includes('view'));
             }
             
