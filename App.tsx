@@ -576,6 +576,32 @@ const App: React.FC = () => {
               onGoToLobby={() => setView("no_team")}
             />
             <main className="flex-grow ml-64 p-6 bg-gray-100 min-h-screen">
+              {/* Diagnostic des permissions - TEMPORAIRE */}
+              {currentUser && (
+                <div className="mb-4 p-4 bg-blue-100 border border-blue-300 rounded-lg">
+                  <h3 className="text-lg font-semibold text-blue-800 mb-2">🔍 Diagnostic des Permissions</h3>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p><strong>Email:</strong> {currentUser.email}</p>
+                      <p><strong>Rôle Utilisateur:</strong> {currentUser.userRole}</p>
+                      <p><strong>Rôle Permission:</strong> {currentUser.permissionRole}</p>
+                      <p><strong>Team ID:</strong> {currentUser.teamId || 'Aucun'}</p>
+                    </div>
+                    <div>
+                      <p><strong>Permissions Actives:</strong></p>
+                      <div className="text-xs bg-white p-2 rounded border">
+                        {Object.entries(firebaseService.getEffectivePermissions(currentUser, appState.permissions, appState.staff))
+                          .map(([section, perms]) => (
+                            <div key={section} className="text-green-600">
+                              ✅ {section}: {perms.join(', ')}
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
               {activeEvent ? (
                 <EventDetailView
                   event={activeEvent}
