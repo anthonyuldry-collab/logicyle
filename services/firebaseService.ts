@@ -23,15 +23,33 @@ import {
   UserRole,
   TeamMembershipStatus,
   TeamLevel,
+  StaffMember,
+  StaffRole,
 } from '../types';
 import { SignupData } from '../sections/SignupView';
 import { SECTIONS, TEAM_STATE_COLLECTIONS, getInitialGlobalState } from '../constants';
 
+// Helper function to check if user has access to mission search based on staff role
+const hasAccessToMissions = (user: User, staff: StaffMember[]): boolean => {
+    // Find the staff member associated with this user
+    const staffMember = staff.find(s => s.email === user.email);
+    
+    // If no staff member found, no access to missions
+    if (!staffMember) return false;
+    
+    // Check if the staff role is one of the allowed roles for mission search
+    const allowedRoles = [StaffRole.DS, StaffRole.ENTRAINEUR, StaffRole.ASSISTANT, StaffRole.MECANO];
+    return allowedRoles.includes(staffMember.role);
+};
+
 // Reasonable default permissions when no permissions document is configured in Firestore
 const DEFAULT_ROLE_PERMISSIONS: AppPermissions = {
     [TeamRole.VIEWER]: {
+        // Sections de base accessibles à tous
         dashboard: ['view'],
         events: ['view'],
+        
+        // Sections "Mon Espace" réservées aux coureurs uniquement
         career: ['view', 'edit'],
         nutrition: ['view', 'edit'],
         riderEquipment: ['view', 'edit'],
@@ -40,20 +58,37 @@ const DEFAULT_ROLE_PERMISSIONS: AppPermissions = {
         myPerformance: ['view', 'edit'],
         performanceProject: ['view', 'edit'],
         automatedPerformanceProfile: ['view', 'edit'],
+        // missionSearch sera géré dynamiquement selon le rôle de staff
+        
+        // Sections logistiques de base
+        vehicles: ['view'],
+        equipment: ['view'],
+        stocks: ['view'],
+        
+        // Section Scouting accessible à tous (lecture seule)
+        scouting: ['view'],
     },
     [TeamRole.MEMBER]: {
+        // Sections de base
         dashboard: ['view'],
         events: ['view'],
+        
+        // Sections logistiques étendues
         roster: ['view'],
-        staff: ['view'],
         vehicles: ['view'],
         equipment: ['view'],
         stocks: ['view'],
         scouting: ['view'],
+        
+        // Accès limité au staff (lecture seule)
+        staff: ['view'],
     },
     [TeamRole.EDITOR]: {
+        // Sections de base
         dashboard: ['view'],
         events: ['view', 'edit'],
+        
+        // Sections logistiques complètes
         roster: ['view', 'edit'],
         staff: ['view', 'edit'],
         vehicles: ['view', 'edit'],
@@ -61,6 +96,9 @@ const DEFAULT_ROLE_PERMISSIONS: AppPermissions = {
         stocks: ['view', 'edit'],
         scouting: ['view', 'edit'],
         checklist: ['view', 'edit'],
+        
+        // Accès au pôle performance (Entraîneur/DS)
+        performance: ['view', 'edit'],
     },
     // TeamRole.ADMIN handled as full access elsewhere
 };
@@ -209,7 +247,7 @@ export const getGlobalData = async (): Promise<Partial<GlobalState>> => {
     };
 };
 
-export const getEffectivePermissions = (user: User, basePermissions: AppPermissions): Partial<Record<AppSection, PermissionLevel[]>> => {
+export const getEffectivePermissions = (user: User, basePermissions: AppPermissions, staff: StaffMember[] = []): Partial<Record<AppSection, PermissionLevel[]>> => {
     if (user.permissionRole === TeamRole.ADMIN) {
         const allPermissions: Partial<Record<AppSection, PermissionLevel[]>> = {};
         SECTIONS.forEach(section => {
@@ -219,8 +257,53 @@ export const getEffectivePermissions = (user: User, basePermissions: AppPermissi
     }
 
     const effectiveRoleKey = user.permissionRole || TeamRole.VIEWER;
-    const rolePerms = basePermissions[effectiveRoleKey] || DEFAULT_ROLE_PERMISSIONS[effectiveRoleKey] || {};
+    let rolePerms = basePermissions[effectiveRoleKey] || DEFAULT_ROLE_PERMISSIONS[effectiveRoleKey] || {};
+    
+    // Si aucune permission n'est trouvée, utiliser les permissions par défaut du rôle
+    if (!rolePerms || Object.keys(rolePerms).length === 0) {
+        rolePerms = DEFAULT_ROLE_PERMISSIONS[effectiveRoleKey] || DEFAULT_ROLE_PERMISSIONS[TeamRole.VIEWER] || {};
+    }
+    
     const effectivePerms: Partial<Record<AppSection, PermissionLevel[]>> = structuredClone(rolePerms);
+    
+    // Logique spéciale pour les Managers (UserRole.MANAGER)
+    if (user.userRole === UserRole.MANAGER) {
+        // Managers ont accès aux Finances et Staff
+        effectivePerms.financial = ['view', 'edit'];
+        effectivePerms.staff = ['view', 'edit'];
+    }
+    
+    // Logique spéciale pour les coureurs (UserRole.COUREUR)
+    if (user.userRole === UserRole.COUREUR) {
+        // Coureurs ont accès exclusif aux sections "Mon Espace"
+        effectivePerms.career = ['view', 'edit'];
+        effectivePerms.nutrition = ['view', 'edit'];
+        effectivePerms.riderEquipment = ['view', 'edit'];
+        effectivePerms.adminDossier = ['view', 'edit'];
+        effectivePerms.myTrips = ['view', 'edit'];
+        effectivePerms.myPerformance = ['view', 'edit'];
+        effectivePerms.performanceProject = ['view', 'edit'];
+        effectivePerms.automatedPerformanceProfile = ['view', 'edit'];
+        
+        // Coureurs n'ont PAS accès aux sections administratives
+        delete effectivePerms.financial;
+        delete effectivePerms.staff;
+        delete effectivePerms.userManagement;
+        delete effectivePerms.permissions;
+        delete effectivePerms.missionSearch; // Missions pas pour les coureurs
+    }
+    
+    // Logique pour les Staff (UserRole.STAFF) - pas d'accès aux finances
+    if (user.userRole === UserRole.STAFF) {
+        delete effectivePerms.financial;
+    }
+    
+    // Logique spéciale pour les missions : uniquement DS, Entraîneur, Assistant et Mécano
+    if (hasAccessToMissions(user, staff)) {
+        effectivePerms.missionSearch = ['view'];
+    } else {
+        delete effectivePerms.missionSearch;
+    }
     
     if (user.customPermissions) {
         for (const sectionKey in user.customPermissions) {
