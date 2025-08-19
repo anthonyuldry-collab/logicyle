@@ -2,13 +2,14 @@ import React, { useState } from 'react';
 import ActionButton from '../components/ActionButton';
 import { useTranslations } from '../hooks/useTranslations';
 import { LANGUAGE_OPTIONS } from '../constants';
-import { Team } from '../types';
+import { Team, UserRole } from '../types';
 
 export interface SignupData {
   email: string;
   firstName: string;
   lastName: string;
   password: string;
+  userRole: UserRole;
 }
 
 interface SignupViewProps {
@@ -23,13 +24,14 @@ const SignupView: React.FC<SignupViewProps> = ({ onRegister, onSwitchToLogin, te
       firstName: '',
       lastName: '',
       password: '',
+      userRole: UserRole.COUREUR, // Rôle par défaut : Coureur
   });
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { t, language, setLanguage } = useTranslations();
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
@@ -85,9 +87,25 @@ const SignupView: React.FC<SignupViewProps> = ({ onRegister, onSwitchToLogin, te
             <input type="text" name="firstName" placeholder={t('signupFirstName')} required value={formData.firstName} onChange={handleInputChange} className="input-field-sm w-full" />
             <input type="text" name="lastName" placeholder={t('signupLastName')} required value={formData.lastName} onChange={handleInputChange} className="input-field-sm w-full" />
           </div>
+          
           <div>
             <input type="email" name="email" placeholder={t('loginEmailPlaceholder')} required value={formData.email} onChange={handleInputChange} className="input-field-sm w-full" />
           </div>
+          
+          <div>
+            <select 
+              name="userRole" 
+              value={formData.userRole} 
+              onChange={handleInputChange}
+              className="input-field-sm w-full"
+              required
+            >
+              <option value={UserRole.COUREUR}>🚴 Coureur</option>
+              <option value={UserRole.STAFF}>👥 Staff</option>
+              <option value={UserRole.MANAGER}>👑 Manager</option>
+            </select>
+          </div>
+          
            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <input type="password" name="password" placeholder={t('signupPasswordPlaceholder')} required value={formData.password} onChange={handleInputChange} className="input-field-sm w-full" />
                 <input type="password" name="confirmPassword" placeholder={t('signupConfirmPasswordPlaceholder')} required value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} className="input-field-sm w-full" />

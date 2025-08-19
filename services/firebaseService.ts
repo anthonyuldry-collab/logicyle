@@ -120,14 +120,14 @@ export const getUserProfile = async (userId: string): Promise<User | null> => {
 
 export const createUserProfile = async (uid: string, signupData: SignupData) => {
     try {
-        const { email, firstName, lastName } = signupData;
+        const { email, firstName, lastName, userRole } = signupData;
 
         const newUser: Omit<User, 'id'> = {
             email,
             firstName,
             lastName,
             permissionRole: TeamRole.VIEWER,
-            userRole: UserRole.COUREUR,
+            userRole: userRole, // Utiliser le rôle sélectionné lors de l'inscription
             isSearchable: false,
             openToExternalMissions: false,
             signupInfo: {},
