@@ -1252,7 +1252,6 @@ const App: React.FC = () => {
                 </div>
               )}
             </main>
-            <FirebaseDebug />
           </div>
         </LanguageProvider>
       );
