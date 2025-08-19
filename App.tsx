@@ -636,7 +636,24 @@ const App: React.FC = () => {
                         <hr className="my-1" />
                         <div><strong>Debug Section :</strong></div>
                         <div>Section cliquée: {currentSection}</div>
-                        <div>Section définie: {currentSection === 'financial' ? '✅ FinancialSection' : currentSection === 'staff' ? '✅ StaffSection' : currentSection === 'roster' ? '✅ RosterSection' : '❌ Non définie'}</div>
+                        <div>Section définie: {
+                          currentSection === 'dashboard' ? '✅ DashboardSection' :
+                          currentSection === 'events' ? '✅ EventsSection' :
+                          currentSection === 'financial' ? '✅ FinancialSection' :
+                          currentSection === 'performance' ? '✅ PerformancePoleSection' :
+                          currentSection === 'staff' ? '✅ StaffSection' :
+                          currentSection === 'roster' ? '✅ RosterSection' :
+                          currentSection === 'vehicles' ? '✅ VehiclesSection' :
+                          currentSection === 'equipment' ? '✅ EquipmentSection' :
+                          currentSection === 'scouting' ? '✅ ScoutingSection' :
+                          currentSection === 'userManagement' ? '✅ UserManagementSection' :
+                          currentSection === 'permissions' ? '✅ PermissionsSection' :
+                          currentSection === 'settings' ? '✅ SettingsSection' :
+                          currentSection === 'career' ? '✅ CareerSection' :
+                          currentSection === 'nutrition' ? '✅ NutritionSection' :
+                          currentSection === 'riderEquipment' ? '✅ RiderEquipmentSection' :
+                          '❌ Non définie'
+                        }</div>
                       </div>
                       <button
                         onClick={async () => {
