@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Rider, PowerProfile } from '../types';
+import { Rider } from '../types';
 import SectionWrapper from '../components/SectionWrapper';
 import { POWER_ANALYSIS_DURATIONS_CONFIG } from '../constants';
 import PowerPPRTab from '../components/riderDetailTabs/PowerPPRTab';
@@ -27,7 +27,7 @@ export const MyPerformanceSection: React.FC<MyPerformanceSectionProps> = ({ ride
   }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value, type } = e.currentTarget;
+    const { name, value } = e.currentTarget;
 
     setFormData(prevData => {
         if (!prevData) return prevData;
