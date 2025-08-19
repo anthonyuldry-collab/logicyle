@@ -1065,7 +1065,7 @@ const App: React.FC = () => {
                       appState={appState}
                     />
                   )}
-                  {currentSection === "staff" && appState.staff && (
+                  {currentSection === "staff" && appState.staff && currentUser && (
                     <StaffSection
                       staff={appState.staff}
                       onSave={onSaveStaff}
