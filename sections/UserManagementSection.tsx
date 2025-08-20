@@ -39,13 +39,18 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
 }) => {
     const { users, teams, teamMemberships } = appState;
     
-    // Protection contre users undefined
-    if (!users) {
+    // Protection contre les données undefined
+    if (!users || !teams || !teamMemberships) {
         return (
             <SectionWrapper title="Gestion des Utilisateurs et des Accès">
                 <div className="text-center p-8 bg-gray-50 rounded-lg border">
                     <h3 className="text-xl font-semibold text-gray-700">Chargement...</h3>
                     <p className="mt-2 text-gray-500">Initialisation des données utilisateurs...</p>
+                    <div className="mt-4 text-sm text-gray-400">
+                        {!users && <div>• Utilisateurs en cours de chargement...</div>}
+                        {!teams && <div>• Équipes en cours de chargement...</div>}
+                        {!teamMemberships && <div>• Adhésions en cours de chargement...</div>}
+                    </div>
                 </div>
             </SectionWrapper>
         );
@@ -94,6 +99,95 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
             setTransferConfirmation(null);
             setUserToTransfer(null);
         }
+    };
+
+    // Fonctions de gestion avancée
+    const exportTeamData = () => {
+        try {
+            const teamData = {
+                team: teams.find(t => t.id === currentTeamId),
+                members: activeMemberships.map(m => {
+                    const user = getUser(m.userId);
+                    return {
+                        ...m,
+                        user: user ? { firstName: user.firstName, lastName: user.lastName, email: user.email } : null
+                    };
+                }),
+                exportDate: new Date().toISOString()
+            };
+
+            const dataStr = JSON.stringify(teamData, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `equipe_${currentTeamId}_${new Date().toISOString().split('T')[0]}.json`;
+            link.click();
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Erreur lors de l\'export:', error);
+            alert('Erreur lors de l\'export des données');
+        }
+    };
+
+    const exportUserList = () => {
+        try {
+            const userList = activeMemberships.map(m => {
+                const user = getUser(m.userId);
+                return {
+                    firstName: user?.firstName || '',
+                    lastName: user?.lastName || '',
+                    email: user?.email || '',
+                    role: m.userRole,
+                    permissionRole: m.permissionRole,
+                    joinedAt: m.requestedAt
+                };
+            });
+
+            const csvContent = [
+                ['Prénom', 'Nom', 'Email', 'Rôle', 'Permission', 'Date d\'adhésion'],
+                ...userList.map(u => [u.firstName, u.lastName, u.email, u.role, u.permissionRole, u.joinedAt])
+            ].map(row => row.join(',')).join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `utilisateurs_equipe_${new Date().toISOString().split('T')[0]}.csv`;
+            link.click();
+            URL.revokeObjectURL(link.href);
+        } catch (error) {
+            console.error('Erreur lors de l\'export:', error);
+            alert('Erreur lors de l\'export de la liste');
+        }
+    };
+
+    const bulkUpdateRoles = () => {
+        alert('Fonctionnalité de mise à jour en lot des rôles - À implémenter');
+    };
+
+    const sendTeamNotification = () => {
+        alert('Fonctionnalité de notification d\'équipe - À implémenter');
+    };
+
+    const getRecentActivityLogs = () => {
+        // Simulation de logs d'activité - À connecter avec un vrai système de logs
+        return [
+            {
+                type: 'success',
+                message: 'Nouveau membre approuvé: Jean Dupont',
+                timestamp: 'Il y a 2h'
+            },
+            {
+                type: 'warning',
+                message: 'Tentative de connexion échouée pour user@example.com',
+                timestamp: 'Il y a 4h'
+            },
+            {
+                type: 'info',
+                message: 'Mise à jour des permissions pour Marie Martin',
+                timestamp: 'Il y a 6h'
+            }
+        ];
     };
 
     return (
@@ -159,6 +253,30 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                             </table>
                         </div>
                     )}
+                </div>
+
+                {/* Statistiques de l'équipe */}
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="p-4 bg-blue-50 rounded-lg border border-blue-200">
+                        <div className="text-2xl font-bold text-blue-600">{activeMemberships.length}</div>
+                        <div className="text-sm text-blue-600">Membres Actifs</div>
+                    </div>
+                    <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
+                        <div className="text-2xl font-bold text-yellow-600">{pendingMemberships.length}</div>
+                        <div className="text-sm text-yellow-600">Demandes en Attente</div>
+                    </div>
+                    <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                        <div className="text-2xl font-bold text-green-600">
+                            {activeMemberships.filter(m => m.permissionRole === 'ADMIN' || m.permissionRole === 'EDITOR').length}
+                        </div>
+                        <div className="text-sm text-green-600">Managers/Admins</div>
+                    </div>
+                    <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                        <div className="text-2xl font-bold text-purple-600">
+                            {activeMemberships.filter(m => m.userRole === 'COUREUR').length}
+                        </div>
+                        <div className="text-sm text-purple-600">Coureurs</div>
+                    </div>
                 </div>
 
                 {/* Liste des membres actifs */}
@@ -227,6 +345,72 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                             </table>
                         </div>
                     )}
+                </div>
+
+                {/* Gestion avancée de l'équipe */}
+                <div className="p-4 bg-white rounded-lg shadow-md border">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Gestion Avancée de l'Équipe</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* Export des données */}
+                        <div className="space-y-3">
+                            <h4 className="font-medium text-gray-700">Export et Sauvegarde</h4>
+                            <div className="space-y-2">
+                                <ActionButton 
+                                    onClick={() => exportTeamData()} 
+                                    variant="secondary" 
+                                    size="sm"
+                                    className="w-full justify-center"
+                                >
+                                    📊 Exporter les Données de l'Équipe
+                                </ActionButton>
+                                <ActionButton 
+                                    onClick={() => exportUserList()} 
+                                    variant="secondary" 
+                                    size="sm"
+                                    className="w-full justify-center"
+                                >
+                                    👥 Exporter la Liste des Utilisateurs
+                                </ActionButton>
+                            </div>
+                        </div>
+
+                        {/* Actions d'administration */}
+                        <div className="space-y-3">
+                            <h4 className="font-medium text-gray-700">Actions d'Administration</h4>
+                            <div className="space-y-2">
+                                <ActionButton 
+                                    onClick={() => bulkUpdateRoles()} 
+                                    variant="secondary" 
+                                    size="sm"
+                                    className="w-full justify-center"
+                                >
+                                    🔄 Mise à Jour en Lot des Rôles
+                                </ActionButton>
+                                <ActionButton 
+                                    onClick={() => sendTeamNotification()} 
+                                    variant="secondary" 
+                                    size="sm"
+                                    className="w-full justify-center"
+                                >
+                                    📢 Envoyer une Notification d'Équipe
+                                </ActionButton>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Logs d'activité */}
+                <div className="p-4 bg-white rounded-lg shadow-md border">
+                    <h3 className="text-lg font-semibold text-gray-800 mb-4">Logs d'Activité Récente</h3>
+                    <div className="space-y-2 max-h-40 overflow-y-auto">
+                        {getRecentActivityLogs().map((log, index) => (
+                            <div key={index} className="flex items-center space-x-3 p-2 bg-gray-50 rounded-md">
+                                <div className={`w-2 h-2 rounded-full ${log.type === 'success' ? 'bg-green-500' : log.type === 'warning' ? 'bg-yellow-500' : 'bg-blue-500'}`}></div>
+                                <span className="text-sm text-gray-600">{log.message}</span>
+                                <span className="text-xs text-gray-400 ml-auto">{log.timestamp}</span>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </div>
              {editingPermissionsForUser && (
