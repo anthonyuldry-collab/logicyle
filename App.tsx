@@ -1061,9 +1061,7 @@ const App: React.FC = () => {
                   {currentSection === "events" && (
                     <EventsSection
                       raceEvents={appState.raceEvents}
-                      setRaceEvents={createBatchSetHandler<RaceEvent>(
-                        "raceEvents"
-                      )}
+                      setRaceEvents={onSaveRaceEvent}
                       setEventDocuments={createBatchSetHandler<EventRaceDocument>(
                         "eventDocuments"
                       )}
