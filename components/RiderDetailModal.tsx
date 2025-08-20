@@ -148,6 +148,7 @@ const createNewRiderState = (): Omit<Rider, 'id'> => {
     profile30KJ: 'Profil 30kJ généré automatiquement',
     profile45KJ: 'Profil 45kJ généré automatiquement',
 };
+};
 
 export const RiderDetailModal: React.FC<RiderDetailModalProps> = ({
   isOpen,
