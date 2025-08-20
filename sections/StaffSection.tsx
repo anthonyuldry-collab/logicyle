@@ -393,6 +393,57 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
     setEditingStaffMember(member);
     setIsDetailModalOpen(true);
   };
+  const openAddNewMissionModal = () => {
+    setEditingMission(null);
+    setNewMissionData(initialMissionFormState);
+    setIsPostMissionModalOpen(true);
+  };
+
+  const openEditMissionModal = (mission: Mission) => {
+      setEditingMission(mission);
+      setNewMissionData({
+          ...mission,
+          requirements: mission.requirements || [],
+      });
+      setIsPostMissionModalOpen(true);
+  };
+
+  const handleDeleteMission = (missionToDelete: Mission) => {
+      setConfirmAction({
+          title: `Supprimer l'annonce "${missionToDelete.title}"`,
+          message: "Êtes-vous sûr de vouloir supprimer cette annonce ? Cette action est irréversible.",
+          onConfirm: () => {
+              setLocalMissions(prev => prev.filter(m => m.id !== missionToDelete.id));
+          }
+      });
+  };
+  
+  const handleUpdateMissionStatus = (missionId: string, status: MissionStatus) => {
+    setLocalMissions(prev => prev.map(m => m.id === missionId ? { ...m, status } : m));
+  };
+
+  const handleSaveMission = () => {
+    if (!team) return;
+    
+    if (editingMission) {
+        setLocalMissions(prev => prev.map(m => 
+            m.id === editingMission.id 
+            ? { ...m, ...newMissionData, id: editingMission.id, teamId: team.id } 
+            : m
+        ));
+    } else {
+        const newMission: Mission = {
+            ...newMissionData,
+            id: generateId(),
+            teamId: team.id,
+            status: MissionStatus.OPEN,
+            applicants: []
+        };
+        setLocalMissions(prev => [...prev, newMission]);
+    }
+    setIsPostMissionModalOpen(false);
+    setEditingMission(null);
+  };
 
   const renderDetailsTab = () => (
     <div className="space-y-4">
@@ -481,6 +532,104 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
       </div>
     </div>
   );
+  const renderSearchTab = () => (
+    <StaffSearchTab
+      allStaff={localStaff}
+      raceEvents={localRaceEvents}
+      teamAddress={team?.address}
+      performanceEntries={performanceEntries}
+    />
+  );
+  
+  const renderMissionSearchTab = () => (
+    <MissionSearchSection
+      missions={missions}
+      teams={teams}
+      currentUser={currentUser}
+      setMissions={setLocalMissions}
+    />
+  );
+
+  const renderMyApplicationsTab = () => {
+    if (!currentUser?.id || !Array.isArray(localMissions)) return <div className="text-center text-gray-500">Chargement des candidatures...</div>;
+    const myApplications = localMissions.filter(m => m.applicants?.includes(currentUser.id));
+    return (
+        <div className="space-y-3">
+            <h3 className="text-xl font-semibold">Mes Candidatures</h3>
+            {myApplications.length > 0 ? myApplications.map(mission => (
+                <div key={mission.id} className="p-3 bg-white rounded-md border flex justify-between items-center">
+                    <div>
+                        <p className="font-bold">{mission.title} - <span className="font-normal text-gray-600">{teams.find(t=>t.id === mission.teamId)?.name}</span></p>
+                        <p className="text-sm text-gray-500">Statut: En attente</p>
+                    </div>
+                    <ActionButton variant="secondary" size="sm" onClick={() => setSelectedMissionForDetails(mission)}>Voir l'annonce</ActionButton>
+                </div>
+            )) : <p className="italic text-gray-500">Vous n'avez postulé à aucune mission.</p>}
+        </div>
+    );
+  };
+  
+  const renderPostingsManagementTab = () => {
+    if (!currentUser?.permissionRole || !Array.isArray(localMissions)) return <div className="text-center text-gray-500">Chargement des annonces...</div>;
+    if (currentUser.permissionRole !== TeamRole.ADMIN && currentUser.permissionRole !== TeamRole.EDITOR) {
+      return null;
+    }
+    const myTeamMissions = localMissions.filter(m => m.teamId === team?.id);
+    const openMissions = myTeamMissions.filter(m => m.status === MissionStatus.OPEN).sort((a,b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+    const archivedMissions = myTeamMissions.filter(m => m.status !== MissionStatus.OPEN).sort((a,b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime());
+    
+    const MissionListItem = ({ mission }: { mission: Mission}) => (
+         <div key={mission.id} className="p-3 bg-white rounded-md border flex justify-between items-center flex-wrap gap-2">
+             <div>
+                <p className="font-bold">{mission.title} ({mission.role})</p>
+                <p className="text-sm text-gray-500">Statut: {mission.status} - Du {new Date(mission.startDate+'T12:00:00Z').toLocaleDateString('fr-CA')} au {new Date(mission.endDate+'T12:00:00Z').toLocaleDateString('fr-CA')}</p>
+             </div>
+             <div className="flex-shrink-0 space-x-2">
+                {mission.status === MissionStatus.OPEN ? (
+                    <ActionButton onClick={() => handleUpdateMissionStatus(mission.id, MissionStatus.CLOSED)} variant="warning" size="sm">Clôturer</ActionButton>
+                ) : (
+                    <ActionButton onClick={() => handleUpdateMissionStatus(mission.id, MissionStatus.OPEN)} variant="primary" size="sm">Ré-ouvrir</ActionButton>
+                )}
+                <ActionButton onClick={() => openEditMissionModal(mission)} variant="secondary" size="sm" icon={<PencilIcon className="w-4 h-4"/>}/>
+                <ActionButton onClick={() => handleDeleteMission(mission)} variant="danger" size="sm" icon={<TrashIcon className="w-4 h-4"/>}/>
+                <ActionButton onClick={() => { setMissionForApplicants(mission); setIsApplicantsModalOpen(true); }}>
+                    Voir Candidats ({mission.applicants?.length || 0})
+                </ActionButton>
+             </div>
+         </div>
+    );
+
+    return (
+        <div className="space-y-6">
+            <div className="flex justify-between items-center">
+                <h3 className="text-xl font-semibold">Annonces de Mon Équipe</h3>
+                <ActionButton onClick={openAddNewMissionModal} icon={<PlusCircleIcon className="w-5 h-5"/>}>Publier une mission</ActionButton>
+            </div>
+            
+            <div>
+              <h4 className="text-lg font-semibold text-gray-700 mb-2 border-b pb-1">Annonces Actives</h4>
+              <div className="space-y-3">
+                {openMissions.length > 0 ? (
+                  openMissions.map(m => <MissionListItem key={m.id} mission={m} />)
+                ) : (
+                  <p className="italic text-gray-500 p-3">Aucune annonce active.</p>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-6">
+              <h4 className="text-lg font-semibold text-gray-700 mb-2 border-b pb-1">Annonces Archivées</h4>
+              <div className="space-y-3">
+                {archivedMissions.length > 0 ? (
+                  archivedMissions.map(m => <MissionListItem key={m.id} mission={m} />)
+                ) : (
+                  <p className="italic text-gray-500 p-3">Aucune annonce archivée.</p>
+                )}
+              </div>
+            </div>
+        </div>
+    );
+  };
 
   return (
     <SectionWrapper title="Gestion du Staff">
@@ -555,7 +704,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
               </div>
               <div className="ml-3">
                 <p className="text-sm text-blue-800">
-                  <strong>Système de filtrage automatique :</strong> Seuls les staff ayant le bon rôle peuvent être assignés à chaque poste. 
+                  <strong>Système de filtrage automatique :</strong> Les staff sont automatiquement filtrés par rôle pour faciliter les assignations. 
                   Par exemple, un mécanicien ne peut être assigné qu'au poste "Mécanicien".
                 </p>
               </div>
