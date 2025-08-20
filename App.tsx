@@ -1081,6 +1081,7 @@ const App: React.FC = () => {
                       missions={appState.missions}
                       teams={appState.teams}
                       users={appState.users}
+                      permissionRoles={appState.permissionRoles}
                     />
                   )}
                   {currentSection === "vehicles" && (
