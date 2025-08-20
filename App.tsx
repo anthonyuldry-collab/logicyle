@@ -1111,6 +1111,7 @@ const App: React.FC = () => {
                       teams={appState.teams}
                       users={appState.users}
                       permissionRoles={appState.permissionRoles}
+                      vehicles={appState.vehicles}
                     />
                   )}
                   {currentSection === "vehicles" && (
