@@ -1134,6 +1134,7 @@ const App: React.FC = () => {
                       onDelete={onDeleteEquipment}
                       effectivePermissions={effectivePermissions}
                       equipmentStockItems={appState.equipmentStockItems}
+                      currentUser={currentUser}
                     />
                   )}
                   {currentSection === "performance" && appState.riders && currentUser && (
