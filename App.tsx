@@ -283,22 +283,38 @@ const App: React.FC = () => {
 
   // --- DATA HANDLERS ---
   const onSaveRider = useCallback(async (item: Rider) => {
-    if (!appState.activeTeamId) return;
-    const savedId = await firebaseService.saveData(
-      appState.activeTeamId,
-      "riders",
-      item
-    );
-    const finalItem = { ...item, id: item.id || savedId };
+    console.log('onSaveRider appelé avec:', item);
+    
+    if (!appState.activeTeamId) {
+      console.error('Pas de activeTeamId');
+      return;
+    }
+    
+    try {
+      console.log('Sauvegarde dans Firebase...');
+      const savedId = await firebaseService.saveData(
+        appState.activeTeamId,
+        "riders",
+        item
+      );
+      console.log('Rider sauvegardé avec ID:', savedId);
+      
+      const finalItem = { ...item, id: item.id || savedId };
+      console.log('Item final:', finalItem);
 
-    setAppState((prev: AppState) => {
-      const collection = prev.riders;
-      const exists = collection.some((i: Rider) => i.id === finalItem.id);
-      const newCollection = exists
-        ? collection.map((i: Rider) => (i.id === finalItem.id ? finalItem : i))
-        : [...collection, finalItem];
-      return { ...prev, riders: newCollection };
-    });
+      setAppState((prev: AppState) => {
+        const collection = prev.riders;
+        const exists = collection.some((i: Rider) => i.id === finalItem.id);
+        const newCollection = exists
+          ? collection.map((i: Rider) => (i.id === finalItem.id ? finalItem : i))
+          : [...collection, finalItem];
+        
+        console.log('Nouvelle collection riders:', newCollection);
+        return { ...prev, riders: newCollection };
+      });
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde du rider:', error);
+    }
   }, [appState.activeTeamId]);
 
   const onDeleteRider = useCallback(async (item: Rider) => {

@@ -56,7 +56,25 @@ const getInitialPerformanceFactorDetail = (factorId: keyof Pick<Rider, 'physique
     };
 };
 
-const createNewRiderState = (): Omit<Rider, 'id'> => ({
+const createNewRiderState = (): Omit<Rider, 'id'> => {
+    // Générer des données de référence automatiques basées sur un poids moyen
+    const defaultWeight = 70; // kg
+    const defaultSex = 'M'; // Masculin par défaut
+    
+    // Référence pour un coureur "Modéré" selon les tables de référence
+    const referenceValues = {
+        power1s: 21.1 * defaultWeight, // 21.1 W/kg * 70kg = 1477W
+        power5s: 14.4 * defaultWeight, // 14.4 W/kg * 70kg = 1008W
+        power30s: 8.4 * defaultWeight,  // 8.4 W/kg * 70kg = 588W
+        power1min: 6.2 * defaultWeight, // 6.2 W/kg * 70kg = 434W
+        power3min: 5.0 * defaultWeight, // 5.0 W/kg * 70kg = 350W
+        power5min: 4.7 * defaultWeight, // 4.7 W/kg * 70kg = 329W
+        power12min: 4.0 * defaultWeight, // 4.0 W/kg * 70kg = 280W
+        power20min: 3.8 * defaultWeight, // 3.8 W/kg * 70kg = 266W
+        criticalPower: 3.8 * defaultWeight, // CP = 20min power
+    };
+
+    return ({
     firstName: '',
     lastName: '',
     charSprint: 0,
@@ -91,14 +109,44 @@ const createNewRiderState = (): Omit<Rider, 'id'> => ({
     roadBikeSetup: { specifics: {}, cotes: {} },
     ttBikeSetup: { specifics: {}, cotes: {} },
     clothing: [],
-    powerProfileFresh: {},
-    powerProfile15KJ: {},
-    powerProfile30KJ: {},
-    powerProfile45KJ: {},
-    profilePRR: '',
-    profile15KJ: '',
-    profile30KJ: '',
-    profile45KJ: '',
+    powerProfileFresh: referenceValues,
+    powerProfile15KJ: {
+        power1s: Math.round(referenceValues.power1s * 0.95), // 5% de baisse
+        power5s: Math.round(referenceValues.power5s * 0.95),
+        power30s: Math.round(referenceValues.power30s * 0.95),
+        power1min: Math.round(referenceValues.power1min * 0.95),
+        power3min: Math.round(referenceValues.power3min * 0.95),
+        power5min: Math.round(referenceValues.power5min * 0.95),
+        power12min: Math.round(referenceValues.power12min * 0.95),
+        power20min: Math.round(referenceValues.power20min * 0.95),
+        criticalPower: Math.round(referenceValues.criticalPower * 0.95),
+    },
+    powerProfile30KJ: {
+        power1s: Math.round(referenceValues.power1s * 0.90), // 10% de baisse
+        power5s: Math.round(referenceValues.power5s * 0.90),
+        power30s: Math.round(referenceValues.power30s * 0.90),
+        power1min: Math.round(referenceValues.power1min * 0.90),
+        power3min: Math.round(referenceValues.power3min * 0.90),
+        power5min: Math.round(referenceValues.power5min * 0.90),
+        power12min: Math.round(referenceValues.power12min * 0.90),
+        power20min: Math.round(referenceValues.power20min * 0.90),
+        criticalPower: Math.round(referenceValues.criticalPower * 0.90),
+    },
+    powerProfile45KJ: {
+        power1s: Math.round(referenceValues.power1s * 0.85), // 15% de baisse
+        power5s: Math.round(referenceValues.power5s * 0.85),
+        power30s: Math.round(referenceValues.power30s * 0.85),
+        power1min: Math.round(referenceValues.power1min * 0.85),
+        power3min: Math.round(referenceValues.power3min * 0.85),
+        power5min: Math.round(referenceValues.power5min * 0.85),
+        power12min: Math.round(referenceValues.power12min * 0.85),
+        power20min: Math.round(referenceValues.power20min * 0.85),
+        criticalPower: Math.round(referenceValues.criticalPower * 0.85),
+    },
+    profilePRR: 'Profil de référence généré automatiquement',
+    profile15KJ: 'Profil 15kJ généré automatiquement',
+    profile30KJ: 'Profil 30kJ généré automatiquement',
+    profile45KJ: 'Profil 45kJ généré automatiquement',
 });
 
 export const RiderDetailModal: React.FC<RiderDetailModalProps> = ({
@@ -238,27 +286,41 @@ export const RiderDetailModal: React.FC<RiderDetailModalProps> = ({
   };
   
   const handleSave = async () => {
-    if (!onSaveRider) return;
+    console.log('handleSave appelé dans RiderDetailModal');
+    console.log('formData:', formData);
+    console.log('onSaveRider existe:', !!onSaveRider);
+    
+    if (!onSaveRider) {
+      console.error('onSaveRider n\'est pas défini');
+      return;
+    }
     
     let dataToSave: Rider = {
         ...(formData as Omit<Rider, 'id'>),
         id: (formData as Rider).id || `rider_${generateId()}`
     };
+    
+    console.log('dataToSave avant uploads:', dataToSave);
 
     if (newPhotoData && appState.activeTeamId) {
+        console.log('Upload de la photo...');
         const path = `teams/${appState.activeTeamId}/riders/${dataToSave.id}/photo`;
         const url = await uploadFile(newPhotoData.base64, path, newPhotoData.mimeType);
         dataToSave.photoUrl = url;
+        console.log('Photo uploadée:', url);
     }
 
     if (newLicenseData && appState.activeTeamId) {
+        console.log('Upload de la licence...');
         const path = `teams/${appState.activeTeamId}/riders/${dataToSave.id}/license`;
         const url = await uploadFile(newLicenseData.base64, path, newLicenseData.mimeType);
         dataToSave.licenseImageUrl = url;
         dataToSave.licenseImageBase64 = undefined;
         dataToSave.licenseImageMimeType = undefined;
+        console.log('Licence uploadée:', url);
     }
     
+    console.log('Appel de onSaveRider avec:', dataToSave);
     onSaveRider(dataToSave);
   };
   
@@ -319,6 +381,7 @@ export const RiderDetailModal: React.FC<RiderDetailModalProps> = ({
             handleInputChange={handleInputChange}
             formFieldsEnabled={isEditMode}
             powerDurationsConfig={powerDurationsConfig}
+            profileReliabilityLevel={profileReliabilityLevel}
           />
         );
       case 'project':
@@ -396,6 +459,44 @@ export const RiderDetailModal: React.FC<RiderDetailModalProps> = ({
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={isNew ? "Nouveau Coureur" : `${formData.firstName} ${formData.lastName}`}>
       <div className="bg-slate-800 text-white -m-6 p-4 rounded-lg">
+        {/* Affichage des étoiles de fiabilité du profil */}
+        {!isNew && (
+          <div className="mb-4 p-3 bg-slate-700 rounded-lg">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <span className="text-sm font-medium text-slate-300">Fiabilité du profil :</span>
+                <div className="flex space-x-1">
+                  {[1, 2, 3, 4].map((level) => (
+                    <svg
+                      key={level}
+                      className={`w-5 h-5 ${
+                        level <= profileReliabilityLevel
+                          ? 'text-yellow-400 fill-current'
+                          : 'text-slate-500'
+                      }`}
+                      viewBox="0 0 20 20"
+                    >
+                      <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                    </svg>
+                  ))}
+                </div>
+              </div>
+              <div className="text-xs text-slate-400">
+                {profileReliabilityLevel === 1 && "Profil basique"}
+                {profileReliabilityLevel === 2 && "Profil 15kJ"}
+                {profileReliabilityLevel === 3 && "Profil 30kJ"}
+                {profileReliabilityLevel === 4 && "Profil complet"}
+              </div>
+            </div>
+            <div className="mt-2 text-xs text-slate-400">
+              {profileReliabilityLevel === 1 && "Seules les informations de base sont disponibles"}
+              {profileReliabilityLevel === 2 && "Données de puissance 15kJ disponibles"}
+              {profileReliabilityLevel === 3 && "Données de puissance 30kJ disponibles"}
+              {profileReliabilityLevel === 4 && "Profil de performance complet avec données 45kJ"}
+            </div>
+          </div>
+        )}
+        
         <div className="flex justify-between items-center mb-4">
             <nav className="flex space-x-1 border-b border-slate-600 w-full overflow-x-auto">
                 {tabs.map(tab => (
