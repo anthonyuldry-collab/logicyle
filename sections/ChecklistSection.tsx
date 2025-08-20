@@ -11,25 +11,23 @@ import ConfirmationModal from '../components/ConfirmationModal';
 
 interface ChecklistSectionProps {
   checklistTemplates: Record<ChecklistRole, ChecklistTemplate[]>;
-  setChecklistTemplates: React.Dispatch<React.SetStateAction<Record<ChecklistRole, ChecklistTemplate[]>>>;
-  currentUser: User;
+  onSaveChecklistTemplate: (template: ChecklistTemplate) => void;
+  onDeleteChecklistTemplate: (templateId: string) => void;
+  effectivePermissions?: any;
 }
 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
 
-export const ChecklistSection: React.FC<ChecklistSectionProps> = ({ checklistTemplates, setChecklistTemplates, currentUser }) => {
-  const isRider = currentUser.permissionRole === TeamRole.VIEWER;
-  const [activeRole, setActiveRole] = useState<ChecklistRole>(isRider ? ChecklistRole.COUREUR : ChecklistRole.DS);
+const ChecklistSection: React.FC<ChecklistSectionProps> = ({ checklistTemplates, onSaveChecklistTemplate, onDeleteChecklistTemplate, effectivePermissions }) => {
+  // Déterminer le rôle actif basé sur les permissions ou utiliser DS par défaut
+  const [activeRole, setActiveRole] = useState<ChecklistRole>(ChecklistRole.DS);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentItem, setCurrentItem] = useState<ChecklistTemplate | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [confirmAction, setConfirmAction] = useState<{ onConfirm: () => void } | null>(null);
 
-  useEffect(() => {
-    if (isRider) {
-      setActiveRole(ChecklistRole.COUREUR);
-    }
-  }, [isRider]);
+  // Déterminer si l'utilisateur est un coureur basé sur les permissions
+  const isRider = effectivePermissions && effectivePermissions.checklist && effectivePermissions.checklist.includes('view');
 
   const handleAddTask = () => {
     setCurrentItem({ id: '', name: '' });
@@ -46,10 +44,7 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({ checklistTem
   const handleDeleteTask = (taskId: string) => {
     setConfirmAction({
       onConfirm: () => {
-        setChecklistTemplates(prevTemplates => ({
-          ...prevTemplates,
-          [activeRole]: (prevTemplates[activeRole] || []).filter(task => task.id !== taskId)
-        }));
+        onDeleteChecklistTemplate(taskId);
       }
     });
   };
@@ -59,17 +54,9 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({ checklistTem
     if (!currentItem || !currentItem.name) return;
 
     if (isEditing) {
-      setChecklistTemplates(prev => ({
-        ...prev,
-        [activeRole]: (prev[activeRole] || []).map(task =>
-          task.id === currentItem.id ? currentItem : task
-        ),
-      }));
+      onSaveChecklistTemplate(currentItem);
     } else {
-      setChecklistTemplates(prev => ({
-        ...prev,
-        [activeRole]: [...(prev[activeRole] || []), { ...currentItem, id: generateId() }],
-      }));
+      onSaveChecklistTemplate({ ...currentItem, id: generateId() });
     }
     setIsModalOpen(false);
     setCurrentItem(null);
@@ -166,3 +153,5 @@ export const ChecklistSection: React.FC<ChecklistSectionProps> = ({ checklistTem
     </SectionWrapper>
   );
 };
+
+export default ChecklistSection;

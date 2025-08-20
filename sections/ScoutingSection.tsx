@@ -18,12 +18,9 @@ import StarIcon from '../components/icons/StarIcon';
 
 interface ScoutingSectionProps {
   scoutingProfiles: ScoutingProfile[];
-  setScoutingProfiles: React.Dispatch<React.SetStateAction<ScoutingProfile[]>>;
-  setRiders: React.Dispatch<React.SetStateAction<Rider[]>>;
-  users: User[];
-  onSendScoutingRequest: (athlete: User) => void;
-  appState: AppState;
-  currentTeamId: string | null;
+  onSaveScoutingProfile: (profile: ScoutingProfile) => void;
+  onDeleteScoutingProfile: (profileId: string) => void;
+  effectivePermissions?: any;
 }
 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
@@ -138,7 +135,7 @@ const SpiderChart: React.FC<{ data: { axis: string; value: number }[]; size?: nu
     );
 };
 
-export const ScoutingSection: React.FC<ScoutingSectionProps> = ({ scoutingProfiles, setScoutingProfiles, setRiders, users, onSendScoutingRequest, appState, currentTeamId }) => {
+const ScoutingSection: React.FC<ScoutingSectionProps> = ({ scoutingProfiles, onSaveScoutingProfile, onDeleteScoutingProfile, effectivePermissions }) => {
   // Protection minimale - seulement scoutingProfiles est requis
   if (!scoutingProfiles) {
     return (
@@ -302,7 +299,8 @@ export const ScoutingSection: React.FC<ScoutingSectionProps> = ({ scoutingProfil
                 generalPerformanceScore: profile.generalPerformanceScore ?? 0,
                 fatigueResistanceScore: profile.fatigueResistanceScore ?? 0,
             };
-            setRiders(prev => [...prev, newRider]);
+            // TODO: Implémenter l'ajout du coureur via une fonction de callback
+            console.log('Nouveau coureur à ajouter:', newRider);
             setScoutingProfiles(prev => prev.filter(p => p.id !== profile.id));
         }
     });
@@ -346,12 +344,13 @@ export const ScoutingSection: React.FC<ScoutingSectionProps> = ({ scoutingProfil
   };
   
   const allProfilesForAnalysis = useMemo(() => {
+    // Pour l'instant, on utilise seulement les profils de scouting
+    // TODO: Ajouter une prop riders si nécessaire
     const combined = [
-        ...appState.riders.map(r => ({ ...r, id: r.id, name: `${r.firstName} ${r.lastName}`, type: 'Effectif' })), 
         ...scoutingProfiles.map(s => ({ ...s, id: s.id, name: `${s.firstName} ${s.lastName}`, type: 'Prospect' }))
     ];
     return combined.sort((a, b) => a.name.localeCompare(b.name));
-  }, [appState.riders, scoutingProfiles]);
+  }, [scoutingProfiles]);
 
   const handleProfileSelectionForAnalysis = (profileId: string) => {
     setSelectedProfileIdsForAnalysis(prev => {
@@ -673,3 +672,5 @@ export const ScoutingSection: React.FC<ScoutingSectionProps> = ({ scoutingProfil
     </SectionWrapper>
   );
 };
+
+export default ScoutingSection;
