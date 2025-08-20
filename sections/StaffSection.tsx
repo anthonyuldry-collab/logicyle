@@ -40,6 +40,7 @@ interface StaffSectionProps {
   users?: User[];
   permissionRoles?: any[];
   vehicles?: Vehicle[];
+  onSaveRaceEvent?: (event: RaceEvent) => Promise<void>;
 }
 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
@@ -149,6 +150,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
   users,
   permissionRoles,
   vehicles,
+  onSaveRaceEvent,
 }: StaffSectionProps) => {
   // Protection simplifiée - seulement staff et currentUser sont requis
   if (!staff || !currentUser) {
@@ -478,9 +480,25 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
       console.log('Synchronisation bidirectionnelle effectuée');
 
       // 6. SAUVEGARDE EN BASE DE DONNÉES - Événement
-      // Ici vous pouvez appeler votre fonction de sauvegarde Firebase
-      // Par exemple: await saveEventAssignments(eventId, assignments);
-      console.log('💾 Assignations prêtes pour sauvegarde en base de données');
+      try {
+        console.log('💾 Sauvegarde de l\'événement avec les nouvelles assignations...');
+        
+        // Récupérer l'événement mis à jour
+        const updatedEvent = localRaceEvents.find(e => e.id === eventId);
+        if (updatedEvent && onSaveRaceEvent) {
+          // Sauvegarder l'événement mis à jour en base de données
+          await onSaveRaceEvent(updatedEvent);
+          console.log('✅ Événement sauvegardé avec succès en base de données');
+        } else if (updatedEvent) {
+          console.log('✅ Événement mis à jour localement:', updatedEvent);
+          console.log('⚠️ Fonction onSaveRaceEvent non disponible, événement non sauvegardé en base');
+        } else {
+          console.log('❌ Événement mis à jour non trouvé');
+        }
+      } catch (error) {
+        console.error('❌ Erreur lors de la sauvegarde de l\'événement:', error);
+        alert('⚠️ Erreur lors de la sauvegarde de l\'événement. Vérifiez la console pour plus de détails.');
+      }
       
       // 7. SAUVEGARDE AUTOMATIQUE DES PROFILS STAFF MIS À JOUR
       if (onSave) {
@@ -549,12 +567,9 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
       // 8. Notification de succès
       alert('✅ Assignations sauvegardées avec succès !\n\nSynchronisation bidirectionnelle effectuée :\n- Événement mis à jour\n- Profils staff mis à jour et sauvegardés\n- Profils véhicules mis à jour');
 
-      // 4. Fermer le modal
+      // 9. Fermer le modal et réinitialiser
       setAssignmentModalEvent(null);
       setModalAssignments({});
-      
-      // 5. Afficher un message de confirmation
-      alert('Assignations sauvegardées avec succès ! Synchronisation bidirectionnelle effectuée.');
       
     } catch (error) {
       console.error('Erreur lors de la sauvegarde des assignations:', error);
