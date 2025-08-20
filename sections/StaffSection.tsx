@@ -40,6 +40,7 @@ interface StaffSectionProps {
   missions?: Mission[];
   teams?: Team[];
   users?: User[];
+  permissionRoles?: any[]; // Ajout de permissionRoles
 }
 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
@@ -148,6 +149,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
   missions,
   teams,
   users,
+  permissionRoles,
 }) => {
   // Protection simplifiée - seulement staff et currentUser sont requis
   if (!staff || !currentUser) {
