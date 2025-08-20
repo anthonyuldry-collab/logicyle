@@ -716,7 +716,7 @@ const App: React.FC = () => {
   const createBatchSetHandler = <T,>(
     collectionName: keyof TeamState
   ): React.Dispatch<React.SetStateAction<T[]>> =>
-    (updater) => {
+    (updater: React.SetStateAction<T[]>) => {
       setAppState((prev: AppState) => {
         const currentItems = prev[collectionName] as T[];
         const newItems =

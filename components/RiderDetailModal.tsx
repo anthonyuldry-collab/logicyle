@@ -74,7 +74,7 @@ const createNewRiderState = (): Omit<Rider, 'id'> => {
         criticalPower: 3.8 * defaultWeight, // CP = 20min power
     };
 
-    return ({
+    return {
     firstName: '',
     lastName: '',
     charSprint: 0,
@@ -147,7 +147,7 @@ const createNewRiderState = (): Omit<Rider, 'id'> => {
     profile15KJ: 'Profil 15kJ généré automatiquement',
     profile30KJ: 'Profil 30kJ généré automatiquement',
     profile45KJ: 'Profil 45kJ généré automatiquement',
-});
+};
 
 export const RiderDetailModal: React.FC<RiderDetailModalProps> = ({
   isOpen,
@@ -160,7 +160,7 @@ export const RiderDetailModal: React.FC<RiderDetailModalProps> = ({
   riderEventSelections,
   performanceEntries,
   powerDurationsConfig,
-}) => {
+}: RiderDetailModalProps) => {
   const isNew = !rider;
   const [formData, setFormData] = useState<Rider | Omit<Rider, 'id'>>(() =>
     isNew ? createNewRiderState() : structuredClone(rider)
@@ -208,10 +208,10 @@ export const RiderDetailModal: React.FC<RiderDetailModalProps> = ({
     });
 
     if (hasChanged) {
-      setFormData(prev => ({ 
-          ...prev, 
-          ...updatedCharacteristics
-      }));
+              setFormData((prev: Rider | Omit<Rider, 'id'>) => ({ 
+            ...prev, 
+            ...updatedCharacteristics
+        }));
     }
 
   }, [formData]);
@@ -221,7 +221,7 @@ export const RiderDetailModal: React.FC<RiderDetailModalProps> = ({
     const { name, value, type } = e.target;
     const checked = (e.target as HTMLInputElement).checked;
 
-    setFormData(prev => {
+    setFormData((prev: Rider | Omit<Rider, 'id'>) => {
         if (!prev) return prev;
         
         const newFormData = structuredClone(prev); // Use structuredClone for safe deep copy
