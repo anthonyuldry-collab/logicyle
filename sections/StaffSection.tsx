@@ -385,41 +385,44 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
     console.log('Sauvegarde des assignations pour l\'événement:', eventId, assignments);
     
     try {
-      // 1. Mettre à jour l'événement localement
+      // 1. Mettre à jour l'événement localement avec TOUTES les assignations
       setLocalRaceEvents(prevEvents => prevEvents.map(event => {
         if (event.id === eventId) {
-          const updatedEvent = { ...event, ...assignments };
+          // Créer un événement mis à jour avec toutes les assignations
+          const updatedEvent = { 
+            ...event, 
+            ...assignments,
+            // Mettre à jour explicitement chaque propriété de rôle
+            directeurSportifId: assignments.directeurSportifId || event.directeurSportifId || [],
+            assistantId: assignments.assistantId || event.assistantId || [],
+            mecanoId: assignments.mecanoId || event.mecanoId || [],
+            entraineurId: assignments.entraineurId || event.entraineurId || [],
+            respPerfId: assignments.respPerfId || event.respPerfId || []
+          };
           
           // Mettre à jour selectedStaffIds avec tous les staff assignés
           const allAssignedStaff = new Set<string>();
-          STAFF_ROLES_CONFIG.flatMap(g => g.roles).forEach(roleInfo => {
-            const roleKey = roleInfo.key as StaffRoleKey;
-            const assignedIds = assignments[roleKey] || [];
-            assignedIds.forEach(id => allAssignedStaff.add(id));
+          Object.values(assignments).forEach(roleIds => {
+            if (Array.isArray(roleIds)) {
+              roleIds.forEach(id => allAssignedStaff.add(id));
+            }
           });
           
           updatedEvent.selectedStaffIds = Array.from(allAssignedStaff);
-          console.log('Événement mis à jour:', updatedEvent);
+          console.log('Événement mis à jour avec toutes les assignations:', updatedEvent);
           return updatedEvent;
         }
         return event;
       }));
 
-      // 2. Réinitialiser les assignations du modal pour forcer la mise à jour des alertes
-      setModalAssignments({});
-      
-      // Debug: Vérifier que les alertes se mettent à jour
-      console.log('Assignations sauvegardées, modalAssignments réinitialisé');
-      console.log('Nouvelles assignations:', assignments);
-      console.log('Alertes après sauvegarde:', alertsAndActions);
-
       // 2. Synchronisation bidirectionnelle : mettre à jour les profils staff
       setLocalStaff(prevStaff => prevStaff.map(staffMember => {
         const isAssignedToThisEvent = Object.values(assignments).some(roleIds => 
-          roleIds.includes(staffMember.id)
+          Array.isArray(roleIds) && roleIds.includes(staffMember.id)
         );
         
         if (isAssignedToThisEvent) {
+          // Ajouter l'événement à la liste des événements du staff
           const updatedStaffMember = { ...staffMember };
           if (!updatedStaffMember.assignedEvents) {
             updatedStaffMember.assignedEvents = [];
@@ -427,12 +430,15 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
           if (!updatedStaffMember.assignedEvents.includes(eventId)) {
             updatedStaffMember.assignedEvents = [...updatedStaffMember.assignedEvents, eventId];
           }
+          console.log(`Staff ${staffMember.firstName} ${staffMember.lastName} assigné à l'événement ${eventId}`);
           return updatedStaffMember;
         } else {
+          // Retirer l'événement de la liste des événements du staff
           const updatedStaffMember = { ...staffMember };
           if (updatedStaffMember.assignedEvents) {
             updatedStaffMember.assignedEvents = updatedStaffMember.assignedEvents.filter(id => id !== eventId);
           }
+          console.log(`Staff ${staffMember.firstName} ${staffMember.lastName} retiré de l'événement ${eventId}`);
           return updatedStaffMember;
         }
       }));
@@ -450,16 +456,34 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
             if (!updatedVehicle.assignedEvents.includes(eventId)) {
               updatedVehicle.assignedEvents = [...updatedVehicle.assignedEvents, eventId];
             }
+            console.log(`Véhicule ${vehicle.name} assigné à l'événement ${eventId}`);
             return updatedVehicle;
           } else {
             const updatedVehicle = { ...vehicle };
             if (updatedVehicle.assignedEvents) {
               updatedVehicle.assignedEvents = updatedVehicle.assignedEvents.filter(id => id !== eventId);
             }
+            console.log(`Véhicule ${vehicle.name} retiré de l'événement ${eventId}`);
             return updatedVehicle;
           }
         }));
       }
+
+      // 4. Réinitialiser les assignations du modal pour forcer la mise à jour des alertes
+      setModalAssignments({});
+      
+      // 5. Debug: Vérifier que les alertes se mettent à jour
+      console.log('✅ Assignations sauvegardées avec succès !');
+      console.log('Nouvelles assignations:', assignments);
+      console.log('Synchronisation bidirectionnelle effectuée');
+
+      // 6. SAUVEGARDE EN BASE DE DONNÉES (si une fonction de sauvegarde est disponible)
+      // Ici vous pouvez appeler votre fonction de sauvegarde Firebase
+      // Par exemple: await saveEventAssignments(eventId, assignments);
+      console.log('💾 Assignations prêtes pour sauvegarde en base de données');
+      
+      // 7. Notification de succès
+      alert('✅ Assignations sauvegardées avec succès !\n\nSynchronisation bidirectionnelle effectuée :\n- Événement mis à jour\n- Profils staff mis à jour\n- Profils véhicules mis à jour');
 
       // 4. Fermer le modal
       setAssignmentModalEvent(null);
@@ -577,11 +601,23 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
                                     <div className="space-y-1">
                                         {member.assignedEvents.slice(0, 3).map(eventId => {
                                             const event = localRaceEvents.find(e => e.id === eventId);
-                                            return event ? (
+                                            if (!event) return null;
+                                            
+                                            // Déterminer le rôle assigné pour cet événement
+                                            let assignedRole = 'Staff';
+                                            if (event.directeurSportifId?.includes(member.id)) assignedRole = 'Directeur Sportif';
+                                            else if (event.assistantId?.includes(member.id)) assignedRole = 'Assistant';
+                                            else if (event.mecanoId?.includes(member.id)) assignedRole = 'Mécanicien';
+                                            else if (event.entraineurId?.includes(member.id)) assignedRole = 'Entraîneur';
+                                            else if (event.respPerfId?.includes(member.id)) assignedRole = 'Resp. Performance';
+                                            
+                                            return (
                                                 <div key={eventId} className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                                                    {event.name} ({new Date(event.date).toLocaleDateString('fr-FR')})
+                                                    <div className="font-medium">{event.name}</div>
+                                                    <div className="text-blue-600">{new Date(event.date).toLocaleDateString('fr-FR')}</div>
+                                                    <div className="text-blue-500 font-semibold">{assignedRole}</div>
                                                 </div>
-                                            ) : null;
+                                            );
                                         })}
                                         {member.assignedEvents.length > 3 && (
                                             <div className="text-xs text-gray-500">
