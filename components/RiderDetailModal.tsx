@@ -318,6 +318,7 @@ export const RiderDetailModal: React.FC<RiderDetailModalProps> = ({
             formData={formData}
             handleInputChange={handleInputChange}
             formFieldsEnabled={isEditMode}
+            powerDurationsConfig={powerDurationsConfig}
           />
         );
       case 'project':
@@ -332,7 +333,7 @@ export const RiderDetailModal: React.FC<RiderDetailModalProps> = ({
         return (
           <ResultsTab
             formData={formData}
-            handleInputChange={handleInputChange}
+            setFormData={setFormData}
             formFieldsEnabled={isEditMode}
           />
         );
@@ -348,7 +349,7 @@ export const RiderDetailModal: React.FC<RiderDetailModalProps> = ({
         return (
           <NutritionTab
             formData={formData}
-            handleInputChange={handleInputChange}
+            setFormData={setFormData}
             formFieldsEnabled={isEditMode}
           />
         );
@@ -356,7 +357,7 @@ export const RiderDetailModal: React.FC<RiderDetailModalProps> = ({
         return (
           <EquipmentTab
             formData={formData}
-            handleInputChange={handleInputChange}
+            setFormData={setFormData}
             formFieldsEnabled={isEditMode}
           />
         );
