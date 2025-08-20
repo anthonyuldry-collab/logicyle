@@ -1145,25 +1145,268 @@ const App: React.FC = () => {
                   )}
                   {currentSection === "userManagement" && appState.users && appState.teamMemberships && (
                     <UserManagementSection
-                      users={appState.users}
-                      teamMemberships={appState.teamMemberships}
-                      onUpdateUserPermissions={async (userId, permissions) => {
+                      appState={appState}
+                      currentTeamId={appState.activeTeamId || ''}
+                      onApprove={async (membership) => {
+                        try {
+                          // Mettre à jour le statut de l'adhésion
+                          const membershipRef = doc(db, 'teamMemberships', membership.id);
+                          await updateDoc(membershipRef, {
+                            status: TeamMembershipStatus.ACTIVE,
+                            approvedAt: new Date().toISOString(),
+                            approvedBy: currentUser.id
+                          });
+
+                          // Mettre à jour l'état local
+                          setAppState(prev => ({
+                            ...prev,
+                            teamMemberships: prev.teamMemberships.map(m => 
+                              m.id === membership.id 
+                                ? { ...m, status: TeamMembershipStatus.ACTIVE, approvedAt: new Date().toISOString(), approvedBy: currentUser.id }
+                                : m
+                            )
+                          }));
+
+                          // Créer un profil utilisateur si nécessaire
+                          const existingUser = appState.users.find(u => u.email === membership.email);
+                          if (!existingUser) {
+                            const newUser: User = {
+                              id: generateId(),
+                              email: membership.email,
+                              firstName: membership.firstName || '',
+                              lastName: membership.lastName || '',
+                              userRole: UserRole.COUREUR,
+                              teamId: membership.teamId,
+                              permissionRole: TeamRole.MEMBER,
+                              createdAt: new Date().toISOString(),
+                              updatedAt: new Date().toISOString(),
+                              isActive: true
+                            };
+                            
+                            await setDoc(doc(db, 'users', newUser.id), newUser);
+                            setAppState(prev => ({
+                              ...prev,
+                              users: [...prev.users, newUser]
+                            }));
+                          }
+                        } catch (error) {
+                          console.error('Erreur lors de l\'approbation:', error);
+                          alert('Erreur lors de l\'approbation de l\'adhésion');
+                        }
+                      }}
+                      onDeny={async (membership) => {
+                        try {
+                          if (window.confirm(`Refuser l'adhésion de ${membership.email} ?`)) {
+                            // Supprimer l'adhésion refusée
+                            const membershipRef = doc(db, 'teamMemberships', membership.id);
+                            await deleteDoc(membershipRef);
+
+                            // Mettre à jour l'état local
+                            setAppState(prev => ({
+                              ...prev,
+                              teamMemberships: prev.teamMemberships.filter(m => m.id !== membership.id)
+                            }));
+                          }
+                        } catch (error) {
+                          console.error('Erreur lors du refus:', error);
+                          alert('Erreur lors du refus de l\'adhésion');
+                        }
+                      }}
+                      onInvite={async (email, teamId) => {
+                        try {
+                          // Vérifier si l'utilisateur existe déjà
+                          const existingUser = appState.users.find(u => u.email === email);
+                          if (existingUser) {
+                            alert('Un utilisateur avec cet email existe déjà');
+                            return;
+                          }
+
+                          // Créer une nouvelle adhésion en attente
+                          const newMembership: TeamMembership = {
+                            id: generateId(),
+                            email,
+                            teamId,
+                            status: TeamMembershipStatus.PENDING,
+                            requestedAt: new Date().toISOString(),
+                            requestedBy: currentUser.id,
+                            firstName: '',
+                            lastName: '',
+                            message: ''
+                          };
+
+                          // Sauvegarder dans Firestore
+                          await addDoc(collection(db, 'teamMemberships'), newMembership);
+
+                          // Mettre à jour l'état local
+                          setAppState(prev => ({
+                            ...prev,
+                            teamMemberships: [...prev.teamMemberships, newMembership]
+                          }));
+
+                          alert(`Invitation envoyée à ${email}`);
+                        } catch (error) {
+                          console.error('Erreur lors de l\'invitation:', error);
+                          alert('Erreur lors de l\'envoi de l\'invitation');
+                        }
+                      }}
+                      onRemove={async (userId, teamId) => {
+                        try {
+                          const user = appState.users.find(u => u.id === userId);
+                          if (!user) return;
+
+                          if (window.confirm(`Retirer ${user.firstName} ${user.lastName} de l'équipe ?`)) {
+                            // Supprimer l'adhésion
+                            const membership = appState.teamMemberships.find(m => m.userId === userId && m.teamId === teamId);
+                            if (membership) {
+                              await deleteDoc(doc(db, 'teamMemberships', membership.id));
+                            }
+
+                            // Mettre à jour l'utilisateur
+                            const userRef = doc(db, 'users', userId);
+                            await updateDoc(userRef, {
+                              teamId: null,
+                              permissionRole: null,
+                              updatedAt: new Date().toISOString()
+                            });
+
+                            // Mettre à jour l'état local
+                            setAppState(prev => ({
+                              ...prev,
+                              users: prev.users.map(u => 
+                                u.id === userId 
+                                  ? { ...u, teamId: null, permissionRole: null }
+                                  : u
+                              ),
+                              teamMemberships: prev.teamMemberships.filter(m => m.id !== membership?.id)
+                            }));
+                          }
+                        } catch (error) {
+                          console.error('Erreur lors de la suppression:', error);
+                          alert('Erreur lors de la suppression du membre');
+                        }
+                      }}
+                      onUpdateRole={async (userId, teamId, newUserRole) => {
+                        try {
+                          // Mettre à jour le rôle utilisateur
+                          const userRef = doc(db, 'users', userId);
+                          await updateDoc(userRef, {
+                            userRole: newUserRole,
+                            updatedAt: new Date().toISOString()
+                          });
+
+                          // Mettre à jour l'état local
+                          setAppState(prev => ({
+                            ...prev,
+                            users: prev.users.map(u => 
+                              u.id === userId 
+                                ? { ...u, userRole: newUserRole }
+                                : u
+                            )
+                          }));
+
+                          alert('Rôle utilisateur mis à jour avec succès');
+                        } catch (error) {
+                          console.error('Erreur lors de la mise à jour du rôle:', error);
+                          alert('Erreur lors de la mise à jour du rôle');
+                        }
+                      }}
+                      onUpdatePermissionRole={async (userId, newPermissionRole) => {
+                        try {
+                          // Mettre à jour le rôle de permission
+                          const userRef = doc(db, 'users', userId);
+                          await updateDoc(userRef, {
+                            permissionRole: newPermissionRole,
+                            updatedAt: new Date().toISOString()
+                          });
+
+                          // Mettre à jour l'état local
+                          setAppState(prev => ({
+                            ...prev,
+                            users: prev.users.map(u => 
+                              u.id === userId 
+                                ? { ...u, permissionRole: newPermissionRole }
+                                : u
+                            )
+                          }));
+
+                          alert('Rôle de permission mis à jour avec succès');
+                        } catch (error) {
+                          console.error('Erreur lors de la mise à jour des permissions:', error);
+                          alert('Erreur lors de la mise à jour des permissions');
+                        }
+                      }}
+                      onUpdateUserCustomPermissions={async (userId, newEffectivePermissions) => {
                         const userDocRef = doc(db, "users", userId);
                         await setDoc(
                           userDocRef,
-                          { customPermissions: permissions },
+                          { customPermissions: newEffectivePermissions },
                           { merge: true }
                         );
                         setAppState((prev) => ({
                           ...prev,
                           users: prev.users.map((u) =>
                             u.id === userId
-                              ? { ...u, customPermissions: permissions }
+                              ? { ...u, customPermissions: newEffectivePermissions }
                               : u
                           ),
                         }));
                       }}
-                      effectivePermissions={effectivePermissions}
+                      onTransferUser={async (userId, fromTeamId, toTeamId) => {
+                        try {
+                          const user = appState.users.find(u => u.id === userId);
+                          if (!user) return;
+
+                          if (window.confirm(`Transférer ${user.firstName} ${user.lastName} vers l'autre équipe ?`)) {
+                            // Mettre à jour l'utilisateur
+                            const userRef = doc(db, 'users', userId);
+                            await updateDoc(userRef, {
+                              teamId: toTeamId,
+                              updatedAt: new Date().toISOString()
+                            });
+
+                            // Supprimer l'ancienne adhésion
+                            const oldMembership = appState.teamMemberships.find(m => m.userId === userId && m.teamId === fromTeamId);
+                            if (oldMembership) {
+                              await deleteDoc(doc(db, 'teamMemberships', oldMembership.id));
+                            }
+
+                            // Créer la nouvelle adhésion
+                            const newMembership: TeamMembership = {
+                              id: generateId(),
+                              userId,
+                              email: user.email,
+                              teamId: toTeamId,
+                              status: TeamMembershipStatus.ACTIVE,
+                              requestedAt: new Date().toISOString(),
+                              requestedBy: currentUser.id,
+                              firstName: user.firstName,
+                              lastName: user.lastName,
+                              message: 'Transfert automatique'
+                            };
+
+                            await addDoc(collection(db, 'teamMemberships'), newMembership);
+
+                            // Mettre à jour l'état local
+                            setAppState(prev => ({
+                              ...prev,
+                              users: prev.users.map(u => 
+                                u.id === userId 
+                                  ? { ...u, teamId: toTeamId }
+                                  : u
+                              ),
+                              teamMemberships: [
+                                ...prev.teamMemberships.filter(m => m.id !== oldMembership?.id),
+                                newMembership
+                              ]
+                            }));
+
+                            alert('Utilisateur transféré avec succès');
+                          }
+                        } catch (error) {
+                          console.error('Erreur lors du transfert:', error);
+                          alert('Erreur lors du transfert de l\'utilisateur');
+                        }
+                      }}
                     />
                   )}
                   {currentSection === "permissions" && (
