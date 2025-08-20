@@ -165,7 +165,7 @@ export const EventsSection = ({
     setCurrentEventForModal(prev => ({ ...prev, [name]: name === 'endDate' && value === '' ? undefined : value }));
   };
 
-  const handleEventSubmit = (e: React.FormEvent) => {
+  const handleEventSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (isEditingModal && editingEventId) {
@@ -375,7 +375,7 @@ export const EventsSection = ({
     e.currentTarget.classList.remove('bg-blue-200', 'border-blue-400');
   };
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+  const handleDrop = async (e: React.DragEvent<HTMLDivElement>) => {
     if (!(e.currentTarget instanceof HTMLElement)) return;
     e.preventDefault();
     e.currentTarget.classList.remove('bg-blue-200', 'border-blue-400');
