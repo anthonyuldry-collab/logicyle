@@ -219,7 +219,12 @@ const handleRemoveListItem = (listName: 'workHistory' | 'education' | 'languages
       ...(formData as Omit<StaffMember, 'id'>), 
       id: (formData as StaffMember).id || generateId(),
     };
+    
+    // Sauvegarder le staff
     onSave(finalData);
+    
+    // Fermer la modal après la sauvegarde
+    onClose();
   };
   
   const handleWeeklyAvailabilityChange = (dayKey: string, slotKey: string, checked: boolean) => {

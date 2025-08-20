@@ -319,22 +319,37 @@ const App: React.FC = () => {
   }, [appState.activeTeamId]);
 
   const onSaveStaff = useCallback(async (item: StaffMember) => {
-    if (!appState.activeTeamId) return;
-    const savedId = await firebaseService.saveData(
-      appState.activeTeamId,
-      "staff",
-      item
-    );
-    const finalItem = { ...item, id: item.id || savedId };
+    console.log('onSaveStaff appelé avec:', item);
+    
+    if (!appState.activeTeamId) {
+      console.error('Pas de activeTeamId');
+      return;
+    }
+    
+    try {
+      const savedId = await firebaseService.saveData(
+        appState.activeTeamId,
+        "staff",
+        item
+      );
+      console.log('Staff sauvegardé avec ID:', savedId);
+      
+      const finalItem = { ...item, id: item.id || savedId };
+      console.log('Item final:', finalItem);
 
-    setAppState((prev: AppState) => {
-      const collection = prev.staff;
-      const exists = collection.some((i: StaffMember) => i.id === finalItem.id);
-      const newCollection = exists
-        ? collection.map((i: StaffMember) => (i.id === finalItem.id ? finalItem : i))
-        : [...collection, finalItem];
-      return { ...prev, staff: newCollection };
-    });
+      setAppState((prev: AppState) => {
+        const collection = prev.staff;
+        const exists = collection.some((i: StaffMember) => i.id === finalItem.id);
+        const newCollection = exists
+          ? collection.map((i: StaffMember) => (i.id === finalItem.id ? finalItem : i))
+          : [...collection, finalItem];
+        
+        console.log('Nouvelle collection staff:', newCollection);
+        return { ...prev, staff: newCollection };
+      });
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde du staff:', error);
+    }
   }, [appState.activeTeamId]);
 
   const onDeleteStaff = useCallback(async (item: StaffMember) => {
