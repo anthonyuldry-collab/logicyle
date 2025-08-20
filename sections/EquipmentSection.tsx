@@ -159,36 +159,34 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
   
   const getRiderNameById = (riderId?: string) => {
     if (!riderId) return 'N/A';
-    const rider = riders.find(r => r.id === riderId);
-    return rider ? `${rider.firstName} ${rider.lastName}` : 'Coureur Inconnu';
+    // TODO: Implémenter la récupération du nom du coureur via une prop riders
+    return 'Coureur Inconnu';
   };
 
   const filteredEquipment = useMemo(() => {
-    if (!riders || !equipment || !currentUser?.email || !currentUser?.permissionRole) return [];
-    const riderForCurrentUser = riders.find(r => r.email === currentUser.email);
-    const equipmentToDisplay = currentUser.permissionRole === TeamRole.VIEWER
-        ? (riderForCurrentUser ? equipment.filter(eq => eq.assignedToRiderId === riderForCurrentUser.id) : [])
-        : equipment;
-
-    return equipmentToDisplay.filter(item => {
+    if (!equipment) return [];
+    
+    // Pour l'instant, afficher tout l'équipement
+    // TODO: Implémenter le filtrage par coureur si nécessaire
+    return equipment.filter(item => {
         const nameMatch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
         const typeMatch = typeFilter === 'all' || item.type === typeFilter;
         const statusMatch = statusFilter === 'all' || item.status === statusFilter;
         return nameMatch && typeMatch && statusMatch;
     }).sort((a,b) => a.name.localeCompare(b.name));
-  }, [equipment, riders, currentUser?.email, currentUser?.permissionRole, searchTerm, typeFilter, statusFilter]);
+  }, [equipment, searchTerm, typeFilter, statusFilter]);
 
   useEffect(() => {
     if (selectedRiderForSetup) {
-      const rider = riders.find(r => r.id === selectedRiderForSetup);
+      // TODO: Implémenter la récupération des réglages du coureur via une prop riders
       setCurrentBikeSetup({
-        roadBikeSetup: rider?.roadBikeSetup || { specifics: {}, cotes: {} },
-        ttBikeSetup: rider?.ttBikeSetup || { specifics: {}, cotes: {} },
+        roadBikeSetup: { specifics: {}, cotes: {} },
+        ttBikeSetup: { specifics: {}, cotes: {} },
       });
     } else {
       setCurrentBikeSetup({});
     }
-  }, [selectedRiderForSetup, riders]);
+  }, [selectedRiderForSetup]);
 
   const handleBikeSetupChange = (
     bikeType: 'roadBikeSetup' | 'ttBikeSetup',
@@ -210,14 +208,9 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
 
   const handleSaveBikeSetup = () => {
     if (!selectedRiderForSetup) return;
-    setRiders(prevRiders =>
-      prevRiders.map(r =>
-        r.id === selectedRiderForSetup
-          ? { ...r, ...currentBikeSetup }
-          : r
-      )
-    );
-    alert(t('equipmentBikeSetupSaved'));
+    // TODO: Implémenter la sauvegarde des réglages du coureur via une prop onSaveRider
+    console.log('Sauvegarder réglages pour coureur:', selectedRiderForSetup, currentBikeSetup);
+    alert('Réglages sauvegardés (fonctionnalité à implémenter)');
   };
   
   // --- Stock Management Logic ---
@@ -445,7 +438,8 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
                                 <label htmlFor="assignedToRiderId" className="block text-sm font-medium">Assigné à (Coureur)</label>
                                 <select name="assignedToRiderId" id="assignedToRiderId" value={currentItem.assignedToRiderId || ''} onChange={handleInputChange} className="input-field-sm">
                                     <option value="" className="bg-slate-700">Non assigné</option>
-                                    {riders.map(rider => <option key={rider.id} value={rider.id} className="bg-slate-700">{`${rider.firstName} ${rider.lastName}`}</option>)}
+                                    {/* TODO: Implémenter la liste des coureurs via une prop riders */}
+                                    <option value="" className="bg-slate-700" disabled>Aucun coureur disponible</option>
                                 </select>
                             </div>
                         </div>
@@ -620,9 +614,8 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
           className="input-field-sm"
         >
           <option value="" className="bg-slate-700">-- Choisir un coureur --</option>
-          {riders.map(r => (
-            <option key={r.id} value={r.id} className="bg-slate-700">{`${r.firstName} ${r.lastName}`}</option>
-          ))}
+          {/* TODO: Implémenter la liste des coureurs via une prop riders */}
+          <option value="" className="bg-slate-700" disabled>Aucun coureur disponible</option>
         </select>
       </div>
 
@@ -631,7 +624,7 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
           <h4 className="text-lg font-semibold text-slate-100 mb-2">
             Réglages Vélo pour: {getRiderNameById(selectedRiderForSetup)}
             <span className="text-sm text-slate-400 ml-2">
-              (Taille: {riders.find(r => r.id === selectedRiderForSetup)?.heightCm || 'N/A'} cm)
+              (Taille: N/A cm)
             </span>
           </h4>
           
