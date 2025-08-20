@@ -22,6 +22,7 @@ interface EquipmentSectionProps {
   onSave: (item: EquipmentItem) => void;
   onDelete: (itemId: string) => void;
   effectivePermissions?: any;
+  equipmentStockItems?: EquipmentStockItem[];
 }
 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
@@ -38,7 +39,7 @@ const initialEquipmentStockItemFormState: Omit<EquipmentStockItem, 'id'> = {
 };
 
 const EquipmentSection: React.FC<EquipmentSectionProps> = ({ 
-    equipment, onSave, onDelete, effectivePermissions 
+    equipment, onSave, onDelete, effectivePermissions, equipmentStockItems = []
 }) => {
   // Protection minimale - seulement equipment est requis
   if (!equipment) {
@@ -50,6 +51,11 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
         </div>
       </SectionWrapper>
     );
+  }
+
+  // Protection pour equipmentStockItems
+  if (!equipmentStockItems) {
+    console.warn('⚠️ equipmentStockItems non défini, utilisation d\'un tableau vide');
   }
 
   const [isModalOpen, setIsModalOpen] = useState(false);
