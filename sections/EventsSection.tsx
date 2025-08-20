@@ -16,7 +16,7 @@ import { jsPDF } from 'jspdf';
 
 interface EventsSectionProps {
   raceEvents: RaceEvent[];
-  setRaceEvents: React.Dispatch<React.SetStateAction<RaceEvent[]>>;
+  setRaceEvents: (event: RaceEvent) => Promise<void>;
   setEventDocuments: React.Dispatch<React.SetStateAction<EventRaceDocument[]>>;
   navigateToEventDetail: (eventId: string) => void;
   eventTransportLegs: EventTransportLeg[];
@@ -179,7 +179,7 @@ export const EventsSection = ({
             eligibleCategory: currentEventForModal.eligibleCategory,
             discipline: currentEventForModal.discipline,
         };
-        setRaceEvents(prevEvents => prevEvents.map(ev => ev.id === editingEventId ? updatedEvent : ev));
+        await setRaceEvents(updatedEvent);
         navigateToEventDetail(editingEventId);
     } else {
         const newEvent: RaceEvent = {
@@ -198,7 +198,7 @@ export const EventsSection = ({
             selectedVehicleIds: [],
             checklistEmailSimulated: false,
         };
-        setRaceEvents((prevEvents: RaceEvent[]) => [...prevEvents, newEvent]);
+        await setRaceEvents(newEvent);
         
         // Generate PDF Roadbook
         const doc = new jsPDF();
@@ -383,24 +383,23 @@ export const EventsSection = ({
     const newDateStr = e.currentTarget.getAttribute('data-date');
     if (!eventId || !newDateStr) return;
 
-    setRaceEvents(prevEvents => prevEvents.map(ev => {
-        if (ev.id === eventId) {
-            const originalDate = new Date(ev.date + "T12:00:00Z");
-            const newDate = new Date(newDateStr + "T12:00:00Z");
-            
-            let newEndDate: string | undefined = undefined;
-            if (ev.endDate) {
-                const diffTime = Math.abs(new Date(ev.endDate).getTime() - originalDate.getTime());
-                const newEndDateObj = new Date(newDate.getTime() + diffTime);
-                newEndDate = newEndDateObj.toISOString().split('T')[0];
-            } else {
-                newEndDate = newDateStr;
-            }
-            
-            return { ...ev, date: newDateStr, endDate: newEndDate };
+    const eventToUpdate = raceEvents.find(ev => ev.id === eventId);
+    if (eventToUpdate) {
+        const originalDate = new Date(eventToUpdate.date + "T12:00:00Z");
+        const newDate = new Date(newDateStr + "T12:00:00Z");
+        
+        let newEndDate: string | undefined = undefined;
+        if (eventToUpdate.endDate) {
+            const diffTime = Math.abs(new Date(eventToUpdate.endDate).getTime() - originalDate.getTime());
+            const newEndDateObj = new Date(newDate.getTime() + diffTime);
+            newEndDate = newEndDateObj.toISOString().split('T')[0];
+        } else {
+            newEndDate = newDateStr;
         }
-        return ev;
-    }));
+        
+        const updatedEvent = { ...eventToUpdate, date: newDateStr, endDate: newEndDate };
+        await setRaceEvents(updatedEvent);
+    }
   };
 
   const month = displayDate.getMonth();
