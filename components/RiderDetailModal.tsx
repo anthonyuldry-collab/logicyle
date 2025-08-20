@@ -351,6 +351,7 @@ export const RiderDetailModal: React.FC<RiderDetailModalProps> = ({
             formData={formData}
             setFormData={setFormData}
             formFieldsEnabled={isEditMode}
+            teamProducts={appState.teamProducts || []}
           />
         );
       case 'equipment':
