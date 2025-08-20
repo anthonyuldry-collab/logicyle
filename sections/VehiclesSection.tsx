@@ -22,6 +22,9 @@ interface VehiclesSectionProps {
   onDelete: (vehicleId: string) => void;
   effectivePermissions?: any;
   staff: StaffMember[];
+  eventTransportLegs: EventTransportLeg[];
+  raceEvents: RaceEvent[];
+  navigateTo: (section: AppSection, eventId?: string) => void;
 }
 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
@@ -92,7 +95,10 @@ const VehiclesSection: React.FC<VehiclesSectionProps> = ({
     onSave, 
     onDelete, 
     effectivePermissions,
-    staff
+    staff,
+    eventTransportLegs,
+    raceEvents,
+    navigateTo
 }) => {
   // Protection minimale - seulement vehicles est requis
   if (!vehicles) {

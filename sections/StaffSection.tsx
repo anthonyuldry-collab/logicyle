@@ -389,49 +389,35 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
   };
   
    const handleSaveAssignments = (eventId: string, assignments: Partial<Record<StaffRoleKey, string[]>>) => {
+        console.log('Sauvegarde des assignations pour l\'événement:', eventId, assignments);
+        
         setLocalRaceEvents(prevEvents => prevEvents.map(event => {
             if (event.id === eventId) {
-                // 1. Identify manually added staff from the *previous* state
-                const previousRoleAssignedStaff = new Set<string>();
-                STAFF_ROLES_CONFIG.flatMap(g => g.roles).forEach(roleInfo => {
-                    (event[roleInfo.key as StaffRoleKey] || []).forEach(id => previousRoleAssignedStaff.add(id));
-                });
-                const manuallyAddedStaff = (event.selectedStaffIds || []).filter(id => !previousRoleAssignedStaff.has(id));
-
-                // 2. Apply new role assignments
+                // Appliquer les nouvelles assignations
                 const updatedEvent = { ...event, ...assignments };
-
-                // 3. Get the new set of all role-assigned staff
-                const newRoleAssignedStaff = new Set<string>();
+                
+                // Mettre à jour selectedStaffIds avec tous les staff assignés
+                const allAssignedStaff = new Set<string>();
                 STAFF_ROLES_CONFIG.flatMap(g => g.roles).forEach(roleInfo => {
-                    (updatedEvent[roleInfo.key as StaffRoleKey] || []).forEach(id => newRoleAssignedStaff.add(id));
-                });
-
-                // 4. Combine manually added staff with the new role-assigned staff
-                updatedEvent.selectedStaffIds = Array.from(new Set([...manuallyAddedStaff, ...Array.from(newRoleAssignedStaff)]));
-
-                // 5. Update availabilities for the new combined list
-                setLocalEventStaffAvailabilities(prevAvail => {
-                    const updatedAvailabilities = [...prevAvail];
-                    updatedEvent.selectedStaffIds.forEach(staffId => {
-                        const hasAvailabilityRecord = updatedAvailabilities.some(a => a.eventId === eventId && a.staffId === staffId);
-                        if (!hasAvailabilityRecord) {
-                            updatedAvailabilities.push({
-                                id: generateId(),
-                                eventId: eventId,
-                                staffId: staffId,
-                                availability: AvailabilityStatus.DISPONIBLE,
-                            });
-                        }
-                    });
-                    return updatedAvailabilities;
+                    const roleKey = roleInfo.key as StaffRoleKey;
+                    const assignedIds = assignments[roleKey] || [];
+                    assignedIds.forEach(id => allAssignedStaff.add(id));
                 });
                 
+                updatedEvent.selectedStaffIds = Array.from(allAssignedStaff);
+                
+                console.log('Événement mis à jour:', updatedEvent);
                 return updatedEvent;
             }
             return event;
         }));
+        
+        // Fermer le modal
         setAssignmentModalEvent(null);
+        setModalAssignments({});
+        
+        // Afficher un message de confirmation
+        alert('Assignations sauvegardées avec succès !');
     };
 
   const handleOpenAssignmentModal = (event: RaceEvent) => {
@@ -630,7 +616,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
         </div>
         
         {activeTab === 'details' && renderDetailsTab()}
-        {activeTab === 'planning' && currentUser?.permissionRole && (currentUser.permissionRole === TeamRole.ADMIN || currentUser.permissionRole === TeamRole.EDITOR) && localRaceEvents && Array.isArray(localRaceEvents) && <GlobalPlanningTab upcomingEvents={localRaceEvents.filter(e => new Date(e.endDate || e.date) >= new Date())} onAssign={() => {}} />}
+        {activeTab === 'planning' && currentUser?.permissionRole && (currentUser.permissionRole === TeamRole.ADMIN || currentUser.permissionRole === TeamRole.EDITOR) && localRaceEvents && Array.isArray(localRaceEvents) && <GlobalPlanningTab upcomingEvents={localRaceEvents.filter(e => new Date(e.endDate || e.date) >= new Date())} onAssign={(event) => setAssignmentModalEvent(event)} />}
         {activeTab === 'search' && renderSearchTab()}
         {activeTab === 'missionSearch' && renderMissionSearchTab()}
         {activeTab === 'myApplications' && renderMyApplicationsTab()}
