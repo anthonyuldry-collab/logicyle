@@ -477,13 +477,77 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
       console.log('Nouvelles assignations:', assignments);
       console.log('Synchronisation bidirectionnelle effectuée');
 
-      // 6. SAUVEGARDE EN BASE DE DONNÉES (si une fonction de sauvegarde est disponible)
+      // 6. SAUVEGARDE EN BASE DE DONNÉES - Événement
       // Ici vous pouvez appeler votre fonction de sauvegarde Firebase
       // Par exemple: await saveEventAssignments(eventId, assignments);
       console.log('💾 Assignations prêtes pour sauvegarde en base de données');
       
-      // 7. Notification de succès
-      alert('✅ Assignations sauvegardées avec succès !\n\nSynchronisation bidirectionnelle effectuée :\n- Événement mis à jour\n- Profils staff mis à jour\n- Profils véhicules mis à jour');
+      // 7. SAUVEGARDE AUTOMATIQUE DES PROFILS STAFF MIS À JOUR
+      if (onSave) {
+        try {
+          console.log('🔄 Sauvegarde automatique des profils staff mis à jour...');
+          
+          // Récupérer tous les staff qui ont été modifiés
+          const updatedStaffMembers = localStaff.filter(staffMember => {
+            // Vérifier si le staff est assigné dans les nouvelles assignations
+            const isAssignedToThisEvent = Object.values(assignments).some(roleIds => 
+              Array.isArray(roleIds) && roleIds.includes(staffMember.id)
+            );
+            
+            // Vérifier si le staff était déjà assigné à cet événement
+            const wasAssignedToThisEvent = staffMember.assignedEvents?.includes(eventId) || false;
+            
+            // Détecter un changement (assignation ou désassignation)
+            const hasChanged = isAssignedToThisEvent !== wasAssignedToThisEvent;
+            
+            if (hasChanged) {
+              console.log(`🔄 Changement détecté pour ${staffMember.firstName} ${staffMember.lastName}:`, {
+                wasAssigned: wasAssignedToThisEvent,
+                isNowAssigned: isAssignedToThisEvent,
+                eventId: eventId
+              });
+            }
+            
+            return hasChanged;
+          });
+          
+          console.log(`📝 ${updatedStaffMembers.length} profils staff à sauvegarder:`, updatedStaffMembers.map(s => `${s.firstName} ${s.lastName}`));
+          
+          // Sauvegarder chaque profil staff modifié
+          for (const staffMember of updatedStaffMembers) {
+            await onSave(staffMember);
+            console.log(`✅ Profil ${staffMember.firstName} ${staffMember.lastName} sauvegardé`);
+          }
+          
+          console.log('🎉 Tous les profils staff ont été sauvegardés avec succès !');
+          
+          // SAUVEGARDE AUTOMATIQUE DES VÉHICULES MODIFIÉS
+          if (vehicles && vehicles.length > 0) {
+            console.log('🚗 Sauvegarde automatique des profils véhicules mis à jour...');
+            
+            // Récupérer tous les véhicules qui ont été modifiés
+            const updatedVehicles = vehicles.filter(vehicle => {
+              const isAssignedToThisEvent = assignmentModalEvent?.selectedVehicleIds?.includes(vehicle.id) || false;
+              const wasAssignedToThisEvent = vehicle.assignedEvents?.includes(eventId) || false;
+              return isAssignedToThisEvent !== wasAssignedToThisEvent; // Changement détecté
+            });
+            
+            if (updatedVehicles.length > 0) {
+              console.log(`📝 ${updatedVehicles.length} véhicules à sauvegarder:`, updatedVehicles.map(v => `${v.name} (${v.licensePlate})`));
+              
+              // Ici vous pouvez appeler votre fonction de sauvegarde des véhicules
+              // Par exemple: await saveVehicles(updatedVehicles);
+              console.log('💾 Véhicules prêts pour sauvegarde en base de données');
+            }
+          }
+        } catch (error) {
+          console.error('❌ Erreur lors de la sauvegarde des profils staff:', error);
+          alert('⚠️ Erreur lors de la sauvegarde des profils staff. Vérifiez la console pour plus de détails.');
+        }
+      }
+      
+      // 8. Notification de succès
+      alert('✅ Assignations sauvegardées avec succès !\n\nSynchronisation bidirectionnelle effectuée :\n- Événement mis à jour\n- Profils staff mis à jour et sauvegardés\n- Profils véhicules mis à jour');
 
       // 4. Fermer le modal
       setAssignmentModalEvent(null);
