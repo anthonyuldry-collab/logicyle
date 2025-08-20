@@ -15,14 +15,14 @@ import ConfirmationModal from '../components/ConfirmationModal';
 interface UserManagementSectionProps {
     appState: AppState;
     currentTeamId: string;
-    onApprove: (membership: TeamMembership) => void;
-    onDeny: (membership: TeamMembership) => void;
-    onInvite: (email: string, teamId: string) => void;
-    onRemove: (userId: string, teamId: string) => void;
-    onUpdateRole: (userId: string, teamId: string, newUserRole: UserRole) => void;
-    onUpdatePermissionRole: (userId: string, newPermissionRole: TeamRole) => void;
-    onUpdateUserCustomPermissions: (userId: string, newEffectivePermissions: Partial<Record<AppSection, PermissionLevel[]>>) => void;
-    onTransferUser: (userId: string, fromTeamId: string, toTeamId: string) => void;
+    onApprove: (membership: TeamMembership) => Promise<void>;
+    onDeny: (membership: TeamMembership) => Promise<void>;
+    onInvite: (email: string, teamId: string) => Promise<void>;
+    onRemove: (userId: string, teamId: string) => Promise<void>;
+    onUpdateRole: (userId: string, teamId: string, newUserRole: UserRole) => Promise<void>;
+    onUpdatePermissionRole: (userId: string, newPermissionRole: TeamRole) => Promise<void>;
+    onUpdateUserCustomPermissions: (userId: string, newEffectivePermissions: Partial<Record<AppSection, PermissionLevel[]>>) => Promise<void>;
+    onTransferUser: (userId: string, fromTeamId: string, toTeamId: string) => Promise<void>;
 }
 
 const UserManagementSection: React.FC<UserManagementSectionProps> = ({ 
@@ -36,7 +36,7 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
     onUpdatePermissionRole,
     onUpdateUserCustomPermissions,
     onTransferUser
-}) => {
+}: UserManagementSectionProps) => {
     const { users, teams, teamMemberships } = appState;
     
     // Protection contre les données undefined
@@ -68,11 +68,16 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
     const getUser = (userId: string) => users.find(u => u.id === userId);
     const getTeam = (teamId: string) => teams.find(t => t.id === teamId);
 
-    const handleInviteSubmit = (e: React.FormEvent) => {
+    const handleInviteSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (inviteEmail) {
-            onInvite(inviteEmail, currentTeamId);
-            setInviteEmail('');
+            try {
+                await onInvite(inviteEmail, currentTeamId);
+                setInviteEmail('');
+            } catch (error) {
+                console.error('Erreur lors de l\'invitation:', error);
+                alert('Erreur lors de l\'envoi de l\'invitation');
+            }
         }
     };
 
@@ -239,10 +244,34 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                                                 <td className="px-4 py-2 text-gray-600">{team.name}</td>
                                                 <td className="px-4 py-2 text-gray-600">{membership.userRole}</td>
                                                 <td className="px-4 py-2 text-right space-x-2">
-                                                    <ActionButton onClick={() => onApprove(membership)} variant="primary" size="sm" icon={<CheckCircleIcon className="w-4 h-4" />}>
+                                                    <ActionButton 
+                                                        onClick={async () => {
+                                                            try {
+                                                                await onApprove(membership);
+                                                            } catch (error) {
+                                                                console.error('Erreur lors de l\'approbation:', error);
+                                                                alert('Erreur lors de l\'approbation');
+                                                            }
+                                                        }} 
+                                                        variant="primary" 
+                                                        size="sm" 
+                                                        icon={<CheckCircleIcon className="w-4 h-4" />}
+                                                    >
                                                         Approuver
                                                     </ActionButton>
-                                                    <ActionButton onClick={() => onDeny(membership)} variant="danger" size="sm" icon={<XCircleIcon className="w-4 h-4" />}>
+                                                    <ActionButton 
+                                                        onClick={async () => {
+                                                            try {
+                                                                await onDeny(membership);
+                                                            } catch (error) {
+                                                                console.error('Erreur lors du refus:', error);
+                                                                alert('Erreur lors du refus');
+                                                            }
+                                                        }} 
+                                                        variant="danger" 
+                                                        size="sm" 
+                                                        icon={<XCircleIcon className="w-4 h-4" />}
+                                                    >
                                                         Refuser
                                                     </ActionButton>
                                                 </td>
@@ -311,7 +340,14 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                                                     ) : (
                                                         <select
                                                             value={membership.userRole}
-                                                            onChange={(e) => onUpdateRole(user.id, currentTeamId, e.target.value as UserRole)}
+                                                            onChange={async (e) => {
+                                                                try {
+                                                                    await onUpdateRole(user.id, currentTeamId, e.target.value as UserRole);
+                                                                } catch (error) {
+                                                                    console.error('Erreur lors de la mise à jour du rôle:', error);
+                                                                    alert('Erreur lors de la mise à jour du rôle');
+                                                                }
+                                                            }}
                                                             className="w-full px-2 py-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-xs bg-white text-gray-900"
                                                         >
                                                             {Object.values(UserRole).map(role => (
@@ -323,7 +359,14 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                                                 <td className="px-4 py-2 text-gray-600 w-48">
                                                     <select
                                                         value={user.permissionRole}
-                                                        onChange={(e) => onUpdatePermissionRole(user.id, e.target.value as TeamRole)}
+                                                        onChange={async (e) => {
+                                                            try {
+                                                                await onUpdatePermissionRole(user.id, e.target.value as TeamRole);
+                                                            } catch (error) {
+                                                                console.error('Erreur lors de la mise à jour du rôle de permission:', error);
+                                                                alert('Erreur lors de la mise à jour du rôle de permission');
+                                                            }
+                                                        }}
                                                         className="w-full px-2 py-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-xs bg-white text-gray-900 disabled:bg-gray-100 disabled:cursor-not-allowed"
                                                         disabled={isLastAdmin}
                                                         title={isLastAdmin ? "Impossible de modifier le rôle du dernier administrateur." : ""}
@@ -336,7 +379,21 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                                                 <td className="px-4 py-2 text-right space-x-2">
                                                     <ActionButton onClick={() => openTransferModal(user)} variant="secondary" size="sm">Transférer</ActionButton>
                                                     <ActionButton onClick={() => setEditingPermissionsForUser(user)} variant="secondary" size="sm" icon={<KeyIcon className="w-4 h-4" />} title="Gérer les permissions individuelles" disabled={user.permissionRole === TeamRole.ADMIN}/>
-                                                    <ActionButton onClick={() => onRemove(user.id, currentTeamId)} variant="danger" size="sm" icon={<TrashIcon className="w-4 h-4"/>} disabled={isLastAdmin} title={isLastAdmin ? "Impossible de supprimer le dernier administrateur." : "Retirer de l'équipe"}/>
+                                                    <ActionButton 
+                                                        onClick={async () => {
+                                                            try {
+                                                                await onRemove(user.id, currentTeamId);
+                                                            } catch (error) {
+                                                                console.error('Erreur lors de la suppression:', error);
+                                                                alert('Erreur lors de la suppression');
+                                                            }
+                                                        }} 
+                                                        variant="danger" 
+                                                        size="sm" 
+                                                        icon={<TrashIcon className="w-4 h-4"/>} 
+                                                        disabled={isLastAdmin} 
+                                                        title={isLastAdmin ? "Impossible de supprimer le dernier administrateur." : "Retirer de l'équipe"}
+                                                    />
                                                 </td>
                                             </tr>
                                         );

@@ -1097,7 +1097,7 @@ export interface TeamState {
     riderEventSelections: RiderEventSelection[];
     eventStaffAvailabilities: EventStaffAvailability[];
     incomeItems: IncomeItem[];
-    checklistTemplates: Record<ChecklistRole, ChecklistTemplate[]>;
+    checklistTemplates: ChecklistTemplate[];
     categoryBudgets: Partial<Record<BudgetItemCategory, number>>;
     scoutingProfiles: ScoutingProfile[];
     teamProducts: TeamProduct[];
