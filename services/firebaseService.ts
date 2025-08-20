@@ -169,7 +169,7 @@ export const createUserProfile = async (uid: string, signupData: SignupData) => 
         await setDoc(userDocRef, cleanedNewUser);
 
     } catch (error) {
-        console.error("FIRESTORE WRITE ERROR:", error);
+        console.warn("⚠️ FIRESTORE WRITE ERROR:", error);
         throw error;
     }
 };

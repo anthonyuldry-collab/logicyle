@@ -293,7 +293,7 @@ export const EventsSection = ({
                     const extension = person.licenseImageMimeType.split('/')[1] || 'jpeg';
                     licenseDoc.addImage(`data:${person.licenseImageMimeType};base64,${person.licenseImageBase64}`, extension.toUpperCase(), x, y, licenseWidth, licenseHeight);
                 } catch (e) {
-                    console.error(`Error adding image for ${person.firstName} ${person.lastName}:`, e);
+                    console.warn(`⚠️ Error adding image for ${person.firstName} ${person.lastName}:`, e);
                     licenseDoc.rect(x, y, licenseWidth, licenseHeight, 'S');
                     licenseDoc.text('Erreur image', x + licenseWidth / 2, y + licenseHeight / 2, { align: 'center' });
                 }

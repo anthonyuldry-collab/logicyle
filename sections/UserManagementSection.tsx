@@ -75,8 +75,8 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                 await onInvite(inviteEmail, currentTeamId);
                 setInviteEmail('');
             } catch (error) {
-                console.error('Erreur lors de l\'invitation:', error);
-                alert('Erreur lors de l\'envoi de l\'invitation');
+                console.warn('⚠️ Erreur lors de l\'invitation:', error);
+                alert('⚠️ Erreur lors de l\'envoi de l\'invitation');
             }
         }
     };

@@ -217,7 +217,7 @@ const EventChecklistTab: React.FC<EventChecklistTabProps> = ({
 
     staffForEvent.forEach(staffMember => {
         if (!staffMember.email) {
-            console.warn(`Membre du staff ${staffMember.firstName} ${staffMember.lastName} n'a pas d'email renseigné.`);
+            console.warn(`⚠️ Membre du staff ${staffMember.firstName} ${staffMember.lastName} n'a pas d'email renseigné.`);
             messages.push(`Alerte: ${staffMember.firstName} ${staffMember.lastName} (${staffMember.role}) n'a pas d'email.`);
             return;
         }

@@ -170,8 +170,8 @@ const VehiclesSection: React.FC<VehiclesSectionProps> = ({
       setCurrentVehicle(initialVehicleFormState);
       setIsEditing(false);
     } catch (error) {
-      console.error('Erreur lors de la sauvegarde du véhicule:', error);
-      alert('Erreur lors de la sauvegarde. Veuillez réessayer.');
+      console.warn('⚠️ Erreur lors de la sauvegarde du véhicule:', error);
+      alert('⚠️ Erreur lors de la sauvegarde. Veuillez réessayer.');
     }
   };
 
@@ -192,8 +192,8 @@ const VehiclesSection: React.FC<VehiclesSectionProps> = ({
       try {
         await onDelete(vehicleId);
       } catch (error) {
-        console.error('Erreur lors de la suppression du véhicule:', error);
-        alert('Erreur lors de la suppression. Veuillez réessayer.');
+              console.warn('⚠️ Erreur lors de la suppression du véhicule:', error);
+      alert('⚠️ Erreur lors de la suppression. Veuillez réessayer.');
       }
     }
   };

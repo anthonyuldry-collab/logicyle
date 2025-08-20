@@ -348,7 +348,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
           setIsDetailModalOpen(false);
         }, 100);
       } else {
-        console.error('onSave n\'est pas défini');
+        console.warn('⚠️ onSave n\'est pas défini - sauvegarde impossible');
         alert('Erreur: fonction de sauvegarde non disponible');
       }
     } catch (error) {
