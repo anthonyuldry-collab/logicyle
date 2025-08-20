@@ -19,12 +19,9 @@ import { useTranslations } from '../hooks/useTranslations';
 
 interface EquipmentSectionProps {
   equipment: EquipmentItem[];
-  setEquipment: React.Dispatch<React.SetStateAction<EquipmentItem[]>>;
-  riders: Rider[]; 
-  setRiders: React.Dispatch<React.SetStateAction<Rider[]>>;
-  currentUser: User;
-  equipmentStockItems: EquipmentStockItem[];
-  setEquipmentStockItems: React.Dispatch<React.SetStateAction<EquipmentStockItem[]>>;
+  onSave: (item: EquipmentItem) => void;
+  onDelete: (itemId: string) => void;
+  effectivePermissions?: any;
 }
 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
@@ -41,21 +38,8 @@ const initialEquipmentStockItemFormState: Omit<EquipmentStockItem, 'id'> = {
 };
 
 const EquipmentSection: React.FC<EquipmentSectionProps> = ({ 
-    equipment, setEquipment, riders, setRiders, currentUser,
-    equipmentStockItems, setEquipmentStockItems 
+    equipment, onSave, onDelete, effectivePermissions 
 }) => {
-  // Protection contre currentUser undefined
-  if (!currentUser) {
-    return (
-      <SectionWrapper title="Gestion de l'Équipement">
-        <div className="text-center p-8 bg-gray-50 rounded-lg border">
-          <h3 className="text-xl font-semibold text-gray-700">Chargement...</h3>
-          <p className="mt-2 text-gray-500">Initialisation des données utilisateur...</p>
-        </div>
-      </SectionWrapper>
-    );
-  }
-
   // Protection minimale - seulement equipment est requis
   if (!equipment) {
     return (
@@ -143,9 +127,9 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isEditing && 'id' in currentItem) {
-      setEquipment(prevEquipment => prevEquipment.map(eq => eq.id === (currentItem as EquipmentItem).id ? (currentItem as EquipmentItem) : eq));
+              onSave(currentItem as EquipmentItem);
     } else {
-      setEquipment(prevEquipment => [...prevEquipment, { ...currentItem, id: generateId() } as EquipmentItem]);
+              onSave({ ...currentItem, id: generateId() } as EquipmentItem);
     }
     setIsModalOpen(false);
     setCurrentItem(initialEquipmentFormState);
@@ -169,7 +153,7 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
 
   const handleDelete = (itemId: string) => {
     if (window.confirm(t('equipmentConfirmDelete'))) {
-      setEquipment(prevEquipment => prevEquipment.filter(eq => eq.id !== itemId));
+              onDelete(itemId);
     }
   };
   
@@ -301,9 +285,11 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
   const handleStockSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isEditingStockItem && 'id' in currentStockItem) {
-      setEquipmentStockItems(prev => prev.map(item => item.id === currentStockItem.id ? currentStockItem : item));
+              // TODO: Implémenter la sauvegarde des items de stock
+        console.log('Sauvegarder item de stock:', currentStockItem);
     } else {
-      setEquipmentStockItems(prev => [...prev, { ...currentStockItem, id: generateId() } as EquipmentStockItem]);
+      // TODO: Implémenter l'ajout d'item de stock
+      console.log('Ajouter item de stock:', { ...currentStockItem, id: generateId() });
     }
     setIsStockModalOpen(false);
   };
@@ -326,7 +312,8 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
   
   const confirmDeleteStockItem = () => {
     if(stockItemToDelete) {
-        setEquipmentStockItems(prev => prev.filter(item => item.id !== stockItemToDelete.id));
+        // TODO: Implémenter la suppression d'item de stock
+        console.log('Supprimer item de stock:', stockItemToDelete.id);
         setStockItemToDelete(null);
     }
   };
@@ -342,11 +329,8 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
       alert(`ALERTE STOCK FAIBLE: ${itemToUpdate.name} a atteint le niveau ${newQuantity} (seuil: ${itemToUpdate.lowStockThreshold}).`);
     }
 
-    setEquipmentStockItems(prevItems => 
-        prevItems.map(item => 
-            item.id === itemId ? { ...item, quantity: newQuantity } : item
-        )
-    );
+    // TODO: Implémenter la mise à jour de la quantité
+    console.log('Mettre à jour quantité item:', itemId, 'nouvelle quantité:', newQuantity);
   };
 
   const renderGeneralTab = () => (

@@ -256,10 +256,10 @@ const ScoutingSection: React.FC<ScoutingSectionProps> = ({ scoutingProfiles, onS
 
   const handleSaveProfile = () => {
     if (isEditing && 'id' in currentItem) {
-        setScoutingProfiles(prev => prev.map(p => p.id === currentItem.id ? currentItem : p));
+        onSaveScoutingProfile(currentItem);
     } else {
         const newProfile = { ...currentItem, id: generateId() } as ScoutingProfile;
-        setScoutingProfiles(prev => [...prev, newProfile]);
+        onSaveScoutingProfile(newProfile);
     }
     setIsModalOpen(false);
   };
@@ -301,7 +301,7 @@ const ScoutingSection: React.FC<ScoutingSectionProps> = ({ scoutingProfiles, onS
             };
             // TODO: Implémenter l'ajout du coureur via une fonction de callback
             console.log('Nouveau coureur à ajouter:', newRider);
-            setScoutingProfiles(prev => prev.filter(p => p.id !== profile.id));
+            onDeleteScoutingProfile(profile.id);
         }
     });
   };
@@ -311,7 +311,7 @@ const ScoutingSection: React.FC<ScoutingSectionProps> = ({ scoutingProfiles, onS
       title: "Supprimer le profil",
       message: "Êtes-vous sûr de vouloir supprimer ce profil de scouting ?",
       onConfirm: () => {
-        setScoutingProfiles(prev => prev.filter(p => p.id !== profileId));
+        onDeleteScoutingProfile(profileId);
       }
     });
   };
@@ -413,7 +413,11 @@ const ScoutingSection: React.FC<ScoutingSectionProps> = ({ scoutingProfiles, onS
   );
 
   const renderSearchTab = () => (
-    <TalentSearchTab appState={appState} onProfileSelect={() => {}} currentTeamId={currentTeamId}/>
+    <TalentSearchTab 
+      appState={{ riders: [], teams: [] }} 
+      onProfileSelect={() => {}} 
+      currentTeamId={null}
+    />
   );
   
   const renderAnalysisTab = () => {
@@ -579,11 +583,11 @@ const ScoutingSection: React.FC<ScoutingSectionProps> = ({ scoutingProfiles, onS
                   discipline: newRiderData.disciplines?.[0] || DisciplinePracticed.ROUTE,
               };
 
-              setScoutingProfiles(prev => [...prev, newScoutProfile]);
+              onSaveScoutingProfile(newScoutProfile);
               setAddProspectModal({ ...addProspectModal, isOpen: false });
           }}
           isEditMode={true}
-          appState={appState}
+          appState={{ riders: [], teams: [], raceEvents: [], teamProducts: [] }}
           raceEvents={[]}
           riderEventSelections={[]}
           performanceEntries={[]}

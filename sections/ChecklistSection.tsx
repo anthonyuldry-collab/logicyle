@@ -20,7 +20,7 @@ const generateId = () => Date.now().toString(36) + Math.random().toString(36).su
 
 const ChecklistSection: React.FC<ChecklistSectionProps> = ({ checklistTemplates, onSaveChecklistTemplate, onDeleteChecklistTemplate, effectivePermissions }) => {
   // Déterminer le rôle actif basé sur les permissions ou utiliser DS par défaut
-  const [activeRole, setActiveRole] = useState<ChecklistRole>(ChecklistRole.DS);
+  const [activeRole, setActiveRole] = useState<ChecklistRole>(ChecklistRole.DS || 'DS');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentItem, setCurrentItem] = useState<ChecklistTemplate | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -71,6 +71,11 @@ const ChecklistSection: React.FC<ChecklistSectionProps> = ({ checklistTemplates,
         : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
     }`;
 
+  // Debug pour identifier le problème avec ChecklistRole
+  console.log('ChecklistRole enum:', ChecklistRole);
+  console.log('Object.values(ChecklistRole):', Object.values(ChecklistRole));
+  console.log('activeRole:', activeRole);
+  
   const sectionTitle = isRider ? "Ma Checklist Modèle (Coureur)" : "Éditeur de Checklists Modèles";
   
   return (
@@ -85,11 +90,13 @@ const ChecklistSection: React.FC<ChecklistSectionProps> = ({ checklistTemplates,
       {!isRider ? (
         <div className="mb-4 border-b border-gray-200">
             <nav className="-mb-px flex space-x-2 overflow-x-auto" aria-label="Tabs">
-            {Object.values(ChecklistRole).map(role => (
-                <button key={role} onClick={() => setActiveRole(role)} className={tabButtonStyle(role)}>
+            {Object.values(ChecklistRole)
+              .filter(role => role && typeof role === 'string')
+              .map(role => (
+                <button key={role} onClick={() => setActiveRole(role as ChecklistRole)} className={tabButtonStyle(role as ChecklistRole)}>
                 {role}
                 </button>
-            ))}
+              ))}
             </nav>
         </div>
       ) : (
