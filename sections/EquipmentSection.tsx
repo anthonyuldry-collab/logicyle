@@ -23,6 +23,7 @@ interface EquipmentSectionProps {
   onDelete: (itemId: string) => void;
   effectivePermissions?: any;
   equipmentStockItems?: EquipmentStockItem[];
+  currentUser?: User;
 }
 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
@@ -39,7 +40,7 @@ const initialEquipmentStockItemFormState: Omit<EquipmentStockItem, 'id'> = {
 };
 
 const EquipmentSection: React.FC<EquipmentSectionProps> = ({ 
-    equipment, onSave, onDelete, effectivePermissions, equipmentStockItems = []
+    equipment, onSave, onDelete, effectivePermissions, equipmentStockItems = [], currentUser
 }) => {
   // Protection minimale - seulement equipment est requis
   if (!equipment) {
@@ -51,6 +52,11 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
         </div>
       </SectionWrapper>
     );
+  }
+
+  // Protection pour currentUser
+  if (!currentUser) {
+    console.warn('⚠️ currentUser non défini dans EquipmentSection');
   }
 
   // Protection pour equipmentStockItems
@@ -698,7 +704,8 @@ const EquipmentSection: React.FC<EquipmentSectionProps> = ({
     }`;
 
   const getActionButton = () => {
-    if (currentUser.permissionRole === TeamRole.VIEWER) return null;
+    // Protection contre currentUser undefined
+    if (!currentUser || currentUser.permissionRole === TeamRole.VIEWER) return null;
     if (activeEquipmentTab === 'general') {
       return <ActionButton onClick={openAddModal} icon={<PlusCircleIcon className="w-5 h-5" />}>Ajouter Équipement</ActionButton>
     }

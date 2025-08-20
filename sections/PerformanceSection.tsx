@@ -122,12 +122,7 @@ const PowerColorLegend: React.FC = () => {
                     </div>
                 ))}
             </div>
-            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
-                <p className="text-sm text-blue-800">
-                    <strong>Note :</strong> Les référentiels de puissance s'adaptent automatiquement au sexe du coureur 
-                    (Homme/Femme) pour des comparaisons précises selon les standards internationaux.
-                </p>
-            </div>
+
         </div>
     );
 };
@@ -163,11 +158,31 @@ const GlobalMonitoringTab: React.FC<{ riders: Rider[] }> = ({ riders }) => {
             return acc;
         }, {} as Record<string, number>);
 
-        // Top 10, Top 5, Podium et Victoires (simulés pour l'exemple)
-        const top10Count = Math.min(10, totalRiders);
-        const top5Count = Math.min(5, totalRiders);
-        const podiumCount = Math.min(3, totalRiders);
-        const victoriesCount = Math.floor(Math.random() * 10) + 1; // Simulé
+        // Calcul des vraies statistiques basées sur les résultats des coureurs de l'année en cours
+        const currentYear = new Date().getFullYear();
+        let top10Count = 0;
+        let top5Count = 0;
+        let podiumCount = 0;
+        let victoriesCount = 0;
+
+        riders.forEach(rider => {
+            if (rider.resultsHistory && Array.isArray(rider.resultsHistory)) {
+                rider.resultsHistory.forEach(result => {
+                    // Vérifier que le résultat est de l'année en cours
+                    const resultDate = new Date(result.date);
+                    if (resultDate.getFullYear() === currentYear) {
+                        const rank = typeof result.rank === 'string' ? parseInt(result.rank.replace(/\D/g, ''), 10) : result.rank;
+                        
+                        if (!isNaN(rank) && rank > 0) {
+                            if (rank === 1) victoriesCount++;
+                            if (rank <= 3) podiumCount++;
+                            if (rank <= 5) top5Count++;
+                            if (rank <= 10) top10Count++;
+                        }
+                    }
+                });
+            }
+        });
 
         return {
             totalRiders,
@@ -208,6 +223,10 @@ const GlobalMonitoringTab: React.FC<{ riders: Rider[] }> = ({ riders }) => {
             </div>
 
             {/* Statistiques de performance */}
+            <div className="mb-4">
+                <h3 className="text-lg font-semibold text-gray-800 mb-2">Statistiques de Performance</h3>
+                <p className="text-sm text-gray-600 mb-4">📊 Basé sur les résultats de l'année {new Date().getFullYear()}</p>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="bg-white p-6 rounded-lg shadow-sm border">
                     <div className="flex items-center">
@@ -215,6 +234,7 @@ const GlobalMonitoringTab: React.FC<{ riders: Rider[] }> = ({ riders }) => {
                         <div className="ml-3">
                             <p className="text-sm font-medium text-gray-500">Top 10</p>
                             <p className="text-2xl font-bold text-gray-900">{collectiveStats.top10Count}</p>
+                            <p className="text-xs text-gray-400">Résultats ≤ 10ème place</p>
                         </div>
                     </div>
                 </div>
@@ -225,6 +245,7 @@ const GlobalMonitoringTab: React.FC<{ riders: Rider[] }> = ({ riders }) => {
                         <div className="ml-3">
                             <p className="text-sm font-medium text-gray-500">Top 5</p>
                             <p className="text-2xl font-bold text-gray-900">{collectiveStats.top5Count}</p>
+                            <p className="text-xs text-gray-400">Résultats ≤ 5ème place</p>
                         </div>
                     </div>
                 </div>
@@ -235,6 +256,7 @@ const GlobalMonitoringTab: React.FC<{ riders: Rider[] }> = ({ riders }) => {
                         <div className="ml-3">
                             <p className="text-sm font-medium text-gray-500">Podium</p>
                             <p className="text-2xl font-bold text-gray-900">{collectiveStats.podiumCount}</p>
+                            <p className="text-xs text-gray-400">1ère, 2ème, 3ème place</p>
                         </div>
                     </div>
                 </div>
@@ -245,8 +267,78 @@ const GlobalMonitoringTab: React.FC<{ riders: Rider[] }> = ({ riders }) => {
                         <div className="ml-3">
                             <p className="text-sm font-medium text-gray-500">Victoires</p>
                             <p className="text-2xl font-bold text-gray-900">{collectiveStats.victoriesCount}</p>
+                            <p className="text-xs text-gray-400">1ère place uniquement</p>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            {/* Détail des résultats de l'année en cours */}
+            <div className="bg-white p-6 rounded-lg shadow-sm border">
+                <h3 className="text-lg font-semibold text-gray-800 mb-4">Détail des Résultats {new Date().getFullYear()}</h3>
+                <div className="overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                        <thead className="bg-gray-50">
+                            <tr>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Coureur</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Victoires</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Podiums</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Top 5</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Top 10</th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Courses</th>
+                            </tr>
+                        </thead>
+                        <tbody className="bg-white divide-y divide-gray-200">
+                            {riders.map(rider => {
+                                const currentYear = new Date().getFullYear();
+                                let riderWins = 0;
+                                let riderPodiums = 0;
+                                let riderTop5 = 0;
+                                let riderTop10 = 0;
+                                let totalRaces = 0;
+
+                                if (rider.resultsHistory && Array.isArray(rider.resultsHistory)) {
+                                    rider.resultsHistory.forEach(result => {
+                                        const resultDate = new Date(result.date);
+                                        if (resultDate.getFullYear() === currentYear) {
+                                            totalRaces++;
+                                            const rank = typeof result.rank === 'string' ? parseInt(result.rank.replace(/\D/g, ''), 10) : result.rank;
+                                            
+                                            if (!isNaN(rank) && rank > 0) {
+                                                if (rank === 1) riderWins++;
+                                                if (rank <= 3) riderPodiums++;
+                                                if (rank <= 5) riderTop5++;
+                                                if (rank <= 10) riderTop10++;
+                                            }
+                                        }
+                                    });
+                                }
+
+                                return (
+                                    <tr key={rider.id} className={totalRaces > 0 ? 'bg-green-50' : 'bg-gray-50'}>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                            {rider.firstName} {rider.lastName}
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
+                                            <span className="font-bold text-green-600">{riderWins}</span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
+                                            <span className="font-bold text-orange-600">{riderPodiums}</span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
+                                            <span className="font-bold text-blue-600">{riderTop5}</span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
+                                            <span className="font-bold text-yellow-600">{riderTop10}</span>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
+                                            <span className="font-bold">{totalRaces}</span>
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
                 </div>
             </div>
 

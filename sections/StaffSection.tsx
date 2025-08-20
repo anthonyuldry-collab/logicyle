@@ -1006,9 +1006,9 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
                       <div key={roleKey}>
                         <label className="block text-sm font-medium text-gray-700">{roleInfo.label}</label>
                         <div className="mt-1 p-2 border rounded-md space-y-1 bg-gray-50 max-h-40 overflow-y-auto">
-                                                     {/* Tous les staff peuvent être assignés à n'importe quel poste */}
-                           <div className="mb-2 p-2 bg-green-50 border border-green-200 rounded text-xs text-green-800">
-                             <strong>Flexibilité :</strong> Tous les staff peuvent être assignés à ce poste
+                           {/* Restriction : Un staff ne peut être assigné qu'à un seul poste */}
+                           <div className="mb-2 p-2 bg-orange-50 border border-orange-200 rounded text-xs text-orange-800">
+                             <strong>⚠️ Restriction :</strong> Un staff ne peut être assigné qu'à un seul poste
                            </div>
                            
                            {localStaff && localStaff
@@ -1026,25 +1026,55 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
                               return currentEventStart <= otherEventEnd && currentEventEnd >= otherEventStart;
                             });
                             
+                            // Vérifier si le staff est déjà assigné à un autre poste
+                            const isAlreadyAssignedElsewhere = Object.entries(modalAssignments).some(([otherRoleKey, otherRoleIds]) => {
+                              if (otherRoleKey === roleKey) return false; // Même poste
+                              return Array.isArray(otherRoleIds) && otherRoleIds.includes(member.id);
+                            });
+                            
+                            const isDisabled = isUnavailable || isAlreadyAssignedElsewhere;
+                            
                             return (
                               <div key={member.id} className="flex items-center">
                                 <input 
                                   type="checkbox" 
                                   id={`${roleKey}-${member.id}`}
                                   checked={selectedForRole.includes(member.id)}
-                                  disabled={isUnavailable}
+                                  disabled={isDisabled}
                                   onChange={() => {
-                                    const newSelection = selectedForRole.includes(member.id)
-                                      ? selectedForRole.filter(id => id !== member.id)
-                                      : [...selectedForRole, member.id];
-                                    setModalAssignments(prev => ({...prev, [roleKey]: newSelection}));
+                                    const isCurrentlySelected = selectedForRole.includes(member.id);
+                                    
+                                    if (isCurrentlySelected) {
+                                      // Désélectionner : toujours autorisé
+                                      const newSelection = selectedForRole.filter(id => id !== member.id);
+                                      setModalAssignments(prev => ({...prev, [roleKey]: newSelection}));
+                                    } else {
+                                      // Vérifier si le staff est déjà assigné à un autre poste
+                                      const isAlreadyAssignedElsewhere = Object.entries(modalAssignments).some(([otherRoleKey, otherRoleIds]) => {
+                                        if (otherRoleKey === roleKey) return false; // Même poste
+                                        return Array.isArray(otherRoleIds) && otherRoleIds.includes(member.id);
+                                      });
+                                      
+                                      if (isAlreadyAssignedElsewhere) {
+                                        // Empêcher l'assignation multiple
+                                        alert(`⚠️ ${member.firstName} ${member.lastName} est déjà assigné à un autre poste. Un staff ne peut être assigné qu'à un seul poste.`);
+                                        return;
+                                      }
+                                      
+                                      // Assignation autorisée
+                                      const newSelection = [...selectedForRole, member.id];
+                                      setModalAssignments(prev => ({...prev, [roleKey]: newSelection}));
+                                    }
                                   }}
                                   className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                                 />
-                                <label htmlFor={`${roleKey}-${member.id}`} className={`ml-2 text-sm ${isUnavailable ? 'text-gray-400' : 'text-gray-900'}`}>
+                                <label htmlFor={`${roleKey}-${member.id}`} className={`ml-2 text-sm ${isDisabled ? 'text-gray-400' : 'text-gray-900'}`}>
                                   {member.firstName} {member.lastName} ({member.role})
                                   {isUnavailable && (
                                     <span className="text-orange-500 font-medium"> - Non disponible (conflit d'événement)</span>
+                                  )}
+                                  {isAlreadyAssignedElsewhere && !isUnavailable && (
+                                    <span className="text-red-500 font-medium"> - Déjà assigné à un autre poste</span>
                                   )}
                                 </label>
                               </div>
