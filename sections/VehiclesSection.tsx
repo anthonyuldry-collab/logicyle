@@ -21,6 +21,7 @@ interface VehiclesSectionProps {
   onSave: (vehicle: Vehicle) => void;
   onDelete: (vehicleId: string) => void;
   effectivePermissions?: any;
+  staff: StaffMember[];
 }
 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
@@ -90,7 +91,8 @@ const VehiclesSection: React.FC<VehiclesSectionProps> = ({
     vehicles, 
     onSave, 
     onDelete, 
-    effectivePermissions 
+    effectivePermissions,
+    staff
 }) => {
   // Protection minimale - seulement vehicles est requis
   if (!vehicles) {
@@ -192,8 +194,8 @@ const VehiclesSection: React.FC<VehiclesSectionProps> = ({
 
   const getDriverName = (driverId?: string) => {
     if (!driverId) return 'Non assigné';
-    // TODO: Implémenter la recherche du chauffeur via une prop ou un service
-    return 'Chauffeur inconnu';
+    const driver = staff.find(s => s.id === driverId);
+    return driver ? `${driver.firstName} ${driver.lastName}` : 'Chauffeur inconnu';
   };
   
   const formatDate = (dateString?: string) => {
