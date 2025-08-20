@@ -1189,7 +1189,7 @@ const App: React.FC = () => {
                           });
 
                           // Mettre à jour l'état local
-                          setAppState(prev => ({
+                          setAppState((prev: AppState) => ({
                             ...prev,
                             teamMemberships: prev.teamMemberships.map(m => 
                               m.id === membership.id 
@@ -1215,7 +1215,7 @@ const App: React.FC = () => {
                             };
                             
                             await setDoc(doc(db, 'users', newUser.id), newUser);
-                            setAppState(prev => ({
+                            setAppState((prev: AppState) => ({
                               ...prev,
                               users: [...prev.users, newUser]
                             }));
@@ -1233,7 +1233,7 @@ const App: React.FC = () => {
                             await deleteDoc(membershipRef);
 
                             // Mettre à jour l'état local
-                            setAppState(prev => ({
+                            setAppState((prev: AppState) => ({
                               ...prev,
                               teamMemberships: prev.teamMemberships.filter(m => m.id !== membership.id)
                             }));
@@ -1269,7 +1269,7 @@ const App: React.FC = () => {
                           await addDoc(collection(db, 'teamMemberships'), newMembership);
 
                           // Mettre à jour l'état local
-                          setAppState(prev => ({
+                          setAppState((prev: AppState) => ({
                             ...prev,
                             teamMemberships: [...prev.teamMemberships, newMembership]
                           }));
@@ -1301,7 +1301,7 @@ const App: React.FC = () => {
                             });
 
                             // Mettre à jour l'état local
-                            setAppState(prev => ({
+                            setAppState((prev: AppState) => ({
                               ...prev,
                               users: prev.users.map(u => 
                                 u.id === userId 
@@ -1326,7 +1326,7 @@ const App: React.FC = () => {
                           });
 
                           // Mettre à jour l'état local
-                          setAppState(prev => ({
+                          setAppState((prev: AppState) => ({
                             ...prev,
                             users: prev.users.map(u => 
                               u.id === userId 
@@ -1351,7 +1351,7 @@ const App: React.FC = () => {
                           });
 
                           // Mettre à jour l'état local
-                          setAppState(prev => ({
+                          setAppState((prev: AppState) => ({
                             ...prev,
                             users: prev.users.map(u => 
                               u.id === userId 
@@ -1418,7 +1418,7 @@ const App: React.FC = () => {
                             await addDoc(collection(db, 'teamMemberships'), newMembership);
 
                             // Mettre à jour l'état local
-                            setAppState(prev => ({
+                            setAppState((prev: AppState) => ({
                               ...prev,
                               users: prev.users.map(u => 
                                 u.id === userId 

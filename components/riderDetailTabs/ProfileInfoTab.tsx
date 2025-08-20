@@ -83,16 +83,17 @@ const SpiderChart: React.FC<{ data: { axis: string; value: number }[]; size?: nu
 
 const ReliabilityIndicator: React.FC<{ level: number }> = ({ level }) => {
     const descriptions = [
-        "Fiabilité de base (données à frais uniquement).",
-        "Fiabilité améliorée avec données de pré-fatigue (15/30kJ).",
-        "Fiabilité élevée avec données de fatigue avancée (45kJ)."
+        "Profil de Référence - Données à frais uniquement",
+        "Profil 15kJ - Données avec fatigue légère (15kJ)",
+        "Profil 30kJ - Données avec fatigue modérée (30kJ)",
+        "Profil 45kJ - Données avec fatigue maximale (45kJ)"
     ];
     
     return (
         <div className="bg-slate-800 p-2 rounded-md text-center" title={descriptions[level - 1]}>
             <h5 className="text-xs font-semibold text-slate-400 mb-1">Fiabilité du Profil</h5>
             <div className="flex justify-center text-lg">
-                {[...Array(3)].map((_, i) => (
+                {[...Array(4)].map((_, i) => (
                     <span key={i} className={i < level ? 'text-yellow-400' : 'text-slate-600'}>★</span>
                 ))}
             </div>
