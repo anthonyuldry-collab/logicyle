@@ -37,7 +37,6 @@
     "noUnusedParameters": false
   },
   "include": [
-    "src/**/*",
     "**/*.ts",
     "**/*.tsx"
   ],
