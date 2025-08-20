@@ -257,6 +257,68 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [localRaceEvents]);
 
+  // Détection automatique des alertes et actions requises
+  const alertsAndActions = useMemo(() => {
+    if (!localRaceEvents || !localStaff) return [];
+    
+    const alerts = [];
+    
+    localRaceEvents.forEach(event => {
+      // Vérifier si l'événement est à venir
+      const eventDate = new Date(event.date);
+      const today = new Date();
+      if (eventDate < today) return; // Ignorer les événements passés
+      
+      // 1. Vérifier si un directeur sportif est assigné
+      const hasDirecteurSportif = event.directeurSportifId && event.directeurSportifId.length > 0;
+      if (!hasDirecteurSportif) {
+        alerts.push({
+          type: 'warning',
+          message: `DS manquant pour ${event.name}`,
+          eventId: event.id,
+          eventName: event.name,
+          action: 'assignDS',
+          priority: 'high'
+        });
+      }
+      
+      // 2. Vérifier si des coureurs sont sélectionnés
+      const hasRiders = event.selectedRiderIds && event.selectedRiderIds.length > 0;
+      if (!hasRiders) {
+        alerts.push({
+          type: 'warning',
+          message: `Aucun coureur sélectionné pour ${event.name}`,
+          eventId: event.id,
+          eventName: event.name,
+          action: 'assignRiders',
+          priority: 'medium'
+        });
+      }
+      
+      // 3. Vérifier si le staff minimum est assigné
+      const hasMinimumStaff = (event.selectedStaffIds && event.selectedStaffIds.length > 0) || 
+                              (event.directeurSportifId && event.directeurSportifId.length > 0) ||
+                              (event.assistantId && event.assistantId.length > 0) ||
+                              (event.mecanoId && event.mecanoId.length > 0);
+      if (!hasMinimumStaff) {
+        alerts.push({
+          type: 'info',
+          message: `Staff minimum non assigné pour ${event.name}`,
+          eventId: event.id,
+          eventName: event.name,
+          action: 'assignStaff',
+          priority: 'medium'
+        });
+      }
+    });
+    
+    // Trier par priorité et date
+    return alerts.sort((a, b) => {
+      const priorityOrder = { high: 3, medium: 2, low: 1 };
+      return priorityOrder[b.priority] - priorityOrder[a.priority];
+    });
+  }, [localRaceEvents, localStaff]);
+
   const handleSaveStaff = async (staffToSave: StaffMember) => {
     try {
       console.log('handleSaveStaff appelé avec:', staffToSave);
@@ -522,6 +584,106 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
 
   const renderPlanningTab = () => (
     <div className="space-y-6">
+      {/* Section Alertes & Actions Requises */}
+      {alertsAndActions.length > 0 && (
+        <div className="bg-white p-6 rounded-lg shadow-sm border">
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">Alertes & Actions Requises</h3>
+          <div className="space-y-3">
+            {alertsAndActions.map((alert, index) => (
+              <div key={index} className={`p-4 rounded-lg border-l-4 ${
+                alert.type === 'warning' ? 'bg-red-50 border-red-400' :
+                alert.type === 'info' ? 'bg-blue-50 border-blue-400' :
+                'bg-yellow-50 border-yellow-400'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className={`flex-shrink-0 ${
+                      alert.type === 'warning' ? 'text-red-500' :
+                      alert.type === 'info' ? 'text-blue-500' :
+                      'text-yellow-500'
+                    }`}>
+                      <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className={`text-sm font-medium ${
+                        alert.type === 'warning' ? 'text-red-800' :
+                        alert.type === 'info' ? 'text-blue-800' :
+                        'text-yellow-800'
+                      }`}>
+                        {alert.message}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Priorité: {alert.priority === 'high' ? 'Élevée' : alert.priority === 'medium' ? 'Moyenne' : 'Faible'}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex space-x-2">
+                    {alert.action === 'assignDS' && (
+                      <ActionButton
+                        variant="primary"
+                        size="sm"
+                        onClick={() => {
+                          const event = localRaceEvents.find(e => e.id === alert.eventId);
+                          if (event) {
+                            setAssignmentModalEvent(event);
+                            // Pré-sélectionner l'onglet directeur sportif
+                            const initialAssignments = { directeurSportifId: event.directeurSportifId || [] };
+                            setModalAssignments(initialAssignments);
+                          }
+                        }}
+                      >
+                        Assigner DS
+                      </ActionButton>
+                    )}
+                    {alert.action === 'assignRiders' && (
+                      <ActionButton
+                        variant="primary"
+                        size="sm"
+                        onClick={() => {
+                          // Naviguer vers la section des effectifs pour assigner des coureurs
+                          // Ici vous pouvez implémenter la navigation vers la section appropriée
+                          alert('Navigation vers la section Effectifs pour assigner des coureurs');
+                        }}
+                      >
+                        Assigner Coureurs
+                      </ActionButton>
+                    )}
+                    {alert.action === 'assignStaff' && (
+                      <ActionButton
+                        variant="primary"
+                        size="sm"
+                        onClick={() => {
+                          const event = localRaceEvents.find(e => e.id === alert.eventId);
+                          if (event) {
+                            setAssignmentModalEvent(event);
+                          }
+                        }}
+                      >
+                        Assigner Staff
+                      </ActionButton>
+                    )}
+                    <ActionButton
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => {
+                        const event = localRaceEvents.find(e => e.id === alert.eventId);
+                        if (event) {
+                          setAssignmentModalEvent(event);
+                        }
+                      }}
+                    >
+                      Voir
+                    </ActionButton>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="bg-white p-6 rounded-lg shadow-sm border">
         <h3 className="text-lg font-semibold text-gray-800 mb-4">Planning Global du Staff</h3>
         {upcomingEvents && upcomingEvents.length > 0 ? (
@@ -656,6 +818,11 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
               }`}
             >
               Planning Global
+              {alertsAndActions.length > 0 && (
+                <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                  {alertsAndActions.length}
+                </span>
+              )}
             </button>
           </nav>
         </div>
@@ -694,22 +861,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
       {/* Assignment Modal */}
       {assignmentModalEvent && (
         <Modal isOpen={!!assignmentModalEvent} onClose={() => setAssignmentModalEvent(null)} title={`Assignation Staff et Véhicules: ${assignmentModalEvent.name}`}>
-          {/* Message d'information sur le système de filtrage */}
-          <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-md">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-blue-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                </svg>
-              </div>
-              <div className="ml-3">
-                <p className="text-sm text-blue-800">
-                  <strong>Système de filtrage automatique :</strong> Les staff sont automatiquement filtrés par rôle pour faciliter les assignations. 
-                  Par exemple, un mécanicien ne peut être assigné qu'au poste "Mécanicien".
-                </p>
-              </div>
-            </div>
-          </div>
+
           
           <div className="max-h-[70vh] overflow-y-auto pr-2">
             {STAFF_ROLES_CONFIG.map(group => (
@@ -724,14 +876,13 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
                       <div key={roleKey}>
                         <label className="block text-sm font-medium text-gray-700">{roleInfo.label}</label>
                         <div className="mt-1 p-2 border rounded-md space-y-1 bg-gray-50 max-h-40 overflow-y-auto">
-                          {/* Filtre pour ne montrer que les staff compatibles */}
-                          <div className="mb-2 p-2 bg-blue-50 border border-blue-200 rounded text-xs text-blue-800">
-                            <strong>Rôle requis :</strong> {roleInfo.label} ({roleInfo.key})
-                          </div>
-                          
-                          {localStaff && localStaff
-                            .filter(member => member.role === roleInfo.key) // Seulement les staff avec le bon rôle
-                            .map(member => {
+                                                     {/* Tous les staff peuvent être assignés à n'importe quel poste */}
+                           <div className="mb-2 p-2 bg-green-50 border border-green-200 rounded text-xs text-green-800">
+                             <strong>Flexibilité :</strong> Tous les staff peuvent être assignés à ce poste
+                           </div>
+                           
+                           {localStaff && localStaff
+                             .map(member => {
                             // Vérifier la disponibilité (conflits d'événements)
                             const isUnavailable = localRaceEvents.some(otherEvent => {
                               if (otherEvent.id === assignmentModalEvent.id || !(otherEvent.selectedStaffIds || []).includes(member.id)) {
@@ -843,6 +994,209 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
           </div>
         </Modal>
       )}
+
+      {/* Mission Modals */}
+      {missionForApplicants && (
+        <Modal isOpen={isApplicantsModalOpen} onClose={() => setIsApplicantsModalOpen(false)} title={`Candidats pour : ${missionForApplicants.title}`}>
+          {(missionForApplicants.applicants || []).length === 0 ? (
+            <p className="italic text-gray-500 text-center py-4">Aucun candidat pour le moment.</p>
+          ) : (
+            <div className="space-y-2 max-h-[70vh] overflow-y-auto p-1">
+              {(missionForApplicants.applicants || []).map(applicantId => {
+                const applicantUser = users.find(u => u.id === applicantId);
+                if (!applicantUser) {
+                    return <div key={applicantId} className="p-2 bg-red-100 rounded-md">Profil candidat non trouvé (ID: {applicantId})</div>;
+                }
+                const staffProfileForApplicant = localStaff ? localStaff.find(s => s.email === applicantUser.email) : null || users.find(u => u.id === applicantId);
+
+                const applicant = {
+                    id: applicantUser.id,
+                    photoUrl: (staffProfileForApplicant as StaffMember)?.photoUrl,
+                    firstName: applicantUser.firstName,
+                    lastName: applicantUser.lastName,
+                    email: applicantUser.email,
+                    phone: (staffProfileForApplicant as StaffMember)?.phone,
+                    role: (staffProfileForApplicant as StaffMember)?.role || 'N/A',
+                    address: (staffProfileForApplicant as StaffMember)?.address,
+                    professionalSummary: (staffProfileForApplicant as StaffMember)?.professionalSummary || '',
+                    skills: (staffProfileForApplicant as StaffMember)?.skills || [],
+                    workHistory: (staffProfileForApplicant as StaffMember)?.workHistory || [],
+                    education: (staffProfileForApplicant as StaffMember)?.education || [],
+                };
+                
+                const ratings = performanceEntries.flatMap(pe => pe.staffRatings || []).filter(r => r.staffId === applicant.id && r.rating > 0);
+                const averageRating = ratings.length > 0 ? ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length : 0;
+                
+                return (
+                    <button 
+                        key={applicant.id}
+                        onClick={() => setViewingApplicant(applicant)}
+                        className="w-full text-left p-3 bg-gray-50 rounded-lg shadow-sm border hover:bg-gray-100 flex justify-between items-center transition-colors"
+                    >
+                        <div className="flex items-center gap-3">
+                            {applicant.photoUrl ? (
+                            <img src={applicant.photoUrl} alt="" className="w-10 h-10 rounded-full object-cover"/>
+                            ) : (
+                            <UserCircleIcon className="w-10 h-10 text-gray-400" />
+                            )}
+                            <div>
+                            <h4 className="font-semibold text-gray-800">{applicant.firstName} {applicant.lastName}</h4>
+                            <p className="text-sm text-gray-600">{applicant.role}</p>
+                            </div>
+                        </div>
+                        <div className="text-right">
+                            {averageRating > 0 && (
+                            <div className="flex items-center text-yellow-500 font-bold">
+                                <StarIcon className="w-5 h-5 mr-1" />
+                                <span>{averageRating.toFixed(1)}</span>
+                            </div>
+                            )}
+                            <p className="text-xs text-gray-500">({ratings.length} avis)</p>
+                        </div>
+                    </button>
+                );
+              })}
+            </div>
+          )}
+        </Modal>
+      )}
+
+      {viewingApplicant && (
+        <Modal isOpen={!!viewingApplicant} onClose={() => setViewingApplicant(null)} title={`Profil de ${viewingApplicant.firstName} ${viewingApplicant.lastName}`}>
+            <div key={viewingApplicant.id} className="bg-white rounded-lg overflow-hidden">
+                <div className="p-4">
+                    <div className="flex items-start gap-4">
+                        {viewingApplicant.photoUrl ? (
+                            <img src={viewingApplicant.photoUrl} alt="" className="w-20 h-20 rounded-full object-cover"/>
+                        ) : (
+                            <UserCircleIcon className="w-20 h-20 text-gray-400 flex-shrink-0" />
+                        )}
+                        <div className="flex-grow">
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <h4 className="text-xl font-bold text-gray-800">{viewingApplicant.firstName} {viewingApplicant.lastName}</h4>
+                                    <p className="text-sm text-gray-600">{viewingApplicant.role}</p>
+                                </div>
+                            </div>
+                            <div className="mt-2 text-xs text-gray-600 space-y-1">
+                                {viewingApplicant.phone && <p className="flex items-center"><PhoneIcon className="w-4 h-4 mr-2 text-gray-400"/> {viewingApplicant.phone}</p>}
+                                {viewingApplicant.email && <p className="flex items-center"><MailIcon className="w-4 h-4 mr-2 text-gray-400"/> <a href={`mailto:${viewingApplicant.email}`} className="text-blue-600 hover:underline">{viewingApplicant.email}</a></p>}
+                                {viewingApplicant.address?.city && <p className="flex items-center"><LocationMarkerIcon className="w-4 h-4 mr-2 text-gray-400"/> {viewingApplicant.address.city}, {viewingApplicant.address.country}</p>}
+                            </div>
+                        </div>
+                    </div>
+
+                    {viewingApplicant.professionalSummary && (
+                        <div className="mt-4 pt-3 border-t">
+                            <h5 className="text-sm font-semibold text-gray-700">Résumé Professionnel (CV)</h5>
+                            <p className="text-sm text-gray-600 mt-1 whitespace-pre-wrap">{viewingApplicant.professionalSummary}</p>
+                        </div>
+                    )}
+                    
+                    {viewingApplicant.workHistory && viewingApplicant.workHistory.length > 0 && (
+                        <div className="mt-3 pt-3 border-t">
+                            <h5 className="text-sm font-semibold text-gray-700">Expériences</h5>
+                            <ul className="list-disc list-inside mt-1 space-y-1 text-sm text-gray-600">
+                                {viewingApplicant.workHistory.map(exp => (
+                                    <li key={exp.id}>
+                                        <strong>{exp.position}</strong> chez {exp.company} ({exp.startDate} - {exp.endDate || 'Actuel'})
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+
+                    {viewingApplicant.education && viewingApplicant.education.length > 0 && (
+                        <div className="mt-3 pt-3 border-t">
+                            <h5 className="text-sm font-semibold text-gray-700">Formations</h5>
+                            <ul className="list-disc list-inside mt-1 space-y-1 text-sm text-gray-600">
+                                {viewingApplicant.education.map(edu => (
+                                    <li key={edu.id}>
+                                        <strong>{edu.degree}</strong> - {edu.institution} ({edu.year})
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+
+                    {viewingApplicant.skills && viewingApplicant.skills.length > 0 && (
+                        <div className="mt-3 pt-3 border-t">
+                            <h5 className="text-sm font-semibold text-gray-700">Compétences</h5>
+                            <div className="flex flex-wrap gap-2 mt-2">
+                                {viewingApplicant.skills.map(skill => (
+                                    <span key={skill} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">{skill}</span>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </Modal>
+      )}
+
+      {selectedMissionForDetails && (
+        <Modal isOpen={!!selectedMissionForDetails} onClose={() => setSelectedMissionForDetails(null)} title={selectedMissionForDetails.title}>
+            <div className="space-y-4 text-gray-700">
+                <p><strong>Équipe:</strong> {teams.find(t => t.id === selectedMissionForDetails.teamId)?.name}</p>
+                <p><strong>Rôle:</strong> {selectedMissionForDetails.role}</p>
+                <p><strong>Dates:</strong> Du {new Date(selectedMissionForDetails.startDate+'T12:00:00Z').toLocaleDateString('fr-CA')} au {new Date(selectedMissionForDetails.endDate+'T12:00:00Z').toLocaleDateString('fr-CA')}</p>
+                <p><strong>Lieu:</strong> {selectedMissionForDetails.location}</p>
+                <p><strong>Compensation:</strong> {selectedMissionForDetails.compensation} {selectedMissionForDetails.dailyRate ? `(${selectedMissionForDetails.dailyRate}€/jour)` : ''}</p>
+                <div>
+                    <strong className="font-semibold text-gray-800">Description:</strong>
+                    <p className="mt-1 whitespace-pre-wrap">{selectedMissionForDetails.description}</p>
+                </div>
+                {selectedMissionForDetails.requirements && selectedMissionForDetails.requirements.length > 0 && (
+                    <div>
+                        <strong className="font-semibold text-gray-800">Prérequis:</strong>
+                        <ul className="list-disc list-inside mt-1">
+                            {selectedMissionForDetails.requirements.map((req, i) => <li key={i}>{req}</li>)}
+                        </ul>
+                    </div>
+                )}
+            </div>
+        </Modal>
+      )}
+
+      <Modal isOpen={isPostMissionModalOpen} onClose={() => setIsPostMissionModalOpen(false)} title={editingMission ? "Modifier la mission" : "Publier une nouvelle mission"}>
+        <div className="space-y-3">
+          <input type="text" placeholder="Titre de la mission" value={newMissionData.title} onChange={e => setNewMissionData(p => ({ ...p, title: e.target.value }))} className={lightInputClass}/>
+          <select value={newMissionData.role} onChange={e => setNewMissionData(p => ({ ...p, role: e.target.value as StaffRole }))} className={lightSelectClass}>{Object.values(StaffRole).map(r => <option key={r} value={r}>{r}</option>)}</select>
+          <div className="grid grid-cols-2 gap-2">
+            <input type="date" value={newMissionData.startDate} onChange={e => setNewMissionData(p => ({ ...p, startDate: e.target.value }))} className={lightInputClass}/>
+            <input type="date" value={newMissionData.endDate} onChange={e => setNewMissionData(p => ({ ...p, endDate: e.target.value }))} className={lightInputClass}/>
+          </div>
+          <input type="text" placeholder="Lieu" value={newMissionData.location} onChange={e => setNewMissionData(p => ({ ...p, location: e.target.value }))} className={lightInputClass}/>
+          <textarea placeholder="Description de la mission" value={newMissionData.description} onChange={e => setNewMissionData(p => ({ ...p, description: e.target.value }))} rows={3} className={lightInputClass}></textarea>
+          <div>
+            <label className="text-sm font-medium text-gray-700">Prérequis (un par ligne)</label>
+            <textarea placeholder="Permis B obligatoire
+Expérience appréciée" value={Array.isArray(newMissionData.requirements) ? newMissionData.requirements.join('\\n') : ''} onChange={e => setNewMissionData(p => ({ ...p, requirements: e.target.value.split('\\n') }))} className={lightInputClass} rows={3}></textarea>
+          </div>
+          <fieldset className="border p-3 rounded-md">
+            <legend className="text-sm font-medium">Rémunération</legend>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                <div>
+                    <label>Type de prestation</label>
+                    <select value={newMissionData.compensationType} onChange={e => setNewMissionData(p => ({ ...p, compensationType: e.target.value as MissionCompensationType }))} className={lightSelectClass}>
+                        {Object.values(MissionCompensationType).map(ct => <option key={ct} value={ct}>{ct}</option>)}
+                    </select>
+                </div>
+                {newMissionData.compensationType === MissionCompensationType.FREELANCE && (
+                    <div>
+                        <label>Tarif journalier (€)</label>
+                        <input type="number" placeholder="150" value={newMissionData.dailyRate || ''} onChange={e => setNewMissionData(p => ({ ...p, dailyRate: e.target.value ? parseFloat(e.target.value) : undefined }))} className={lightInputClass}/>
+                    </div>
+                )}
+            </div>
+            <div className="mt-4">
+                <label>Détails sur la compensation</label>
+                <input type="text" placeholder="Ex: Logement et repas pris en charge" value={newMissionData.compensation} onChange={e => setNewMissionData(p => ({ ...p, compensation: e.target.value }))} className={lightInputClass}/>
+            </div>
+          </fieldset>
+          <div className="flex justify-end"><ActionButton onClick={handleSaveMission}>{editingMission ? "Sauvegarder" : "Publier"}</ActionButton></div>
+        </div>
+      </Modal>
 
       {/* Confirmation Modal */}
       {confirmAction && (
