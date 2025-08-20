@@ -303,7 +303,90 @@ export const RiderDetailModal: React.FC<RiderDetailModalProps> = ({
   ];
 
   const renderActiveTab = () => {
-    // ... same as before, but pass handleLicenseUpdate to AdminTab
+    switch (activeTab) {
+      case 'info':
+        return (
+          <ProfileInfoTab
+            formData={formData}
+            handleInputChange={handleInputChange}
+            formFieldsEnabled={isEditMode}
+          />
+        );
+      case 'ppr':
+        return (
+          <PowerPPRTab
+            formData={formData}
+            handleInputChange={handleInputChange}
+            formFieldsEnabled={isEditMode}
+          />
+        );
+      case 'project':
+        return (
+          <PerformanceProjectTab
+            formData={formData}
+            handleInputChange={handleInputChange}
+            formFieldsEnabled={isEditMode}
+          />
+        );
+      case 'results':
+        return (
+          <ResultsTab
+            formData={formData}
+            handleInputChange={handleInputChange}
+            formFieldsEnabled={isEditMode}
+          />
+        );
+      case 'calendar':
+        return (
+          <CalendarTab
+            formData={formData}
+            handleInputChange={handleInputChange}
+            formFieldsEnabled={isEditMode}
+          />
+        );
+      case 'nutrition':
+        return (
+          <NutritionTab
+            formData={formData}
+            handleInputChange={handleInputChange}
+            formFieldsEnabled={isEditMode}
+          />
+        );
+      case 'equipment':
+        return (
+          <EquipmentTab
+            formData={formData}
+            handleInputChange={handleInputChange}
+            formFieldsEnabled={isEditMode}
+          />
+        );
+      case 'bikeSetup':
+        return (
+          <BikeSetupTab
+            formData={formData}
+            handleInputChange={handleInputChange}
+            formFieldsEnabled={isEditMode}
+          />
+        );
+      case 'admin':
+        return (
+          <AdminTab
+            formData={formData}
+            handleInputChange={handleInputChange}
+            formFieldsEnabled={isEditMode}
+            handleLicenseUpdate={handleLicenseUpdate}
+            isContractEditable={true}
+          />
+        );
+      default:
+        return (
+          <ProfileInfoTab
+            formData={formData}
+            handleInputChange={handleInputChange}
+            formFieldsEnabled={isEditMode}
+          />
+        );
+    }
   };
 
   if (!isOpen) return null;
@@ -351,16 +434,7 @@ export const RiderDetailModal: React.FC<RiderDetailModalProps> = ({
             )}
         </div>
         <div className="max-h-[calc(85vh - 120px)] overflow-y-auto p-1 pr-3">
-             {activeTab === 'admin' && (
-                <AdminTab 
-                    formData={formData} 
-                    handleInputChange={handleInputChange} 
-                    formFieldsEnabled={isEditMode} 
-                    handleLicenseUpdate={handleLicenseUpdate} 
-                    isContractEditable={true} 
-                />
-            )}
-            {/* ... other tabs ... */}
+          {renderActiveTab()}
         </div>
       </div>
     </Modal>
