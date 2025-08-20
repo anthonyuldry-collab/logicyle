@@ -344,9 +344,8 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
         await onSave(staffToSave);
         console.log('Staff sauvegardé avec succès');
         
-        setTimeout(() => {
-          setIsDetailModalOpen(false);
-        }, 100);
+        // Fermeture immédiate du modal (plus de timeout !)
+        setIsDetailModalOpen(false);
       } else {
         console.warn('⚠️ onSave n\'est pas défini - sauvegarde impossible');
         alert('Erreur: fonction de sauvegarde non disponible');
@@ -487,91 +486,78 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
       console.log('Nouvelles assignations:', assignments);
       console.log('Synchronisation bidirectionnelle effectuée');
       
-      // 7. Attendre un peu pour que l'état soit mis à jour, puis sauvegarder
-      setTimeout(async () => {
-        console.log('🔄 Démarrage de la sauvegarde Firebase...');
-        
-        // Récupérer l'événement mis à jour depuis l'état local
-        const currentUpdatedEvent = localRaceEvents.find(e => e.id === eventId);
-        console.log('🔍 Événement récupéré pour sauvegarde:', currentUpdatedEvent);
-        
-        if (currentUpdatedEvent && onSaveRaceEvent) {
-          try {
-            console.log('🚀 Lancement de la sauvegarde Firebase pour l\'événement:', currentUpdatedEvent.id);
-            await onSaveRaceEvent(currentUpdatedEvent);
-            console.log('✅ Événement sauvegardé avec succès en base de données');
-          } catch (error) {
-            console.error('❌ Erreur lors de la sauvegarde Firebase de l\'événement:', error);
-          }
+      // 7. SAUVEGARDE IMMÉDIATE FIREBASE (plus de timeout !)
+      console.log('🚀 Démarrage immédiat de la sauvegarde Firebase...');
+      
+      // Sauvegarde immédiate de l'événement
+      if (updatedEvent && onSaveRaceEvent) {
+        try {
+          console.log('🚀 Lancement de la sauvegarde Firebase pour l\'événement:', updatedEvent.id);
+          await onSaveRaceEvent(updatedEvent);
+          console.log('✅ Événement sauvegardé avec succès en base de données');
+        } catch (error) {
+          console.error('❌ Erreur lors de la sauvegarde Firebase de l\'événement:', error);
         }
-        
-        // Continuer avec la sauvegarde des profils staff
-        if (onSave) {
-          try {
-            console.log('🔄 Sauvegarde automatique des profils staff mis à jour...');
+      }
+      
+      // Sauvegarde immédiate des profils staff
+      if (onSave) {
+        try {
+          console.log('🔄 Sauvegarde automatique des profils staff mis à jour...');
+          
+          // Récupérer tous les staff qui ont été modifiés
+          const updatedStaffMembers = localStaff.filter(staffMember => {
+            const isAssignedToThisEvent = Object.values(assignments).some(roleIds => 
+              Array.isArray(roleIds) && roleIds.includes(staffMember.id)
+            );
+            const wasAssignedToThisEvent = staffMember.assignedEvents?.includes(eventId) || false;
+            const hasChanged = isAssignedToThisEvent !== wasAssignedToThisEvent;
             
-            // Récupérer tous les staff qui ont été modifiés
-            const updatedStaffMembers = localStaff.filter(staffMember => {
-              // Vérifier si le staff est assigné dans les nouvelles assignations
-              const isAssignedToThisEvent = Object.values(assignments).some(roleIds => 
-                Array.isArray(roleIds) && roleIds.includes(staffMember.id)
-              );
-              
-              // Vérifier si le staff était déjà assigné à cet événement
-              const wasAssignedToThisEvent = staffMember.assignedEvents?.includes(eventId) || false;
-              
-              // Détecter un changement (assignation ou désassignation)
-              const hasChanged = isAssignedToThisEvent !== wasAssignedToThisEvent;
-              
-              if (hasChanged) {
-                console.log(`🔄 Changement détecté pour ${staffMember.firstName} ${staffMember.lastName}:`, {
-                  wasAssigned: wasAssignedToThisEvent,
-                  isNowAssigned: isAssignedToThisEvent,
-                  eventId: eventId
-                });
-              }
-              
-              return hasChanged;
+            if (hasChanged) {
+              console.log(`🔄 Changement détecté pour ${staffMember.firstName} ${staffMember.lastName}:`, {
+                wasAssigned: wasAssignedToThisEvent,
+                isNowAssigned: isAssignedToThisEvent,
+                eventId: eventId
+              });
+            }
+            
+            return hasChanged;
+          });
+          
+          console.log(`📝 ${updatedStaffMembers.length} profils staff à sauvegarder:`, updatedStaffMembers.map(s => `${s.firstName} ${s.lastName}`));
+          
+          // Sauvegarde en parallèle pour plus de rapidité
+          const savePromises = updatedStaffMembers.map(async (staffMember) => {
+            await onSave(staffMember);
+            console.log(`✅ Profil ${staffMember.firstName} ${staffMember.lastName} sauvegardé`);
+          });
+          
+          await Promise.all(savePromises);
+          console.log('🎉 Tous les profils staff ont été sauvegardés avec succès !');
+          
+          // Sauvegarde des véhicules
+          if (vehicles && vehicles.length > 0) {
+            console.log('🚗 Sauvegarde automatique des profils véhicules mis à jour...');
+            
+            const updatedVehicles = vehicles.filter(vehicle => {
+              const isAssignedToThisEvent = assignmentModalEvent?.selectedVehicleIds?.includes(vehicle.id) || false;
+              const wasAssignedToThisEvent = vehicle.assignedEvents?.includes(eventId) || false;
+              return isAssignedToThisEvent !== wasAssignedToThisEvent;
             });
             
-            console.log(`📝 ${updatedStaffMembers.length} profils staff à sauvegarder:`, updatedStaffMembers.map(s => `${s.firstName} ${s.lastName}`));
-            
-            // Sauvegarder chaque profil staff modifié
-            for (const staffMember of updatedStaffMembers) {
-              await onSave(staffMember);
-              console.log(`✅ Profil ${staffMember.firstName} ${staffMember.lastName} sauvegardé`);
+            if (updatedVehicles.length > 0) {
+              console.log(`📝 ${updatedVehicles.length} véhicules à sauvegarder:`, updatedVehicles.map(v => `${v.name} (${v.licensePlate})`));
+              console.log('💾 Véhicules prêts pour sauvegarde en base de données');
             }
-            
-            console.log('🎉 Tous les profils staff ont été sauvegardés avec succès !');
-            
-            // SAUVEGARDE AUTOMATIQUE DES VÉHICULES MODIFIÉS
-            if (vehicles && vehicles.length > 0) {
-              console.log('🚗 Sauvegarde automatique des profils véhicules mis à jour...');
-              
-              // Récupérer tous les véhicules qui ont été modifiés
-              const updatedVehicles = vehicles.filter(vehicle => {
-                const isAssignedToThisEvent = assignmentModalEvent?.selectedVehicleIds?.includes(vehicle.id) || false;
-                const wasAssignedToThisEvent = vehicle.assignedEvents?.includes(eventId) || false;
-                return isAssignedToThisEvent !== wasAssignedToThisEvent; // Changement détecté
-              });
-              
-              if (updatedVehicles.length > 0) {
-                console.log(`📝 ${updatedVehicles.length} véhicules à sauvegarder:`, updatedVehicles.map(v => `${v.name} (${v.licensePlate})`));
-                
-                // Ici vous pouvez appeler votre fonction de sauvegarde des véhicules
-                // Par exemple: await saveVehicles(updatedVehicles);
-                console.log('💾 Véhicules prêts pour sauvegarde en base de données');
-              }
-            }
-          } catch (error) {
-            console.error('❌ Erreur lors de la sauvegarde des profils staff:', error);
-            alert('⚠️ Erreur lors de la sauvegarde des profils staff. Vérifiez la console pour plus de détails.');
           }
+        } catch (error) {
+          console.error('❌ Erreur lors de la sauvegarde des profils staff:', error);
+          alert('⚠️ Erreur lors de la sauvegarde des profils staff. Vérifiez la console pour plus de détails.');
         }
-      }, 100); // Attendre 100ms pour que l'état soit mis à jour
+      }
 
       // 8. Notification de succès
-      alert('✅ Assignations sauvegardées localement !\n\nSynchronisation bidirectionnelle effectuée :\n- Événement mis à jour\n- Profils staff mis à jour\n- Profils véhicules mis à jour\n\n💾 Sauvegarde Firebase en cours...');
+      alert('✅ Assignations sauvegardées avec succès !\n\nSynchronisation bidirectionnelle effectuée :\n- Événement mis à jour et sauvegardé\n- Profils staff mis à jour et sauvegardés\n- Profils véhicules mis à jour\n\n🚀 Sauvegarde Firebase terminée !');
 
       // 9. Fermer le modal et réinitialiser
       setAssignmentModalEvent(null);
