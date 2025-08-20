@@ -1112,6 +1112,7 @@ const App: React.FC = () => {
                       users={appState.users}
                       permissionRoles={appState.permissionRoles}
                       vehicles={appState.vehicles}
+                      onSaveRaceEvent={onSaveRaceEvent}
                     />
                   )}
                   {currentSection === "vehicles" && (
