@@ -205,17 +205,17 @@ const SeasonPlanningTab: React.FC<SeasonPlanningTabProps> = ({
     };
 
     const renderGridView = () => (
-        <div className="overflow-x-auto border rounded-lg" style={{ maxHeight: '70vh' }}>
+        <div className="overflow-x-auto border rounded-lg" style={{ maxHeight: '60vh' }}>
             <table className="min-w-full border-collapse">
                 <thead className="bg-gray-100 z-10" style={{ position: 'sticky', top: 0 }}>
                     <tr>
-                        <th className="p-2 border text-sm font-semibold text-gray-600 w-48 z-20" style={{ position: 'sticky', left: 0, backgroundColor: 'inherit' }}>Coureur</th>
-                        <th className="p-2 border text-sm font-semibold text-gray-600 w-28 z-20" style={{ position: 'sticky', left: '12rem', backgroundColor: 'inherit' }}>Jours Course</th>
+                        <th className="p-1.5 border text-xs font-semibold text-gray-600 w-40 z-20" style={{ position: 'sticky', left: 0, backgroundColor: 'inherit' }}>Coureur</th>
+                        <th className="p-1.5 border text-xs font-semibold text-gray-600 w-20 z-20" style={{ position: 'sticky', left: '10rem', backgroundColor: 'inherit' }}>Jours</th>
                         {futureEvents && futureEvents.map(event => (
-                            <th key={event.id} className="p-2 border text-xs font-semibold text-gray-600 min-w-[150px]">
-                                <div className="font-bold">{event.name}</div>
-                                <div className="font-normal">{new Date(event.date + 'T12:00:00Z').toLocaleDateString('fr-CA')}</div>
-                                <div className="font-normal text-gray-500">({getEventDuration(event)}j)</div>
+                            <th key={event.id} className="p-1.5 border text-xs font-semibold text-gray-600 min-w-[120px]">
+                                <div className="font-bold text-xs">{event.name}</div>
+                                <div className="text-xs">{new Date(event.date + 'T12:00:00Z').toLocaleDateString('fr-CA')}</div>
+                                <div className="text-xs text-gray-500">({getEventDuration(event)}j)</div>
                             </th>
                         ))}
                     </tr>
@@ -223,17 +223,17 @@ const SeasonPlanningTab: React.FC<SeasonPlanningTabProps> = ({
                 <tbody>
                     {riders && riders.map(rider => (
                         <tr key={rider.id} className="hover:bg-gray-50">
-                            <td className="p-2 border font-medium text-gray-800 w-48 z-10" style={{ position: 'sticky', left: 0, backgroundColor: 'inherit' }}>{rider.firstName} {rider.lastName}</td>
-                            <td className="p-2 border font-bold text-center text-lg text-gray-800 w-28 z-10" style={{ position: 'sticky', left: '12rem', backgroundColor: 'inherit' }}>{raceDaysByRider[rider.id] || 0}</td>
+                            <td className="p-1.5 border text-sm font-medium text-gray-800 w-40 z-10" style={{ position: 'sticky', left: 0, backgroundColor: 'inherit' }}>{rider.firstName} {rider.lastName}</td>
+                            <td className="p-1.5 border font-bold text-center text-base text-gray-800 w-20 z-10" style={{ position: 'sticky', left: '10rem', backgroundColor: 'inherit' }}>{raceDaysByRider[rider.id] || 0}</td>
                             {futureEvents && futureEvents.map(event => {
                                 const selection = riderEventSelections.find(s => s.riderId === rider.id && s.eventId === event.id);
                                 const status = selection?.status || RiderEventStatus.NON_RETENU;
                                 return (
-                                    <td key={event.id} className={`p-1 border text-center align-middle ${RIDER_EVENT_STATUS_COLORS[status].split(' ')[0]}`}>
+                                    <td key={event.id} className={`p-0.5 border text-center align-middle ${RIDER_EVENT_STATUS_COLORS[status].split(' ')[0]}`}>
                                         <select
                                             value={status}
                                             onChange={(e) => handlePlanningGridSelectionChange(rider.id, event.id, e.target.value as RiderEventStatus)}
-                                            className={`w-full h-full text-center text-xs p-1 border-0 rounded appearance-none focus:outline-none focus:ring-2 focus:ring-blue-400 bg-transparent ${RIDER_EVENT_STATUS_COLORS[status].split(' ')[1]}`}
+                                            className={`w-full h-full text-center text-xs p-0.5 border-0 rounded appearance-none focus:outline-none focus:ring-1 focus:ring-blue-400 bg-transparent ${RIDER_EVENT_STATUS_COLORS[status].split(' ')[1]}`}
                                         >
                                             {Object.values(RiderEventStatus).map(s => (
                                                 <option key={s} value={s} style={{ backgroundColor: '#fff', color: '#000' }}>{s}</option>

@@ -1,7 +1,17 @@
-import React, { useState, useMemo } from 'react';
-import { AppState, IncomeItem, BudgetItemCategory, IncomeCategory } from '../types';
+import React, { useState, useMemo, useEffect } from 'react';
+import { 
+    AppState, IncomeItem, BudgetItemCategory, IncomeCategory, 
+    EventBudgetItem, RaceEvent, Staff, Vehicle, Rider 
+} from '../types';
 import SectionWrapper from '../components/SectionWrapper';
+import ActionButton from '../components/ActionButton';
+import Modal from '../components/Modal';
 import { useTranslations } from '../hooks/useTranslations';
+import { 
+    PlusCircleIcon, PencilIcon, TrashIcon, 
+    TrendingUpIcon, TrendingDownIcon, CurrencyEuroIcon,
+    CalendarIcon, MapPinIcon, UsersIcon, TruckIcon
+} from '../components/icons';
 
 interface FinancialSectionProps {
   incomeItems: IncomeItem[];
@@ -11,6 +21,11 @@ interface FinancialSectionProps {
   onSaveBudgetItem: (item: EventBudgetItem) => Promise<void>;
   onDeleteBudgetItem: (item: EventBudgetItem) => Promise<void>;
   effectivePermissions: Record<string, string[]>;
+  // Nouvelles props pour l'automatisation
+  raceEvents?: RaceEvent[];
+  staff?: Staff[];
+  vehicles?: Vehicle[];
+  riders?: Rider[];
 }
 
 export const FinancialSection: React.FC<FinancialSectionProps> = ({ incomeItems, budgetItems, onSaveIncomeItem, onDeleteIncomeItem, onSaveBudgetItem, onDeleteBudgetItem, effectivePermissions }) => {
