@@ -309,7 +309,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
       title: `Supprimer ${member.firstName} ${member.lastName}`,
       message: "Êtes-vous sûr de vouloir supprimer ce membre du staff ? Cette action est irréversible.",
       onConfirm: () => {
-        setLocalStaff(prev => prev.filter(s => s.id !== staffId));
+        setLocalStaff((prev: StaffMember[]) => prev.filter(s => s.id !== staffId));
         // Also remove from events
         setLocalRaceEvents(prevEvents => prevEvents.map(event => {
             const newEvent = {...event};
@@ -355,13 +355,13 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
           title: `Supprimer l'annonce "${missionToDelete.title}"`,
           message: "Êtes-vous sûr de vouloir supprimer cette annonce ? Cette action est irréversible.",
           onConfirm: () => {
-              setLocalMissions(prev => prev.filter(m => m.id !== missionToDelete.id));
+              setLocalMissions((prev: Mission[]) => prev.filter(m => m.id !== missionToDelete.id));
           }
       });
   };
   
   const handleUpdateMissionStatus = (missionId: string, status: MissionStatus) => {
-    setLocalMissions(prev => prev.map(m => m.id === missionId ? { ...m, status } : m));
+    setLocalMissions((prev: Mission[]) => prev.map(m => m.id === missionId ? { ...m, status } : m));
   };
 
 
@@ -369,7 +369,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
     if (!team) return;
     
     if (editingMission) {
-        setLocalMissions(prev => prev.map(m => 
+        setLocalMissions((prev: Mission[]) => prev.map(m => 
             m.id === editingMission.id 
             ? { ...m, ...newMissionData, id: editingMission.id, teamId: team.id } 
             : m
@@ -382,7 +382,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
             status: MissionStatus.OPEN,
             applicants: []
         };
-        setLocalMissions(prev => [...prev, newMission]);
+        setLocalMissions((prev: Mission[]) => [...prev, newMission]);
     }
     setIsPostMissionModalOpen(false);
     setEditingMission(null);
@@ -444,7 +444,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
   };
 
   const handlePermissionChange = (staffId: string, newPermission: TeamRole) => {
-    setLocalStaff(prev => prev.map(s => 
+    setLocalStaff((prev: StaffMember[]) => prev.map(s => 
       s.id === staffId ? { ...s, permissionRole: newPermission } : s
     ));
   };

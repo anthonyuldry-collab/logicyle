@@ -18,11 +18,9 @@ import { useTranslations } from '../hooks/useTranslations';
 
 interface VehiclesSectionProps {
   vehicles: Vehicle[];
-  setVehicles: React.Dispatch<React.SetStateAction<Vehicle[]>>;
-  staff: StaffMember[]; 
-  eventTransportLegs: EventTransportLeg[];
-  raceEvents: RaceEvent[]; 
-  navigateTo: (section: AppSection, eventId?: string) => void; 
+  onSave: (vehicle: Vehicle) => void;
+  onDelete: (vehicleId: string) => void;
+  effectivePermissions?: any;
 }
 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
@@ -90,11 +88,9 @@ type VehicleTab = 'list' | 'assignmentCalendar';
 
 const VehiclesSection: React.FC<VehiclesSectionProps> = ({ 
     vehicles, 
-    setVehicles, 
-    staff, 
-    eventTransportLegs, 
-    raceEvents, 
-    navigateTo 
+    onSave, 
+    onDelete, 
+    effectivePermissions 
 }) => {
   // Protection minimale - seulement vehicles est requis
   if (!vehicles) {
@@ -151,16 +147,24 @@ const VehiclesSection: React.FC<VehiclesSectionProps> = ({
   };
 
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isEditing && 'id' in currentVehicle) {
-      setVehicles(prevVehicles => prevVehicles.map(v => v.id === (currentVehicle as Vehicle).id ? (currentVehicle as Vehicle) : v));
-    } else {
-      setVehicles(prevVehicles => [...prevVehicles, { ...currentVehicle, id: generateId() } as Vehicle]);
+    try {
+      if (isEditing && 'id' in currentVehicle) {
+        // Mise à jour d'un véhicule existant
+        await onSave(currentVehicle as Vehicle);
+      } else {
+        // Création d'un nouveau véhicule
+        const newVehicle = { ...currentVehicle, id: generateId() } as Vehicle;
+        await onSave(newVehicle);
+      }
+      setIsModalOpen(false);
+      setCurrentVehicle(initialVehicleFormState);
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde du véhicule:', error);
+      alert('Erreur lors de la sauvegarde. Veuillez réessayer.');
     }
-    setIsModalOpen(false);
-    setCurrentVehicle(initialVehicleFormState);
-    setIsEditing(false);
   };
 
   const openAddModal = () => {
@@ -175,16 +179,21 @@ const VehiclesSection: React.FC<VehiclesSectionProps> = ({
     setIsModalOpen(true);
   };
 
-  const handleDelete = (vehicleId: string) => {
+  const handleDelete = async (vehicleId: string) => {
     if (window.confirm(t('vehicleConfirmDelete'))) {
-      setVehicles(prevVehicles => prevVehicles.filter(v => v.id !== vehicleId));
+      try {
+        await onDelete(vehicleId);
+      } catch (error) {
+        console.error('Erreur lors de la suppression du véhicule:', error);
+        alert('Erreur lors de la suppression. Veuillez réessayer.');
+      }
     }
   };
 
   const getDriverName = (driverId?: string) => {
     if (!driverId) return 'Non assigné';
-    const driver = staff.find(s => s.id === driverId);
-    return driver ? `${driver.firstName} ${driver.lastName}` : 'Chauffeur inconnu';
+    // TODO: Implémenter la recherche du chauffeur via une prop ou un service
+    return 'Chauffeur inconnu';
   };
   
   const formatDate = (dateString?: string) => {
@@ -214,7 +223,7 @@ const VehiclesSection: React.FC<VehiclesSectionProps> = ({
             </thead>
             <tbody className="divide-y divide-gray-200">
               {vehicles && vehicles.map((vehicle) => {
-                const todayStatus = getVehicleStatusForDay(vehicle, new Date(), eventTransportLegs, raceEvents);
+                const todayStatus = getVehicleStatusForDay(vehicle, new Date(), [], []);
                 const lastMaintenance = vehicle.maintenanceHistory && vehicle.maintenanceHistory.length > 0
                     ? [...vehicle.maintenanceHistory].sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
                     : null;
