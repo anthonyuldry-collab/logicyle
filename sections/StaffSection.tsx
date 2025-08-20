@@ -1,7 +1,7 @@
 
 
 import React, { useState, useMemo } from 'react';
-import { StaffMember, RaceEvent, EventStaffAvailability, StaffRoleKey, EventBudgetItem, StaffRole, StaffStatus, AvailabilityStatus, EventType, ContractType, BudgetItemCategory, User, TeamRole, WorkExperience, Team, PerformanceEntry, Mission, MissionStatus, MissionCompensationType, Address, EducationOrCertification, AppSection, PermissionLevel } from '../types'; 
+import { StaffMember, RaceEvent, EventStaffAvailability, StaffRoleKey, EventBudgetItem, StaffRole, StaffStatus, AvailabilityStatus, EventType, ContractType, BudgetItemCategory, User, TeamRole, WorkExperience, Team, PerformanceEntry, Mission, MissionStatus, MissionCompensationType, Address, EducationOrCertification, AppSection, PermissionLevel, Vehicle } from '../types'; 
 import { STAFF_ROLE_COLORS, STAFF_STATUS_COLORS, EVENT_TYPE_COLORS, STAFF_ROLES_CONFIG } from '../constants'; 
 import SectionWrapper from '../components/SectionWrapper';
 import ActionButton from '../components/ActionButton';
@@ -41,6 +41,7 @@ interface StaffSectionProps {
   teams?: Team[];
   users?: User[];
   permissionRoles?: any[]; // Ajout de permissionRoles
+  vehicles?: Vehicle[]; // Ajout des véhicules
 }
 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
@@ -150,6 +151,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
   teams,
   users,
   permissionRoles,
+  vehicles, // Ajout des véhicules
 }) => {
   // Protection simplifiée - seulement staff et currentUser sont requis
   if (!staff || !currentUser) {
@@ -209,6 +211,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
   // Local state for other data
   const [localEventStaffAvailabilities, setLocalEventStaffAvailabilities] = useState<EventStaffAvailability[]>(eventStaffAvailabilities || []);
   const [localPermissionRoles, setLocalPermissionRoles] = useState<any[]>([]);
+  const [localVehicles, setLocalVehicles] = useState<Vehicle[]>(vehicles || []);
 
   const lightInputClass = `mt-1 block w-full px-3 py-2 border rounded-md shadow-sm sm:text-sm bg-white text-gray-900 border-gray-300 placeholder-gray-400 focus:ring-blue-500 focus:border-blue-500`;
   const lightSelectClass = `mt-1 block w-full pl-3 pr-10 py-2 border rounded-md shadow-sm sm:text-sm bg-white text-gray-900 border-gray-300 focus:ring-blue-500 focus:border-blue-500`;
@@ -412,12 +415,64 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
             return event;
         }));
         
+        // Synchronisation bidirectionnelle : mettre à jour les profils staff
+        setLocalStaff(prevStaff => prevStaff.map(staffMember => {
+            const isAssignedToThisEvent = Object.values(assignments).some(roleIds => 
+                roleIds.includes(staffMember.id)
+            );
+            
+            if (isAssignedToThisEvent) {
+                // Ajouter l'événement à la liste des événements du staff
+                const updatedStaffMember = { ...staffMember };
+                if (!updatedStaffMember.assignedEvents) {
+                    updatedStaffMember.assignedEvents = [];
+                }
+                if (!updatedStaffMember.assignedEvents.includes(eventId)) {
+                    updatedStaffMember.assignedEvents = [...updatedStaffMember.assignedEvents, eventId];
+                }
+                return updatedStaffMember;
+            } else {
+                // Retirer l'événement de la liste des événements du staff
+                const updatedStaffMember = { ...staffMember };
+                if (updatedStaffMember.assignedEvents) {
+                    updatedStaffMember.assignedEvents = updatedStaffMember.assignedEvents.filter(id => id !== eventId);
+                }
+                return updatedStaffMember;
+            }
+        }));
+
+        // Synchronisation bidirectionnelle : mettre à jour les profils véhicules
+        if (vehicles && vehicles.length > 0) {
+            setLocalVehicles(prevVehicles => prevVehicles.map(vehicle => {
+                const isAssignedToThisEvent = assignmentModalEvent.selectedVehicleIds?.includes(vehicle.id) || false;
+                
+                if (isAssignedToThisEvent) {
+                    // Ajouter l'événement à la liste des événements du véhicule
+                    const updatedVehicle = { ...vehicle };
+                    if (!updatedVehicle.assignedEvents) {
+                        updatedVehicle.assignedEvents = [];
+                    }
+                    if (!updatedVehicle.assignedEvents.includes(eventId)) {
+                        updatedVehicle.assignedEvents = [...updatedVehicle.assignedEvents, eventId];
+                    }
+                    return updatedVehicle;
+                } else {
+                    // Retirer l'événement de la liste des événements du véhicule
+                    const updatedVehicle = { ...vehicle };
+                    if (updatedVehicle.assignedEvents) {
+                        updatedVehicle.assignedEvents = updatedVehicle.assignedEvents.filter(id => id !== eventId);
+                    }
+                    return updatedVehicle;
+                }
+            }));
+        }
+        
         // Fermer le modal
         setAssignmentModalEvent(null);
         setModalAssignments({});
         
         // Afficher un message de confirmation
-        alert('Assignations sauvegardées avec succès !');
+        alert('Assignations sauvegardées avec succès ! Synchronisation bidirectionnelle effectuée.');
     };
 
   const handleOpenAssignmentModal = (event: RaceEvent) => {
@@ -433,6 +488,59 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
     setLocalStaff((prev: StaffMember[]) => prev.map(s => 
       s.id === staffId ? { ...s, permissionRole: newPermission } : s
     ));
+  };
+
+  // Fonction de synchronisation inverse : depuis le profil staff vers les événements
+  const syncStaffToEvents = (staffId: string, eventIds: string[]) => {
+    setLocalRaceEvents(prevEvents => prevEvents.map(event => {
+      const updatedEvent = { ...event };
+      
+      // Vérifier si le staff est assigné à cet événement
+      const isAssigned = eventIds.includes(event.id);
+      
+      // Mettre à jour les propriétés de rôle selon le type de staff
+      const staffMember = localStaff.find(s => s.id === staffId);
+      if (staffMember) {
+        switch (staffMember.role) {
+          case StaffRole.DIRECTEUR_SPORTIF:
+            if (isAssigned) {
+              updatedEvent.directeurSportifId = [...(updatedEvent.directeurSportifId || []), staffId];
+            } else {
+              updatedEvent.directeurSportifId = (updatedEvent.directeurSportifId || []).filter(id => id !== staffId);
+            }
+            break;
+          case StaffRole.ASSISTANT:
+            if (isAssigned) {
+              updatedEvent.assistantId = [...(updatedEvent.assistantId || []), staffId];
+            } else {
+              updatedEvent.assistantId = (updatedEvent.assistantId || []).filter(id => id !== staffId);
+            }
+            break;
+          case StaffRole.MECANO:
+            if (isAssigned) {
+              updatedEvent.mecanoId = [...(updatedEvent.mecanoId || []), staffId];
+            } else {
+              updatedEvent.mecanoId = (updatedEvent.mecanoId || []).filter(id => id !== staffId);
+            }
+            break;
+          // Ajouter d'autres rôles selon vos besoins
+        }
+        
+        // Mettre à jour selectedStaffIds
+        if (isAssigned) {
+          if (!updatedEvent.selectedStaffIds) updatedEvent.selectedStaffIds = [];
+          if (!updatedEvent.selectedStaffIds.includes(staffId)) {
+            updatedEvent.selectedStaffIds = [...updatedEvent.selectedStaffIds, staffId];
+          }
+        } else {
+          if (updatedEvent.selectedStaffIds) {
+            updatedEvent.selectedStaffIds = updatedEvent.selectedStaffIds.filter(id => id !== staffId);
+          }
+        }
+      }
+      
+      return updatedEvent;
+    }));
   };
 
    const renderDetailsTab = () => (
@@ -476,6 +584,26 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
                         {member.address?.city && <p className="flex items-center"><LocationMarkerIcon className="w-4 h-4 mr-2 text-gray-400"/> {member.address.city}</p>}
                         <div className="pt-2">
                             <p className="flex items-center font-semibold"><CalendarDaysIcon className="w-4 h-4 mr-2 text-gray-400"/> Jours de mission : {daysAssigned}</p>
+                            {member.assignedEvents && member.assignedEvents.length > 0 && (
+                                <div className="mt-2">
+                                    <p className="text-xs text-gray-500 mb-1">Événements assignés :</p>
+                                    <div className="space-y-1">
+                                        {member.assignedEvents.slice(0, 3).map(eventId => {
+                                            const event = localRaceEvents.find(e => e.id === eventId);
+                                            return event ? (
+                                                <div key={eventId} className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                                    {event.name} ({new Date(event.date).toLocaleDateString('fr-FR')})
+                                                </div>
+                                            ) : null;
+                                        })}
+                                        {member.assignedEvents.length > 3 && (
+                                            <div className="text-xs text-gray-500">
+                                                +{member.assignedEvents.length - 3} autres...
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -645,7 +773,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
       )}
 
       {assignmentModalEvent && (
-            <Modal isOpen={!!assignmentModalEvent} onClose={() => setAssignmentModalEvent(null)} title={`Assignation Staff: ${assignmentModalEvent.name}`}>
+            <Modal isOpen={!!assignmentModalEvent} onClose={() => setAssignmentModalEvent(null)} title={`Assignation Staff et Véhicules: ${assignmentModalEvent.name}`}>
                 <div className="max-h-[70vh] overflow-y-auto pr-2">
                     {STAFF_ROLES_CONFIG.map(group => (
                         <div key={group.group} className="mb-4">
@@ -701,6 +829,66 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
                         </div>
                     ))}
                 </div>
+
+                {/* Section Véhicules */}
+                {vehicles && vehicles.length > 0 && (
+                    <div className="mt-6 border-t pt-4">
+                        <h4 className="font-semibold text-gray-800 border-b pb-1 mb-2">Véhicules</h4>
+                        <div className="space-y-3">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700">Véhicules assignés à l'événement</label>
+                                <div className="mt-1 p-2 border rounded-md space-y-1 bg-gray-50 max-h-40 overflow-y-auto">
+                                    {vehicles.map(vehicle => {
+                                        const isAssignedToThisEvent = assignmentModalEvent.selectedVehicleIds?.includes(vehicle.id) || false;
+                                        const isUnavailable = localRaceEvents.some(otherEvent => {
+                                            if (otherEvent.id === assignmentModalEvent.id || !(otherEvent.selectedVehicleIds || []).includes(vehicle.id)) {
+                                                return false;
+                                            }
+                                            const currentEventStart = new Date(assignmentModalEvent.date + 'T00:00:00Z');
+                                            const currentEventEnd = new Date((assignmentModalEvent.endDate || assignmentModalEvent.date) + 'T23:59:59Z');
+                                            const otherEventStart = new Date(otherEvent.date + 'T00:00:00Z');
+                                            const otherEventEnd = new Date((otherEvent.endDate || otherEvent.date) + 'T23:59:59Z');
+                                            
+                                            return currentEventStart <= otherEventEnd && currentEventEnd >= otherEventStart;
+                                        });
+                                        
+                                        return (
+                                            <div key={vehicle.id} className="flex items-center">
+                                                <input 
+                                                    type="checkbox" 
+                                                    id={`vehicle-${vehicle.id}`}
+                                                    checked={isAssignedToThisEvent}
+                                                    disabled={isUnavailable}
+                                                    onChange={() => {
+                                                        const currentVehicleIds = assignmentModalEvent.selectedVehicleIds || [];
+                                                        const newVehicleIds = isAssignedToThisEvent
+                                                            ? currentVehicleIds.filter(id => id !== vehicle.id)
+                                                            : [...currentVehicleIds, vehicle.id];
+                                                        
+                                                        // Mettre à jour l'événement localement
+                                                        setLocalRaceEvents(prevEvents => prevEvents.map(event => 
+                                                            event.id === assignmentModalEvent.id 
+                                                                ? { ...event, selectedVehicleIds: newVehicleIds }
+                                                                : event
+                                                        ));
+                                                        
+                                                        // Mettre à jour assignmentModalEvent
+                                                        setAssignmentModalEvent(prev => prev ? { ...prev, selectedVehicleIds: newVehicleIds } : null);
+                                                    }}
+                                                    className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                                                />
+                                                <label htmlFor={`vehicle-${vehicle.id}`} className={`ml-2 text-sm ${isUnavailable ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                                                    {vehicle.name} ({vehicle.licensePlate}) {isUnavailable && "(Non dispo.)"}
+                                                </label>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+                
                 <div className="flex justify-end space-x-2 mt-4 pt-3 border-t">
                     <ActionButton variant="secondary" onClick={() => setAssignmentModalEvent(null)}>Annuler</ActionButton>
                     <ActionButton onClick={() => handleSaveAssignments(assignmentModalEvent.id, modalAssignments)}>Sauvegarder</ActionButton>

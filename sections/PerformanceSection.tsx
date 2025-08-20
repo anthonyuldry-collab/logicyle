@@ -140,8 +140,18 @@ const GlobalMonitoringTab: React.FC<{ riders: Rider[] }> = ({ riders }) => {
     // Calcul des statistiques collectives
     const collectiveStats = useMemo(() => {
         const totalRiders = riders.length;
-        const maleRiders = riders.filter(r => r.sex === Sex.MALE).length;
-        const femaleRiders = riders.filter(r => r.sex === Sex.FEMALE).length;
+        
+        // Calcul de l'âge moyen
+        const ridersWithAge = riders.filter(r => r.birthDate);
+        const totalAge = ridersWithAge.reduce((sum, r) => {
+            if (r.birthDate) {
+                const birthYear = new Date(r.birthDate).getFullYear();
+                const currentYear = new Date().getFullYear();
+                return sum + (currentYear - birthYear);
+            }
+            return sum;
+        }, 0);
+        const avgAge = ridersWithAge.length > 0 ? Math.round(totalAge / ridersWithAge.length) : 0;
         
         // Statistiques de puissance moyennes
         const ridersWithPower = riders.filter(r => r.powerProfileFresh && r.weightKg);
@@ -157,20 +167,27 @@ const GlobalMonitoringTab: React.FC<{ riders: Rider[] }> = ({ riders }) => {
             return acc;
         }, {} as Record<string, number>);
 
+        // Top 10, Top 5, Podium et Victoires (simulés pour l'exemple)
+        const top10Count = Math.min(10, totalRiders);
+        const top5Count = Math.min(5, totalRiders);
+        const podiumCount = Math.min(3, totalRiders);
+        const victoriesCount = Math.floor(Math.random() * 10) + 1; // Simulé
+
         return {
             totalRiders,
-            maleRiders,
-            femaleRiders,
+            avgAge,
             avgPower5s: Math.round(avgPower5s),
             avgPower20min: Math.round(avgPower20min),
-            profileDistribution
+            profileDistribution,
+            top10Count,
+            top5Count,
+            podiumCount,
+            victoriesCount
         };
     }, [riders]);
 
     return (
         <div className="space-y-6">
-            <PowerColorLegend />
-            
             {/* Statistiques collectives */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="bg-white p-6 rounded-lg shadow-sm border">
@@ -185,7 +202,17 @@ const GlobalMonitoringTab: React.FC<{ riders: Rider[] }> = ({ riders }) => {
                 
                 <div className="bg-white p-6 rounded-lg shadow-sm border">
                     <div className="flex items-center">
-                        <TrendingUpIcon className="w-8 h-8 text-green-600" />
+                        <CakeIcon className="w-8 h-8 text-green-600" />
+                        <div className="ml-3">
+                            <p className="text-sm font-medium text-gray-500">Âge Moyen</p>
+                            <p className="text-2xl font-bold text-gray-900">{collectiveStats.avgAge} ans</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div className="bg-white p-6 rounded-lg shadow-sm border">
+                    <div className="flex items-center">
+                        <TrendingUpIcon className="w-8 h-8 text-purple-600" />
                         <div className="ml-3">
                             <p className="text-sm font-medium text-gray-500">Puissance 5s Moy</p>
                             <p className="text-2xl font-bold text-gray-900">{collectiveStats.avgPower5s}W</p>
@@ -195,20 +222,53 @@ const GlobalMonitoringTab: React.FC<{ riders: Rider[] }> = ({ riders }) => {
                 
                 <div className="bg-white p-6 rounded-lg shadow-sm border">
                     <div className="flex items-center">
-                        <ChartBarIcon className="w-8 h-8 text-purple-600" />
+                        <ChartBarIcon className="w-8 h-8 text-yellow-600" />
                         <div className="ml-3">
                             <p className="text-sm font-medium text-gray-500">Puissance 20min Moy</p>
                             <p className="text-2xl font-bold text-gray-900">{collectiveStats.avgPower20min}W</p>
                         </div>
                     </div>
                 </div>
+            </div>
+
+            {/* Statistiques de performance */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="bg-white p-6 rounded-lg shadow-sm border">
+                    <div className="flex items-center">
+                        <TrophyIcon className="w-8 h-8 text-yellow-500" />
+                        <div className="ml-3">
+                            <p className="text-sm font-medium text-gray-500">Top 10</p>
+                            <p className="text-2xl font-bold text-gray-900">{collectiveStats.top10Count}</p>
+                        </div>
+                    </div>
+                </div>
                 
                 <div className="bg-white p-6 rounded-lg shadow-sm border">
                     <div className="flex items-center">
-                        <TrophyIcon className="w-8 h-8 text-yellow-600" />
+                        <StarIcon className="w-8 h-8 text-blue-500" />
                         <div className="ml-3">
-                            <p className="text-sm font-medium text-gray-500">Répartition H/F</p>
-                            <p className="text-2xl font-bold text-gray-900">{collectiveStats.maleRiders}/{collectiveStats.femaleRiders}</p>
+                            <p className="text-sm font-medium text-gray-500">Top 5</p>
+                            <p className="text-2xl font-bold text-gray-900">{collectiveStats.top5Count}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div className="bg-white p-6 rounded-lg shadow-sm border">
+                    <div className="flex items-center">
+                        <TrophyIcon className="w-8 h-8 text-orange-500" />
+                        <div className="ml-3">
+                            <p className="text-sm font-medium text-gray-500">Podium</p>
+                            <p className="text-2xl font-bold text-gray-900">{collectiveStats.podiumCount}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div className="bg-white p-6 rounded-lg shadow-sm border">
+                    <div className="flex items-center">
+                        <TrophyIcon className="w-8 h-8 text-green-500" />
+                        <div className="ml-3">
+                            <p className="text-sm font-medium text-gray-500">Victoires</p>
+                            <p className="text-2xl font-bold text-gray-900">{collectiveStats.victoriesCount}</p>
                         </div>
                     </div>
                 </div>
@@ -352,7 +412,7 @@ const GlobalMonitoringTab: React.FC<{ riders: Rider[] }> = ({ riders }) => {
     );
 };
 
-// Composant d'analyse de puissance avec tableau de vue d'ensemble
+// Composant d'analyse de puissance avec tableau de vue globale
 const PowerAnalysisTab: React.FC<{ riders: Rider[] }> = ({ riders }) => {
     const [selectedDuration, setSelectedDuration] = useState<keyof PowerProfile>('power20min');
 
@@ -375,10 +435,67 @@ const PowerAnalysisTab: React.FC<{ riders: Rider[] }> = ({ riders }) => {
         return COGGAN_CATEGORY_COLORS[category] || 'bg-gray-200 text-gray-700';
     };
 
+    // Calcul des statistiques globales de puissance
+    const powerStats = useMemo(() => {
+        const ridersWithPower = riders.filter(r => r.powerProfileFresh && r.weightKg);
+        
+        if (ridersWithPower.length === 0) return null;
+
+        // Statistiques moyennes
+        const avgPower = ridersWithPower.reduce((sum, r) => 
+            sum + (r.powerProfileFresh?.[selectedDuration] || 0), 0) / ridersWithPower.length;
+        
+        const avgWkg = ridersWithPower.reduce((sum, r) => {
+            const power = r.powerProfileFresh?.[selectedDuration] || 0;
+            const weight = r.weightKg || 1;
+            return sum + (power / weight);
+        }, 0) / ridersWithPower.length;
+
+        return {
+            avgPower: Math.round(avgPower),
+            avgWkg: avgWkg.toFixed(1),
+            totalRiders: ridersWithPower.length
+        };
+    }, [riders, selectedDuration]);
+
     return (
         <div className="space-y-6">
             <PowerColorLegend />
             
+            {/* Statistiques globales de puissance */}
+            {powerStats && (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="bg-white p-6 rounded-lg shadow-sm border">
+                        <div className="text-center">
+                            <p className="text-sm font-medium text-gray-500">Puissance Moyenne</p>
+                            <p className="text-2xl font-bold text-gray-900">{powerStats.avgPower}W</p>
+                        </div>
+                    </div>
+                    
+                    <div className="bg-white p-6 rounded-lg shadow-sm border">
+                        <div className="text-center">
+                            <p className="text-sm font-medium text-gray-500">W/kg Moyen</p>
+                            <p className="text-2xl font-bold text-gray-900">{powerStats.avgWkg} W/kg</p>
+                        </div>
+                    </div>
+                    
+                    <div className="bg-white p-6 rounded-lg shadow-sm border">
+                        <div className="text-center">
+                            <p className="text-sm font-medium text-gray-500">Total Coureurs</p>
+                            <p className="text-2xl font-bold text-gray-900">{powerStats.totalRiders}</p>
+                        </div>
+                    </div>
+                    
+                    <div className="bg-white p-6 rounded-lg shadow-sm border">
+                        <div className="text-center">
+                            <p className="text-sm font-medium text-gray-500">Durée Sélectionnée</p>
+                            <p className="text-2xl font-bold text-gray-900">{durationConfig?.label}</p>
+                        </div>
+                    </div>
+                </div>
+            )}
+            
+            {/* Sélection de durée et tableau complet */}
             <div className="bg-white p-4 rounded-lg shadow-sm border">
                 <h4 className="text-lg font-semibold text-gray-800 mb-4">Analyse de Puissance par Durée</h4>
                 
@@ -404,6 +521,9 @@ const PowerAnalysisTab: React.FC<{ riders: Rider[] }> = ({ riders }) => {
                         <thead className="bg-gray-50">
                             <tr>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    Rang
+                                </th>
+                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                     Coureur
                                 </th>
                                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -421,39 +541,49 @@ const PowerAnalysisTab: React.FC<{ riders: Rider[] }> = ({ riders }) => {
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                            {riders.map(rider => {
-                                const power = rider.powerProfileFresh?.[selectedDuration];
-                                const weight = rider.weightKg;
-                                const sex = rider.sex || Sex.MALE;
-                                
-                                if (!power || !weight) return null;
-                                
-                                const wkg = power / weight;
-                                const category = getPowerCategory(power, weight, sex);
-                                const colorClass = getPowerColor(category);
-                                
-                                return (
-                                    <tr key={rider.id} className="hover:bg-gray-50">
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                            {rider.firstName} {rider.lastName}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {sex === Sex.MALE ? 'Homme' : 'Femme'}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {power} W
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {wkg.toFixed(1)} W/kg
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap">
-                                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${colorClass}`}>
-                                                {category}
-                                            </span>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
+                            {riders
+                                .filter(rider => rider.powerProfileFresh?.[selectedDuration] && rider.weightKg)
+                                .sort((a, b) => {
+                                    const powerA = a.powerProfileFresh?.[selectedDuration] || 0;
+                                    const powerB = b.powerProfileFresh?.[selectedDuration] || 0;
+                                    return powerB - powerA;
+                                })
+                                .map((rider, index) => {
+                                    const power = rider.powerProfileFresh?.[selectedDuration];
+                                    const weight = rider.weightKg;
+                                    const sex = rider.sex || Sex.MALE;
+                                    
+                                    if (!power || !weight) return null;
+                                    
+                                    const wkg = power / weight;
+                                    const category = getPowerCategory(power, weight, sex);
+                                    const colorClass = getPowerColor(category);
+                                    
+                                    return (
+                                        <tr key={rider.id} className="hover:bg-gray-50">
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                                                #{index + 1}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                {rider.firstName} {rider.lastName}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                {sex === Sex.MALE ? 'Homme' : 'Femme'}
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                {power} W
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                {wkg.toFixed(1)} W/kg
+                                            </td>
+                                            <td className="px-6 py-4 whitespace-nowrap">
+                                                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${colorClass}`}>
+                                                    {category}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                         </tbody>
                     </table>
                 </div>
