@@ -1121,6 +1121,7 @@ const App: React.FC = () => {
                       onSave={onSaveVehicle}
                       onDelete={onDeleteVehicle}
                       effectivePermissions={effectivePermissions}
+                      staff={appState.staff}
                     />
                   )}
                   {currentSection === "equipment" && (
