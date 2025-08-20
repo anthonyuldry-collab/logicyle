@@ -5,10 +5,15 @@ import App from './App';
 const rootElement = document.getElementById('root');
 if (!rootElement) {
   console.error("❌ Could not find root element to mount to");
-  return;
+  // Créer l'élément root s'il n'existe pas
+  const newRootElement = document.createElement('div');
+  newRootElement.id = 'root';
+  document.body.appendChild(newRootElement);
+  console.log("✅ Root element créé automatiquement");
 }
 
-const root = ReactDOM.createRoot(rootElement);
+const finalRootElement = document.getElementById('root')!;
+const root = ReactDOM.createRoot(finalRootElement);
 root.render(
   <React.StrictMode>
     <App />
