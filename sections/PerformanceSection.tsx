@@ -153,12 +153,8 @@ const GlobalMonitoringTab: React.FC<{ riders: Rider[] }> = ({ riders }) => {
         }, 0);
         const avgAge = ridersWithAge.length > 0 ? Math.round(totalAge / ridersWithAge.length) : 0;
         
-        // Statistiques de puissance moyennes
+        // Statistiques de puissance moyennes (supprimées 5s et 20min)
         const ridersWithPower = riders.filter(r => r.powerProfileFresh && r.weightKg);
-        const avgPower5s = ridersWithPower.length > 0 ? 
-            ridersWithPower.reduce((sum, r) => sum + (r.powerProfileFresh?.power5s || 0), 0) / ridersWithPower.length : 0;
-        const avgPower20min = ridersWithPower.length > 0 ? 
-            ridersWithPower.reduce((sum, r) => sum + (r.powerProfileFresh?.power20min || 0), 0) / ridersWithPower.length : 0;
         
         // Répartition par profil qualitatif
         const profileDistribution = riders.reduce((acc, r) => {
@@ -176,8 +172,6 @@ const GlobalMonitoringTab: React.FC<{ riders: Rider[] }> = ({ riders }) => {
         return {
             totalRiders,
             avgAge,
-            avgPower5s: Math.round(avgPower5s),
-            avgPower20min: Math.round(avgPower20min),
             profileDistribution,
             top10Count,
             top5Count,
@@ -210,25 +204,7 @@ const GlobalMonitoringTab: React.FC<{ riders: Rider[] }> = ({ riders }) => {
                     </div>
                 </div>
                 
-                <div className="bg-white p-6 rounded-lg shadow-sm border">
-                    <div className="flex items-center">
-                        <TrendingUpIcon className="w-8 h-8 text-purple-600" />
-                        <div className="ml-3">
-                            <p className="text-sm font-medium text-gray-500">Puissance 5s Moy</p>
-                            <p className="text-2xl font-bold text-gray-900">{collectiveStats.avgPower5s}W</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <div className="bg-white p-6 rounded-lg shadow-sm border">
-                    <div className="flex items-center">
-                        <ChartBarIcon className="w-8 h-8 text-yellow-600" />
-                        <div className="ml-3">
-                            <p className="text-sm font-medium text-gray-500">Puissance 20min Moy</p>
-                            <p className="text-2xl font-bold text-gray-900">{collectiveStats.avgPower20min}W</p>
-                        </div>
-                    </div>
-                </div>
+
             </div>
 
             {/* Statistiques de performance */}
@@ -412,18 +388,14 @@ const GlobalMonitoringTab: React.FC<{ riders: Rider[] }> = ({ riders }) => {
     );
 };
 
-// Composant d'analyse de puissance avec tableau de vue globale
+// Composant d'analyse de puissance avec tableau de synthèse complet
 const PowerAnalysisTab: React.FC<{ riders: Rider[] }> = ({ riders }) => {
-    const [selectedDuration, setSelectedDuration] = useState<keyof PowerProfile>('power20min');
-
-    const durationConfig = POWER_ANALYSIS_DURATIONS_CONFIG.find(d => d.key === selectedDuration);
-
-    const getPowerCategory = (power: number, weight: number, sex: Sex): string => {
+    const getPowerCategory = (power: number, weight: number, sex: Sex, duration: keyof PowerProfile): string => {
         const wkg = power / weight;
         const refTable = sex === Sex.MALE ? POWER_PROFILE_REFERENCE_TABLES.men : POWER_PROFILE_REFERENCE_TABLES.women;
         
         for (const category of refTable) {
-            const refValue = category[selectedDuration] as number;
+            const refValue = category[duration] as number;
             if (wkg >= refValue) {
                 return category.category;
             }
@@ -435,28 +407,37 @@ const PowerAnalysisTab: React.FC<{ riders: Rider[] }> = ({ riders }) => {
         return COGGAN_CATEGORY_COLORS[category] || 'bg-gray-200 text-gray-700';
     };
 
-    // Calcul des statistiques globales de puissance
+    // Calcul des statistiques globales de puissance pour toutes les durées
     const powerStats = useMemo(() => {
         const ridersWithPower = riders.filter(r => r.powerProfileFresh && r.weightKg);
         
         if (ridersWithPower.length === 0) return null;
 
-        // Statistiques moyennes
-        const avgPower = ridersWithPower.reduce((sum, r) => 
-            sum + (r.powerProfileFresh?.[selectedDuration] || 0), 0) / ridersWithPower.length;
-        
-        const avgWkg = ridersWithPower.reduce((sum, r) => {
-            const power = r.powerProfileFresh?.[selectedDuration] || 0;
-            const weight = r.weightKg || 1;
-            return sum + (power / weight);
-        }, 0) / ridersWithPower.length;
+        // Calcul des moyennes pour toutes les durées
+        const durationStats = POWER_ANALYSIS_DURATIONS_CONFIG.map(duration => {
+            const avgPower = ridersWithPower.reduce((sum, r) => 
+                sum + (r.powerProfileFresh?.[duration.key] || 0), 0) / ridersWithPower.length;
+            
+            const avgWkg = ridersWithPower.reduce((sum, r) => {
+                const power = r.powerProfileFresh?.[duration.key] || 0;
+                const weight = r.weightKg || 1;
+                return sum + (power / weight);
+            }, 0) / ridersWithPower.length;
+
+            return {
+                duration: duration.key,
+                label: duration.label,
+                unit: duration.unit,
+                avgPower: Math.round(avgPower),
+                avgWkg: avgWkg.toFixed(1)
+            };
+        });
 
         return {
-            avgPower: Math.round(avgPower),
-            avgWkg: avgWkg.toFixed(1),
-            totalRiders: ridersWithPower.length
+            totalRiders: ridersWithPower.length,
+            durationStats
         };
-    }, [riders, selectedDuration]);
+    }, [riders]);
 
     return (
         <div className="space-y-6">
@@ -467,20 +448,6 @@ const PowerAnalysisTab: React.FC<{ riders: Rider[] }> = ({ riders }) => {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                     <div className="bg-white p-6 rounded-lg shadow-sm border">
                         <div className="text-center">
-                            <p className="text-sm font-medium text-gray-500">Puissance Moyenne</p>
-                            <p className="text-2xl font-bold text-gray-900">{powerStats.avgPower}W</p>
-                        </div>
-                    </div>
-                    
-                    <div className="bg-white p-6 rounded-lg shadow-sm border">
-                        <div className="text-center">
-                            <p className="text-sm font-medium text-gray-500">W/kg Moyen</p>
-                            <p className="text-2xl font-bold text-gray-900">{powerStats.avgWkg} W/kg</p>
-                        </div>
-                    </div>
-                    
-                    <div className="bg-white p-6 rounded-lg shadow-sm border">
-                        <div className="text-center">
                             <p className="text-sm font-medium text-gray-500">Total Coureurs</p>
                             <p className="text-2xl font-bold text-gray-900">{powerStats.totalRiders}</p>
                         </div>
@@ -488,99 +455,108 @@ const PowerAnalysisTab: React.FC<{ riders: Rider[] }> = ({ riders }) => {
                     
                     <div className="bg-white p-6 rounded-lg shadow-sm border">
                         <div className="text-center">
-                            <p className="text-sm font-medium text-gray-500">Durée Sélectionnée</p>
-                            <p className="text-2xl font-bold text-gray-900">{durationConfig?.label}</p>
+                            <p className="text-sm font-medium text-gray-500">Durées Analysées</p>
+                            <p className="text-2xl font-bold text-gray-900">{powerStats.durationStats.length}</p>
+                        </div>
+                    </div>
+                    
+                    <div className="bg-white p-6 rounded-lg shadow-sm border">
+                        <div className="text-center">
+                            <p className="text-sm font-medium text-gray-500">Puissance Max Moy</p>
+                            <p className="text-2xl font-bold text-gray-900">
+                                {Math.max(...powerStats.durationStats.map(d => d.avgPower))}W
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <div className="bg-white p-6 rounded-lg shadow-sm border">
+                        <div className="text-center">
+                            <p className="text-sm font-medium text-gray-500">W/kg Max Moy</p>
+                            <p className="text-2xl font-bold text-gray-900">
+                                {Math.max(...powerStats.durationStats.map(d => parseFloat(d.avgWkg))).toFixed(1)} W/kg
+                            </p>
                         </div>
                     </div>
                 </div>
             )}
             
-            {/* Sélection de durée et tableau complet */}
+            {/* Tableau de synthèse complet de toutes les durées */}
             <div className="bg-white p-4 rounded-lg shadow-sm border">
-                <h4 className="text-lg font-semibold text-gray-800 mb-4">Analyse de Puissance par Durée</h4>
-                
-                <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Durée d'effort
-                    </label>
-                    <select 
-                        value={selectedDuration} 
-                        onChange={(e) => setSelectedDuration(e.target.value as keyof PowerProfile)}
-                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    >
-                        {POWER_ANALYSIS_DURATIONS_CONFIG.map(duration => (
-                            <option key={duration.key} value={duration.key}>
-                                {duration.label} ({duration.unit})
-                            </option>
-                        ))}
-                    </select>
-                </div>
+                <h4 className="text-lg font-semibold text-gray-800 mb-4">Tableau de Synthèse - Toutes les Durées de Puissance</h4>
 
                 <div className="overflow-x-auto">
                     <table className="min-w-full divide-y divide-gray-200">
                         <thead className="bg-gray-50">
                             <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Rang
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r">
                                     Coureur
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r">
                                     Sexe
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Puissance ({durationConfig?.unit})
+                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r">
+                                    Poids
                                 </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    W/kg
-                                </th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                    Niveau
-                                </th>
+                                {POWER_ANALYSIS_DURATIONS_CONFIG.map(duration => (
+                                    <th key={duration.key} className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-r">
+                                        <div className="flex flex-col">
+                                            <span>{duration.label}</span>
+                                            <span className="text-xs text-gray-400">({duration.unit})</span>
+                                        </div>
+                                    </th>
+                                ))}
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
                             {riders
-                                .filter(rider => rider.powerProfileFresh?.[selectedDuration] && rider.weightKg)
-                                .sort((a, b) => {
-                                    const powerA = a.powerProfileFresh?.[selectedDuration] || 0;
-                                    const powerB = b.powerProfileFresh?.[selectedDuration] || 0;
-                                    return powerB - powerA;
-                                })
-                                .map((rider, index) => {
-                                    const power = rider.powerProfileFresh?.[selectedDuration];
+                                .filter(rider => rider.powerProfileFresh && rider.weightKg)
+                                .map((rider) => {
                                     const weight = rider.weightKg;
                                     const sex = rider.sex || Sex.MALE;
                                     
-                                    if (!power || !weight) return null;
-                                    
-                                    const wkg = power / weight;
-                                    const category = getPowerCategory(power, weight, sex);
-                                    const colorClass = getPowerColor(category);
+                                    if (!weight) return null;
                                     
                                     return (
                                         <tr key={rider.id} className="hover:bg-gray-50">
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
-                                                #{index + 1}
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                            <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900 border-r">
                                                 {rider.firstName} {rider.lastName}
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                {sex === Sex.MALE ? 'Homme' : 'Femme'}
+                                            <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-500 border-r">
+                                                {sex === Sex.MALE ? 'H' : 'F'}
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                {power} W
+                                            <td className="px-4 py-4 whitespace-nowrap text-sm text-gray-900 border-r">
+                                                {weight} kg
                                             </td>
-                                            <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                                {wkg.toFixed(1)} W/kg
-                                            </td>
-                                            <td className="px-6 py-4 whitespace-nowrap">
-                                                <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${colorClass}`}>
-                                                    {category}
-                                                </span>
-                                            </td>
+                                            {POWER_ANALYSIS_DURATIONS_CONFIG.map(duration => {
+                                                const power = rider.powerProfileFresh?.[duration.key];
+                                                if (!power) {
+                                                    return (
+                                                        <td key={duration.key} className="px-3 py-4 whitespace-nowrap text-sm text-gray-400 border-r text-center">
+                                                            -
+                                                        </td>
+                                                    );
+                                                }
+                                                
+                                                const wkg = power / weight;
+                                                const category = getPowerCategory(power, weight, sex, duration.key);
+                                                const colorClass = getPowerColor(category);
+                                                
+                                                return (
+                                                    <td key={duration.key} className="px-3 py-4 whitespace-nowrap border-r text-center">
+                                                        <div className="flex flex-col items-center space-y-1">
+                                                            <span className="text-sm font-medium text-gray-900">
+                                                                {power} W
+                                                            </span>
+                                                            <span className="text-xs text-gray-600">
+                                                                {wkg.toFixed(1)} W/kg
+                                                            </span>
+                                                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${colorClass}`}>
+                                                                {category}
+                                                            </span>
+                                                        </div>
+                                                    </td>
+                                                );
+                                            })}
                                         </tr>
                                     );
                                 })}
@@ -683,3 +659,4 @@ const PerformancePoleSection: React.FC<PerformancePoleSectionProps> = ({
 };
 
 export default PerformancePoleSection;
+
