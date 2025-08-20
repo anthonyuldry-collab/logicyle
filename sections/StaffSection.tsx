@@ -224,17 +224,47 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
     if (eventStaffAvailabilities && Array.isArray(eventStaffAvailabilities)) setLocalEventStaffAvailabilities(eventStaffAvailabilities);
     if (permissionRoles && Array.isArray(permissionRoles)) setLocalPermissionRoles(permissionRoles);
   }, [currentUser, staff, raceEvents, missions, eventStaffAvailabilities, permissionRoles]);
+
+  // Synchronisation spécifique pour le staff - important pour la persistance
+  React.useEffect(() => {
+    console.log('useEffect staff sync - staff reçu:', staff);
+    if (staff && Array.isArray(staff)) {
+      // Ne pas écraser si on a des données locales plus récentes
+      setLocalStaff(prevLocalStaff => {
+        console.log('useEffect staff sync - prevLocalStaff:', prevLocalStaff);
+        if (!prevLocalStaff || prevLocalStaff.length === 0) {
+          console.log('useEffect staff sync - initialisation avec staff');
+          return staff;
+        }
+        // Fusionner les données : garder les données locales si elles sont plus récentes
+        const merged = [...staff];
+        prevLocalStaff.forEach(localMember => {
+          const existingIndex = merged.findIndex(s => s.id === localMember.id);
+          if (existingIndex >= 0) {
+            merged[existingIndex] = localMember; // Garder la version locale
+          } else {
+            merged.push(localMember); // Ajouter les nouveaux membres locaux
+          }
+        });
+        console.log('useEffect staff sync - fusion terminée, merged:', merged);
+        return merged;
+      });
+    }
+  }, [staff]);
   
 
   // Memo for details tab
   const filteredStaffMembers = useMemo(() => {
+    console.log('filteredStaffMembers - localStaff:', localStaff);
     if (!localStaff) return [];
-    return localStaff.filter(member => {
+    const filtered = localStaff.filter(member => {
       const nameMatch = `${member.firstName} ${member.lastName}`.toLowerCase().includes(staffSearchTerm.toLowerCase());
       const roleMatch = staffRoleFilter === 'all' || member.role === staffRoleFilter;
       const statusMatch = staffStatusFilter === 'all' || member.status === staffStatusFilter;
       return nameMatch && roleMatch && statusMatch;
     }).sort((a,b) => a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName));
+    console.log('filteredStaffMembers - résultat filtré:', filtered);
+    return filtered;
   }, [localStaff, staffSearchTerm, staffRoleFilter, staffStatusFilter]);
 
   const upcomingEvents = useMemo(() => {
@@ -246,15 +276,28 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
         .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   }, [localRaceEvents]);
 
-  const handleSaveStaff = (staffToSave: StaffMember) => {
-    setLocalStaff(prev => {
-      const exists = prev.some(s => s.id === staffToSave.id);
-      if (exists) {
-        return prev.map(s => s.id === staffToSave.id ? staffToSave : s);
+  const handleSaveStaff = async (staffToSave: StaffMember) => {
+    try {
+      console.log('handleSaveStaff appelé avec:', staffToSave);
+      
+      // Appeler la fonction de sauvegarde Firebase
+      if (onSave) {
+        await onSave(staffToSave);
+        console.log('Staff sauvegardé avec succès dans Firebase');
+        
+        // Attendre un peu pour que l'état global soit mis à jour
+        setTimeout(() => {
+          console.log('État global mis à jour, fermeture du modal');
+          setIsDetailModalOpen(false);
+        }, 100);
+      } else {
+        console.error('onSave n\'est pas défini');
+        alert('Erreur: fonction de sauvegarde non disponible');
       }
-      return [...prev, { ...staffToSave, id: staffToSave.id || generateId() }];
-    });
-    setIsDetailModalOpen(false);
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde du staff:', error);
+      alert('Erreur lors de la sauvegarde. Veuillez réessayer.');
+    }
   };
 
   const handleDeleteStaff = (staffId: string) => {
