@@ -292,7 +292,8 @@ export const RiderDetailModal: React.FC<RiderDetailModalProps> = ({
     console.log('onSaveRider existe:', !!onSaveRider);
     
     if (!onSaveRider) {
-      console.error('onSaveRider n\'est pas défini');
+      console.warn('⚠️ onSaveRider n\'est pas défini - sauvegarde impossible');
+      alert('⚠️ Fonction de sauvegarde non disponible. Veuillez contacter l\'administrateur.');
       return;
     }
     

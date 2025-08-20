@@ -9,7 +9,7 @@ interface LanguageContextType {
 
 export const LanguageContext = createContext<LanguageContextType>({
   language: 'fr',
-  setLanguage: () => console.warn('setLanguage function not yet initialized'),
+  setLanguage: () => console.warn('⚠️ setLanguage function not yet initialized'),
 });
 
 interface LanguageProviderProps {

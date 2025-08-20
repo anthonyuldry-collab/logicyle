@@ -286,7 +286,7 @@ const App: React.FC = () => {
     console.log('onSaveRider appelé avec:', item);
     
     if (!appState.activeTeamId) {
-      console.error('Pas de activeTeamId');
+      console.warn('⚠️ Pas de activeTeamId - opération impossible');
       return;
     }
     
@@ -313,7 +313,7 @@ const App: React.FC = () => {
         return { ...prev, riders: newCollection };
       });
     } catch (error) {
-      console.error('Erreur lors de la sauvegarde du rider:', error);
+      console.warn('⚠️ Erreur lors de la sauvegarde du rider:', error);
     }
   }, [appState.activeTeamId]);
 
@@ -338,7 +338,7 @@ const App: React.FC = () => {
     console.log('onSaveStaff appelé avec:', item);
     
     if (!appState.activeTeamId) {
-      console.error('Pas de activeTeamId');
+      console.warn('⚠️ Pas de activeTeamId - opération impossible');
       return;
     }
     
@@ -364,7 +364,7 @@ const App: React.FC = () => {
         return { ...prev, staff: newCollection };
       });
     } catch (error) {
-      console.error('Erreur lors de la sauvegarde du staff:', error);
+      console.warn('⚠️ Erreur lors de la sauvegarde du staff:', error);
     }
   }, [appState.activeTeamId]);
 
