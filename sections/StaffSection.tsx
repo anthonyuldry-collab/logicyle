@@ -236,6 +236,12 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
     }
   }, [vehicles]);
 
+  // Force la mise à jour des alertes quand les assignations changent
+  useEffect(() => {
+    console.log('ModalAssignments changé, recalcul des alertes...');
+    console.log('Nouveau modalAssignments:', modalAssignments);
+  }, [modalAssignments]);
+
   // Memo for details tab
   const filteredStaffMembers = useMemo(() => {
     if (!localStaff) return [];
@@ -270,7 +276,11 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
       if (eventDate < today) return; // Ignorer les événements passés
       
       // 1. Vérifier si un directeur sportif est assigné
-      const hasDirecteurSportif = event.directeurSportifId && event.directeurSportifId.length > 0;
+      // Prendre en compte les assignations en cours (modalAssignments) ET les assignations sauvegardées
+      const currentDSAssignments = modalAssignments.directeurSportifId || [];
+      const savedDSAssignments = event.directeurSportifId || [];
+      const hasDirecteurSportif = (currentDSAssignments.length > 0) || (savedDSAssignments.length > 0);
+      
       if (!hasDirecteurSportif) {
         alerts.push({
           type: 'warning',
@@ -296,10 +306,15 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
       }
       
       // 3. Vérifier si le staff minimum est assigné
-      const hasMinimumStaff = (event.selectedStaffIds && event.selectedStaffIds.length > 0) || 
+      // Prendre en compte les assignations en cours ET sauvegardées
+      const currentStaffAssignments = Object.values(modalAssignments).flat();
+      const savedStaffAssignments = event.selectedStaffIds || [];
+      const hasMinimumStaff = (currentStaffAssignments.length > 0) || 
+                              (savedStaffAssignments.length > 0) ||
                               (event.directeurSportifId && event.directeurSportifId.length > 0) ||
                               (event.assistantId && event.assistantId.length > 0) ||
                               (event.mecanoId && event.mecanoId.length > 0);
+      
       if (!hasMinimumStaff) {
         alerts.push({
           type: 'info',
@@ -317,7 +332,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
       const priorityOrder = { high: 3, medium: 2, low: 1 };
       return priorityOrder[b.priority] - priorityOrder[a.priority];
     });
-  }, [localRaceEvents, localStaff]);
+  }, [localRaceEvents, localStaff, modalAssignments]); // Ajout de modalAssignments comme dépendance
 
   const handleSaveStaff = async (staffToSave: StaffMember) => {
     try {
@@ -389,6 +404,14 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
         }
         return event;
       }));
+
+      // 2. Réinitialiser les assignations du modal pour forcer la mise à jour des alertes
+      setModalAssignments({});
+      
+      // Debug: Vérifier que les alertes se mettent à jour
+      console.log('Assignations sauvegardées, modalAssignments réinitialisé');
+      console.log('Nouvelles assignations:', assignments);
+      console.log('Alertes après sauvegarde:', alertsAndActions);
 
       // 2. Synchronisation bidirectionnelle : mettre à jour les profils staff
       setLocalStaff(prevStaff => prevStaff.map(staffMember => {
