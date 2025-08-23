@@ -99,6 +99,11 @@ function getContrastYIQ(hexcolor: string): string {
   return yiq >= 128 ? "#000000" : "#FFFFFF";
 }
 
+// Helper function for generating unique IDs
+function generateId(): string {
+  return Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
+}
+
 function lightenDarkenColor(col: string, amt: number): string {
   if (!col) return "#000000";
   col = col.replace("#", "");
