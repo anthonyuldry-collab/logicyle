@@ -3,6 +3,7 @@ import ActionButton from '../components/ActionButton';
 import { useTranslations } from '../hooks/useTranslations';
 import { LANGUAGE_OPTIONS } from '../constants';
 import { Team, UserRole } from '../types';
+import { TermsAndConditionsModal } from '../components/TermsAndConditionsModal';
 
 export interface SignupData {
   email: string;
@@ -29,6 +30,8 @@ const SignupView: React.FC<SignupViewProps> = ({ onRegister, onSwitchToLogin, te
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
+  const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
   const { t, language, setLanguage } = useTranslations();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -50,6 +53,12 @@ const SignupView: React.FC<SignupViewProps> = ({ onRegister, onSwitchToLogin, te
         return;
     }
 
+    // Vérifier l'acceptation des conditions générales
+    if (!hasAcceptedTerms) {
+      setShowTermsModal(true);
+      return;
+    }
+
     setIsLoading(true);
     
     const result = await onRegister(formData);
@@ -59,6 +68,18 @@ const SignupView: React.FC<SignupViewProps> = ({ onRegister, onSwitchToLogin, te
       setIsLoading(false);
     }
     // On success, onAuthStateChanged in App.tsx will handle the rest
+  };
+
+  const handleAcceptTerms = () => {
+    setHasAcceptedTerms(true);
+    setShowTermsModal(false);
+    // Relancer la soumission du formulaire
+    handleSubmit(new Event('submit') as any);
+  };
+
+  const handleDeclineTerms = () => {
+    setShowTermsModal(false);
+    setError('Vous devez accepter les conditions générales pour continuer.');
   };
   
   return (
@@ -124,6 +145,14 @@ const SignupView: React.FC<SignupViewProps> = ({ onRegister, onSwitchToLogin, te
             </button>
         </div>
       </div>
+
+      {/* Modal des Conditions Générales */}
+      <TermsAndConditionsModal
+        isOpen={showTermsModal}
+        onClose={() => setShowTermsModal(false)}
+        onAccept={handleAcceptTerms}
+        onDecline={handleDeclineTerms}
+      />
     </div>
   );
 };
