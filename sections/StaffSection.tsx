@@ -452,7 +452,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
       // 3. Synchronisation bidirectionnelle : mettre à jour les profils véhicules
       if (vehicles && vehicles.length > 0) {
         setLocalVehicles(prevVehicles => prevVehicles.map(vehicle => {
-          const isAssignedToThisEvent = assignmentModalEvent?.selectedVehicleIds?.includes(vehicle.id) || false;
+          const isAssignedToThisEvent = (assignmentModalEvent && assignmentModalEvent.selectedVehicleIds && Array.isArray(assignmentModalEvent.selectedVehicleIds) && assignmentModalEvent.selectedVehicleIds.includes(vehicle.id)) || false;
           
           if (isAssignedToThisEvent) {
             const updatedVehicle = { ...vehicle };
@@ -510,7 +510,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
             const isAssignedToThisEvent = Object.values(assignments).some(roleIds => 
               Array.isArray(roleIds) && roleIds.includes(staffMember.id)
             );
-            const wasAssignedToThisEvent = staffMember.assignedEvents?.includes(eventId) || false;
+            const wasAssignedToThisEvent = (staffMember.assignedEvents && Array.isArray(staffMember.assignedEvents) && staffMember.assignedEvents.includes(eventId)) || false;
             const hasChanged = isAssignedToThisEvent !== wasAssignedToThisEvent;
             
             if (hasChanged) {
@@ -540,8 +540,8 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
             console.log('🚗 Sauvegarde automatique des profils véhicules mis à jour...');
             
             const updatedVehicles = vehicles.filter(vehicle => {
-              const isAssignedToThisEvent = assignmentModalEvent?.selectedVehicleIds?.includes(vehicle.id) || false;
-              const wasAssignedToThisEvent = vehicle.assignedEvents?.includes(eventId) || false;
+              const isAssignedToThisEvent = (assignmentModalEvent && assignmentModalEvent.selectedVehicleIds && Array.isArray(assignmentModalEvent.selectedVehicleIds) && assignmentModalEvent.selectedVehicleIds.includes(vehicle.id)) || false;
+              const wasAssignedToThisEvent = (vehicle.assignedEvents && Array.isArray(vehicle.assignedEvents) && vehicle.assignedEvents.includes(eventId)) || false;
               return isAssignedToThisEvent !== wasAssignedToThisEvent;
             });
             
@@ -676,11 +676,11 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
                                             
                                             // Déterminer le rôle assigné pour cet événement
                                             let assignedRole = 'Staff';
-                                            if (event.directeurSportifId?.includes(member.id)) assignedRole = 'Directeur Sportif';
-                                            else if (event.assistantId?.includes(member.id)) assignedRole = 'Assistant';
-                                            else if (event.mecanoId?.includes(member.id)) assignedRole = 'Mécanicien';
-                                            else if (event.entraineurId?.includes(member.id)) assignedRole = 'Entraîneur';
-                                            else if (event.respPerfId?.includes(member.id)) assignedRole = 'Resp. Performance';
+                                            if (event.directeurSportifId && Array.isArray(event.directeurSportifId) && event.directeurSportifId.includes(member.id)) assignedRole = 'Directeur Sportif';
+                                            else if (event.assistantId && Array.isArray(event.assistantId) && event.assistantId.includes(member.id)) assignedRole = 'Assistant';
+                                            else if (event.mecanoId && Array.isArray(event.mecanoId) && event.mecanoId.includes(member.id)) assignedRole = 'Mécanicien';
+                                            else if (event.entraineurId && Array.isArray(event.entraineurId) && event.entraineurId.includes(member.id)) assignedRole = 'Entraîneur';
+                                            else if (event.respPerfId && Array.isArray(event.respPerfId) && event.respPerfId.includes(member.id)) assignedRole = 'Resp. Performance';
                                             
                                             return (
                                                 <div key={eventId} className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
@@ -844,7 +844,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
 
   const renderMyApplicationsTab = () => {
     if (!currentUser?.id || !Array.isArray(localMissions)) return <div className="text-center text-gray-500">Chargement des candidatures...</div>;
-    const myApplications = localMissions.filter(m => m.applicants?.includes(currentUser.id));
+            const myApplications = localMissions.filter(m => m.applicants && Array.isArray(m.applicants) && m.applicants.includes(currentUser.id));
     return (
         <div className="space-y-3">
             <h3 className="text-xl font-semibold">Mes Candidatures</h3>

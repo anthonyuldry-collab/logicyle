@@ -27,7 +27,7 @@ const ChecklistSection: React.FC<ChecklistSectionProps> = ({ checklistTemplates,
   const [confirmAction, setConfirmAction] = useState<{ onConfirm: () => void } | null>(null);
 
   // Déterminer si l'utilisateur est un coureur basé sur les permissions
-  const isRider = effectivePermissions && effectivePermissions.checklist && effectivePermissions.checklist.includes('view');
+  const isRider = effectivePermissions && effectivePermissions.checklist && Array.isArray(effectivePermissions.checklist) && effectivePermissions.checklist.includes('view');
 
   const handleAddTask = () => {
     setCurrentItem({ id: '', name: '' });
