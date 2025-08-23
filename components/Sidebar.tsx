@@ -169,12 +169,12 @@ const Sidebar: React.FC<SidebarProps> = ({
             if (currentUser && (currentUser.userRole === 'Manager' || currentUser.permissionRole === 'Administrateur')) {
                 visibleSections = sectionsInGroup.filter(section => 
                     section.group[language] !== t('sidebarGroupMySpace') && 
-                    effectivePermissions[section.id as AppSection]?.includes('view')
+                    (effectivePermissions && effectivePermissions[section.id as AppSection] && Array.isArray(effectivePermissions[section.id as AppSection]) && effectivePermissions[section.id as AppSection].includes('view'))
                 );
             } else {
                 // Pour les coureurs et autres rôles, filtrer selon les permissions
                 visibleSections = sectionsInGroup.filter(section => 
-                    effectivePermissions[section.id as AppSection]?.includes('view')
+                    (effectivePermissions && effectivePermissions[section.id as AppSection] && Array.isArray(effectivePermissions[section.id as AppSection]) && effectivePermissions[section.id as AppSection].includes('view'))
                 );
             }
             

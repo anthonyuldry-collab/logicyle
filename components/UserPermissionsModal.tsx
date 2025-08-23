@@ -112,7 +112,7 @@ const UserPermissionsModal: React.FC<UserPermissionsModalProps> = ({ isOpen, onC
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                     {sectionsForPermissions.map(section => {
-                        const perms = effectivePermissions[section.id as AppSection] || [];
+                        const perms = (effectivePermissions && effectivePermissions[section.id as AppSection] && Array.isArray(effectivePermissions[section.id as AppSection])) ? effectivePermissions[section.id as AppSection] : [];
                         const canView = perms.includes('view');
                         const canEdit = perms.includes('edit');
                         const basePerms = basePermissions[user.permissionRole]?.[section.id as AppSection] || [];
