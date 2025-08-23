@@ -1193,7 +1193,7 @@ const App: React.FC = () => {
                           }
 
                           // Vérifier si l'utilisateur a le droit d'approuver des adhésions
-                          const canApproveMemberships = effectivePermissions['userManagement']?.includes('edit') || 
+                          const canApproveMemberships = (effectivePermissions['userManagement'] && Array.isArray(effectivePermissions['userManagement']) && effectivePermissions['userManagement'].includes('edit')) || 
                                                       currentUser.permissionRole === TeamRole.ADMINISTRATOR ||
                                                       currentUser.userRole === UserRole.MANAGER;
                           
@@ -1270,7 +1270,7 @@ const App: React.FC = () => {
                           }
 
                           // Vérifier si l'utilisateur a le droit de refuser des adhésions
-                          const canDenyMemberships = effectivePermissions['userManagement']?.includes('edit') || 
+                          const canDenyMemberships = (effectivePermissions['userManagement'] && Array.isArray(effectivePermissions['userManagement']) && effectivePermissions['userManagement'].includes('edit')) || 
                                                    currentUser.permissionRole === TeamRole.ADMINISTRATOR ||
                                                    currentUser.userRole === UserRole.MANAGER;
                           
@@ -1316,7 +1316,7 @@ const App: React.FC = () => {
                           }
 
                           // Vérifier si l'utilisateur a le droit d'inviter des membres
-                          const canInviteMembers = effectivePermissions['userManagement']?.includes('edit') || 
+                          const canInviteMembers = (effectivePermissions['userManagement'] && Array.isArray(effectivePermissions['userManagement']) && effectivePermissions['userManagement'].includes('edit')) || 
                                                  currentUser.permissionRole === TeamRole.ADMINISTRATOR ||
                                                  currentUser.userRole === UserRole.MANAGER;
                           
