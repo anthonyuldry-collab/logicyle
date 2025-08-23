@@ -1038,12 +1038,22 @@ export interface Team {
 }
 
 export interface TeamMembership {
-    userId: string;
+    id: string;
+    email: string;
+    firstName?: string;
+    lastName?: string;
+    userId?: string;
     teamId: string;
     status: TeamMembershipStatus;
-    userRole: UserRole;
+    userRole?: UserRole;
+    requestedUserRole?: UserRole; // Rôle demandé lors de l'invitation
     startDate?: string;
     endDate?: string;
+    requestedAt?: string;
+    requestedBy?: string;
+    approvedAt?: string;
+    approvedBy?: string;
+    message?: string;
 }
 
 export interface Mission {

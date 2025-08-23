@@ -17,7 +17,7 @@ interface UserManagementSectionProps {
     currentTeamId: string;
     onApprove: (membership: TeamMembership) => Promise<void>;
     onDeny: (membership: TeamMembership) => Promise<void>;
-    onInvite: (email: string, teamId: string) => Promise<void>;
+    onInvite: (email: string, teamId: string, userRole?: UserRole) => Promise<void>;
     onRemove: (userId: string, teamId: string) => Promise<void>;
     onUpdateRole: (userId: string, teamId: string, newUserRole: UserRole) => Promise<void>;
     onUpdatePermissionRole: (userId: string, newPermissionRole: TeamRole) => Promise<void>;
@@ -56,6 +56,7 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
         );
     }
     const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState<UserRole>(UserRole.COUREUR);
     const [editingPermissionsForUser, setEditingPermissionsForUser] = useState<User | null>(null);
     const [transferModalOpen, setTransferModalOpen] = useState(false);
     const [userToTransfer, setUserToTransfer] = useState<User | null>(null);
@@ -72,7 +73,7 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
         e.preventDefault();
         if (inviteEmail) {
             try {
-                await onInvite(inviteEmail, currentTeamId);
+                await onInvite(inviteEmail, currentTeamId, inviteRole);
                 setInviteEmail('');
             } catch (error) {
                 console.warn('⚠️ Erreur lors de l\'invitation:', error);
@@ -209,6 +210,15 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                             required
                             className="flex-grow px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                         />
+                        <select
+                            value={inviteRole}
+                            onChange={(e) => setInviteRole(e.target.value as UserRole)}
+                            className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white"
+                        >
+                            <option value={UserRole.COUREUR}>🚴 Coureur</option>
+                            <option value={UserRole.STAFF}>👥 Staff</option>
+                            <option value={UserRole.MANAGER}>👑 Manager</option>
+                        </select>
                         <ActionButton type="submit" icon={<PlusCircleIcon className="w-5 h-5"/>}>
                             Envoyer une invitation
                         </ActionButton>

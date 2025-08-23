@@ -264,25 +264,25 @@ const SeasonPlanningTab: React.FC<SeasonPlanningTabProps> = ({
         });
 
         return (
-            <div className="mt-4">
-                <div className="flex justify-between items-center mb-4">
+            <div className="mt-2">
+                <div className="flex justify-between items-center mb-2">
                     <ActionButton onClick={() => setCalendarDate(new Date(year, month - 1, 1))} size="sm">&lt; {new Date(year, month - 1, 1).toLocaleDateString('fr-FR', {month: 'long'})}</ActionButton>
-                    <h4 className="text-lg font-semibold">{monthName}</h4>
+                    <h4 className="text-base font-semibold">{monthName}</h4>
                     <ActionButton onClick={() => setCalendarDate(new Date(year, month + 1, 1))} size="sm">{new Date(year, month + 1, 1).toLocaleDateString('fr-FR', {month: 'long'})} &gt;</ActionButton>
                 </div>
-                <div className="overflow-x-auto border rounded-lg bg-gray-50">
-                    <div className="grid min-w-max" style={{ gridTemplateColumns: `150px 80px repeat(${daysInMonth}, minmax(35px, 1fr))` }}>
+                <div className="overflow-x-auto border rounded-lg bg-gray-50" style={{ maxHeight: '60vh' }}>
+                    <div className="grid min-w-max" style={{ gridTemplateColumns: `120px 60px repeat(${daysInMonth}, minmax(30px, 1fr))` }}>
                         {/* Header */}
-                        <div className="sticky left-0 bg-gray-100 z-30 p-2 border-b border-r font-semibold text-sm text-gray-700">Coureur</div>
-                        <div className="sticky left-[150px] bg-gray-100 z-30 p-2 border-b border-r font-semibold text-sm text-gray-700">Jours</div>
+                        <div className="sticky left-0 bg-gray-100 z-30 p-1.5 border-b border-r font-semibold text-xs text-gray-700">Coureur</div>
+                        <div className="sticky left-[120px] bg-gray-100 z-30 p-1.5 border-b border-r font-semibold text-xs text-gray-700">Jours</div>
                         {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => (
-                            <div key={day} className="text-center p-2 border-b border-r text-xs font-medium text-gray-500">{day}</div>
+                            <div key={day} className="text-center p-1 border-b border-r text-xs font-medium text-gray-500">{day}</div>
                         ))}
                         {/* Rider Rows */}
                         {riders.map(rider => (
                             <React.Fragment key={rider.id}>
-                                <div className="sticky left-0 bg-white z-20 p-2 border-b border-r text-sm font-medium whitespace-nowrap">{rider.firstName} {rider.lastName}</div>
-                                <div className="sticky left-[150px] bg-white z-20 p-2 border-b border-r text-sm font-bold text-center">{raceDaysByRider[rider.id] || 0}</div>
+                                <div className="sticky left-0 bg-white z-20 p-1.5 border-b border-r text-xs font-medium whitespace-nowrap">{rider.firstName} {rider.lastName}</div>
+                                <div className="sticky left-[120px] bg-white z-20 p-1.5 border-b border-r text-xs font-bold text-center">{raceDaysByRider[rider.id] || 0}</div>
                                 <div className="col-start-3 relative border-b" style={{ gridColumnEnd: daysInMonth + 3, display: 'grid', gridTemplateColumns: `repeat(${daysInMonth}, 1fr)`}}>
                                     {Array.from({ length: daysInMonth }).map((_, i) => <div key={i} className="border-r h-full"></div>)}
                                     {eventsForMonth.map(event => {
@@ -304,7 +304,7 @@ const SeasonPlanningTab: React.FC<SeasonPlanningTabProps> = ({
                                         return (
                                             <div
                                                 key={event.id}
-                                                className={`absolute h-5/6 my-auto inset-y-0 px-2 flex items-center text-xs text-white rounded overflow-hidden cursor-pointer ${color} ${opacity}`}
+                                                className={`absolute h-5/6 my-auto inset-y-0 px-1 flex items-center text-xs text-white rounded overflow-hidden cursor-pointer ${color} ${opacity}`}
                                                 style={{
                                                     gridColumnStart: startDay,
                                                     gridColumnEnd: `span ${duration}`,
@@ -320,27 +320,27 @@ const SeasonPlanningTab: React.FC<SeasonPlanningTabProps> = ({
                         ))}
                     </div>
                 </div>
-                <div className="flex justify-end items-center mt-2 text-sm space-x-4">
-                    <div className="flex items-center"><span className="w-3 h-3 bg-blue-600 rounded-sm mr-1.5"></span>Compétition</div>
-                    <div className="flex items-center"><span className="w-3 h-3 bg-yellow-500 rounded-sm mr-1.5"></span>Stage</div>
-                    <div className="flex items-center"><span className="w-3 h-3 bg-gray-400 rounded-sm mr-1.5 opacity-60"></span>Non-Titulaire</div>
+                <div className="flex justify-end items-center mt-1 text-xs space-x-3">
+                    <div className="flex items-center"><span className="w-3 h-3 bg-blue-600 rounded-sm mr-1"></span>Compétition</div>
+                    <div className="flex items-center"><span className="w-3 h-3 bg-yellow-500 rounded-sm mr-1"></span>Stage</div>
+                    <div className="flex items-center"><span className="w-3 h-3 bg-gray-400 rounded-sm mr-1 opacity-60"></span>Non-Titulaire</div>
                 </div>
             </div>
         );
     };
     
     return (
-        <div className="bg-white p-4 rounded-lg shadow-md">
-            <div className="flex justify-between items-center mb-4">
-                <h3 className="text-xl font-semibold">Planning Prévisionnel de la Saison</h3>
+        <div className="bg-white p-3 rounded-lg shadow-md">
+            <div className="flex justify-between items-center mb-2">
+                <h3 className="text-lg font-semibold">Planning Prévisionnel de la Saison</h3>
                  <div className="flex items-center p-1 bg-gray-200 rounded-lg">
                     <ActionButton onClick={() => setViewMode('grid')} variant={viewMode === 'grid' ? 'primary' : 'secondary'} size="sm" className={viewMode === 'grid' ? 'shadow-md' : 'bg-transparent shadow-none'}>
                         <TableCellsIcon className="w-4 h-4" />
-                        <span className="ml-2">Grille</span>
+                        <span className="ml-1">Grille</span>
                     </ActionButton>
                     <ActionButton onClick={() => setViewMode('calendar')} variant={viewMode === 'calendar' ? 'primary' : 'secondary'} size="sm" className={viewMode === 'calendar' ? 'shadow-md' : 'bg-transparent shadow-none'}>
                         <CalendarIcon className="w-4 h-4" />
-                         <span className="ml-2">Calendrier</span>
+                         <span className="ml-1">Calendrier</span>
                     </ActionButton>
                 </div>
             </div>
@@ -622,7 +622,7 @@ export const RosterSection: React.FC<RosterSectionProps> = ({
   };
     
   const tabButtonStyle = (tabName: 'roster' | 'selectionGrid' | 'groupMonitoring' | 'seasonPlanning') => 
-    `px-3 py-2 font-medium text-sm rounded-t-md whitespace-nowrap transition-colors duration-150 focus:outline-none ${
+    `px-2 py-1.5 font-medium text-xs rounded-t-md whitespace-nowrap transition-colors duration-150 focus:outline-none ${
       activeTab === tabName 
         ? 'bg-white text-gray-800 border-b-2 border-blue-500 shadow-sm' 
         : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
@@ -653,13 +653,13 @@ export const RosterSection: React.FC<RosterSectionProps> = ({
   }
     
   const renderRosterTab = () => (
-    <div className="bg-white p-4 rounded-lg shadow-md">
-       <div className="mb-4 grid grid-cols-1 md:grid-cols-5 gap-4">
+    <div className="bg-white p-3 rounded-lg shadow-md">
+       <div className="mb-3 grid grid-cols-1 md:grid-cols-5 gap-3">
         <div>
-            <label htmlFor="rosterSearch" className="block text-sm font-medium text-gray-700">Rechercher</label>
-            <div className="relative mt-1">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <SearchIcon className="h-5 w-5 text-gray-400" />
+            <label htmlFor="rosterSearch" className="block text-xs font-medium text-gray-700 mb-0.5">Rechercher</label>
+            <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                    <SearchIcon className="h-4 w-4 text-gray-400" />
                 </div>
                 <input
                     type="text"
@@ -667,17 +667,17 @@ export const RosterSection: React.FC<RosterSectionProps> = ({
                     placeholder="Rechercher un coureur..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                    className="block w-full pl-8 pr-3 py-1.5 border border-gray-300 rounded-md leading-5 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-xs"
                 />
             </div>
         </div>
         <div>
-            <label htmlFor="rosterGenderFilter" className="block text-sm font-medium text-gray-700">Sexe</label>
+            <label htmlFor="rosterGenderFilter" className="block text-xs font-medium text-gray-700 mb-0.5">Sexe</label>
             <select
                 id="rosterGenderFilter"
                 value={genderFilter}
                 onChange={(e) => setGenderFilter(e.target.value as 'all' | Sex)}
-                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                className="block w-full pl-3 pr-10 py-1.5 text-xs border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
             >
                 <option value="all">Tous</option>
                 <option value={Sex.MALE}>Homme</option>
@@ -685,47 +685,47 @@ export const RosterSection: React.FC<RosterSectionProps> = ({
             </select>
         </div>
         <div>
-            <label htmlFor="rosterAgeCategoryFilter" className="block text-sm font-medium text-gray-700">Catégorie d'âge</label>
+            <label htmlFor="rosterAgeCategoryFilter" className="block text-xs font-medium text-gray-700 mb-0.5">Catégorie d'âge</label>
             <select
                 id="rosterAgeCategoryFilter"
                 value={ageCategoryFilter}
                 onChange={(e) => setAgeCategoryFilter(e.target.value)}
-                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                className="block w-full pl-3 pr-10 py-1.5 text-xs border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
             >
                 <option value="all">Toutes</option>
                 {['U15', 'U17', 'U19', 'U23', 'Senior'].map(cat => <option key={cat} value={cat}>{cat}</option>)}
             </select>
         </div>
         <div>
-            <label htmlFor="rosterLevelFilter" className="block text-sm font-medium text-gray-700">Niveau</label>
+            <label htmlFor="rosterLevelFilter" className="block text-xs font-medium text-gray-700 mb-0.5">Niveau</label>
             <select
                 id="rosterLevelFilter"
                 value={levelFilter}
                 onChange={(e) => setLevelFilter(e.target.value)}
-                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md"
+                className="block w-full pl-3 pr-10 py-1.5 text-xs border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
             >
                 <option value="all">Tous</option>
                 {RIDER_LEVEL_CATEGORIES.map(level => <option key={level} value={level}>{level}</option>)}
             </select>
         </div>
         <div>
-            <label className="block text-sm font-medium text-gray-700">Tranche d'âge</label>
-            <div className="flex items-center space-x-2 mt-1">
+            <label className="block text-xs font-medium text-gray-700 mb-0.5">Tranche d'âge</label>
+            <div className="flex items-center space-x-1">
                 <input
                     type="number"
                     placeholder="Min"
                     value={minAgeFilter}
                     onChange={(e) => setMinAgeFilter(e.target.value)}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md sm:text-sm bg-white text-gray-900 placeholder-gray-500"
+                    className="block w-full px-2 py-1.5 border border-gray-300 rounded-md text-xs bg-white text-gray-900 placeholder-gray-500"
                     aria-label="Âge minimum"
                 />
-                <span>-</span>
+                <span className="text-xs">-</span>
                 <input
                     type="number"
                     placeholder="Max"
                     value={maxAgeFilter}
                     onChange={(e) => setMaxAgeFilter(e.target.value)}
-                    className="block w-full px-3 py-2 border border-gray-300 rounded-md sm:text-sm bg-white text-gray-900 placeholder-gray-500"
+                    className="block w-full px-2 py-1.5 border border-gray-300 rounded-md text-xs bg-white text-gray-900 placeholder-gray-500"
                     aria-label="Âge maximum"
                 />
             </div>
@@ -851,61 +851,61 @@ export const RosterSection: React.FC<RosterSectionProps> = ({
 
     return (
         <div className="text-gray-700">
-            <div className="mb-4 p-3 bg-gray-100 rounded-md flex flex-wrap gap-x-6 gap-y-3 items-center">
+            <div className="mb-2 p-2 bg-gray-100 rounded-md flex flex-wrap gap-x-4 gap-y-2 items-center">
                 <div>
-                    <label htmlFor="ageCategoryFilter" className="block text-sm font-medium text-gray-600 mb-1">Catégorie d'Âge:</label>
-                    <select id="ageCategoryFilter" value={monitoringAgeFilter} onChange={e => setMonitoringAgeFilter(e.target.value)} className="w-full text-sm py-1.5 border-gray-300 bg-white rounded-md">
+                    <label htmlFor="ageCategoryFilter" className="block text-xs font-medium text-gray-600 mb-0.5">Catégorie d'Âge:</label>
+                    <select id="ageCategoryFilter" value={monitoringAgeFilter} onChange={e => setMonitoringAgeFilter(e.target.value)} className="w-full text-xs py-1 border-gray-300 bg-white rounded-md">
                         {monitoringAllAgeCategoriesForFilter.map(cat => <option key={cat} value={cat}>{cat === 'all' ? 'Toutes' : cat}</option>)}
                     </select>
                 </div>
                  <div>
-                    <label htmlFor="levelCategoryFilter" className="block text-sm font-medium text-gray-600 mb-1">Catégorie de Niveau:</label>
-                    <select id="levelCategoryFilter" value={monitoringLevelFilter} onChange={e => setMonitoringLevelFilter(e.target.value)} className="w-full text-sm py-1.5 border-gray-300 bg-white rounded-md">
+                    <label htmlFor="levelCategoryFilter" className="block text-xs font-medium text-gray-600 mb-0.5">Catégorie de Niveau:</label>
+                    <select id="levelCategoryFilter" value={monitoringLevelFilter} onChange={e => setMonitoringLevelFilter(e.target.value)} className="w-full text-xs py-1 border-gray-300 bg-white rounded-md">
                         {monitoringAllLevelCategoriesForFilter.map(cat => <option key={cat} value={cat}>{cat === 'all' ? 'Toutes' : cat}</option>)}
                     </select>
                 </div>
-                 <div className="flex items-center self-end pb-1">
-                    <input type="checkbox" id="includeScouting" checked={includeScouting} onChange={e => setIncludeScouting(e.target.checked)} className="h-4 w-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" />
-                    <label htmlFor="includeScouting" className="ml-2 text-sm text-gray-700">Inclure Scouting</label>
+                 <div className="flex items-center self-end pb-0.5">
+                    <input type="checkbox" id="includeScouting" checked={includeScouting} onChange={e => setIncludeScouting(e.target.checked)} className="h-3 w-3 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" />
+                    <label htmlFor="includeScouting" className="ml-1 text-xs text-gray-700">Inclure Scouting</label>
                 </div>
             </div>
             {monitoredRiders.length > 0 ? (
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto" style={{ maxHeight: '60vh' }}>
                     <table className="min-w-full bg-white">
                         <thead className="bg-gray-100">
                             <tr>
-                                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 cursor-pointer" onClick={() => requestMonitoringSort('riderName')}>Coureur {getSortIndicator('riderName')}</th>
-                                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 cursor-pointer" onClick={() => requestMonitoringSort('qualitativeProfile')}>Profil Qualitatif {getSortIndicator('qualitativeProfile')}</th>
-                                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 cursor-pointer" onClick={() => requestMonitoringSort('generalPerformanceScore')}>Note Générale {getSortIndicator('generalPerformanceScore')}</th>
-                                <th className="px-3 py-2 text-left text-xs font-semibold text-gray-600 cursor-pointer" onClick={() => requestMonitoringSort('fatigueResistanceScore')}>Résist. Fatigue {getSortIndicator('fatigueResistanceScore')}</th>
+                                <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-600 cursor-pointer" onClick={() => requestMonitoringSort('riderName')}>Coureur {getSortIndicator('riderName')}</th>
+                                <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-600 cursor-pointer" onClick={() => requestMonitoringSort('qualitativeProfile')}>Profil {getSortIndicator('qualitativeProfile')}</th>
+                                <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-600 cursor-pointer" onClick={() => requestMonitoringSort('generalPerformanceScore')}>Note Gén. {getSortIndicator('generalPerformanceScore')}</th>
+                                <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-600 cursor-pointer" onClick={() => requestMonitoringSort('fatigueResistanceScore')}>Résist. {getSortIndicator('fatigueResistanceScore')}</th>
                                 {SPIDER_CHART_CHARACTERISTICS_CONFIG.map(char => (
-                                    <th key={char.key} className="px-3 py-2 text-left text-xs font-semibold text-gray-600 cursor-pointer" onClick={() => requestMonitoringSort(char.key)}>{char.label} {getSortIndicator(char.key)}</th>
+                                    <th key={char.key} className="px-2 py-1.5 text-left text-xs font-semibold text-gray-600 cursor-pointer" onClick={() => requestMonitoringSort(char.key)}>{char.label} {getSortIndicator(char.key)}</th>
                                 ))}
                             </tr>
                         </thead>
                          <tbody className="divide-y divide-gray-200">
                              {monitoredRiders.map(rider => (
                                 <tr key={rider.id}>
-                                    <td className="px-3 py-2 font-medium">{rider.firstName} {rider.lastName} {rider.isScout && <span className="text-xs text-purple-600">(Scout)</span>}</td>
-                                    <td className="px-3 py-2">
-                                        {rider.qualitativeProfile && <span className={`px-2 py-0.5 text-xs rounded-full ${RIDER_QUALITATIVE_PROFILE_COLORS[rider.qualitativeProfile]}`}>{rider.qualitativeProfile}</span>}
+                                    <td className="px-2 py-1.5 text-xs font-medium">{rider.firstName} {rider.lastName} {rider.isScout && <span className="text-xs text-purple-600">(Scout)</span>}</td>
+                                    <td className="px-2 py-1.5">
+                                        {rider.qualitativeProfile && <span className={`px-1.5 py-0.5 text-xs rounded-full ${RIDER_QUALITATIVE_PROFILE_COLORS[rider.qualitativeProfile]}`}>{rider.qualitativeProfile}</span>}
                                     </td>
-                                    <td className="px-3 py-2">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-16 bg-gray-200 rounded-full h-2"><div className={`${getScoreColor(rider.generalPerformanceScore || 0)} h-2 rounded-full`} style={{width: `${rider.generalPerformanceScore || 0}%`}}></div></div>
+                                    <td className="px-2 py-1.5">
+                                        <div className="flex items-center gap-1.5">
+                                            <div className="w-14 bg-gray-200 rounded-full h-1.5"><div className={`${getScoreColor(rider.generalPerformanceScore || 0)} h-1.5 rounded-full`} style={{width: `${rider.generalPerformanceScore || 0}%`}}></div></div>
                                             <span className="font-semibold text-xs">{rider.generalPerformanceScore?.toFixed(0)}</span>
                                         </div>
                                     </td>
-                                    <td className="px-3 py-2">
-                                        <div className="flex items-center gap-2">
-                                            <div className="w-16 bg-gray-200 rounded-full h-2"><div className={`${getScoreColor(rider.fatigueResistanceScore || 0)} h-2 rounded-full`} style={{width: `${rider.fatigueResistanceScore || 0}%`}}></div></div>
+                                    <td className="px-2 py-1.5">
+                                        <div className="flex items-center gap-1.5">
+                                            <div className="w-14 bg-gray-200 rounded-full h-1.5"><div className={`${getScoreColor(rider.fatigueResistanceScore || 0)} h-1.5 rounded-full`} style={{width: `${rider.fatigueResistanceScore || 0}%`}}></div></div>
                                             <span className="font-semibold text-xs">{rider.fatigueResistanceScore?.toFixed(0)}</span>
                                         </div>
                                     </td>
                                     {SPIDER_CHART_CHARACTERISTICS_CONFIG.map(char => (
-                                        <td key={char.key} className="px-3 py-2">
-                                            <div className="flex items-center gap-2">
-                                                <div className="w-16 bg-gray-200 rounded-full h-2"><div className={`${getScoreColor((rider as any)[char.key] || 0)} h-2 rounded-full`} style={{width: `${(rider as any)[char.key] || 0}%`}}></div></div>
+                                        <td key={char.key} className="px-2 py-1.5">
+                                            <div className="flex items-center gap-1.5">
+                                                <div className="w-14 bg-gray-200 rounded-full h-1.5"><div className={`${getScoreColor((rider as any)[char.key] || 0)} h-1.5 rounded-full`} style={{width: `${(rider as any)[char.key] || 0}%`}}></div></div>
                                                 <span className="font-semibold text-xs">{((rider as any)[char.key] || 0).toFixed(0)}</span>
                                             </div>
                                         </td>
@@ -916,7 +916,7 @@ export const RosterSection: React.FC<RosterSectionProps> = ({
                     </table>
                 </div>
             ) : (
-                 <p className="italic text-gray-500 text-center py-6">Aucun coureur à afficher avec les filtres actuels.</p>
+                 <p className="italic text-gray-500 text-center py-4">Aucun coureur à afficher avec les filtres actuels.</p>
             )}
         </div>
     );
@@ -927,8 +927,8 @@ export const RosterSection: React.FC<RosterSectionProps> = ({
       title="Gestion de l'Effectif"
       actionButton={<ActionButton onClick={openAddModal} icon={<PlusCircleIcon className="w-5 h-5"/>}>Ajouter Coureur</ActionButton>}
     >
-      <div className="mb-4 border-b border-gray-200">
-        <nav className="-mb-px flex space-x-2 overflow-x-auto" aria-label="Tabs">
+      <div className="mb-2 border-b border-gray-200">
+        <nav className="-mb-px flex space-x-1 overflow-x-auto" aria-label="Tabs">
           <button onClick={() => setActiveTab('roster')} className={tabButtonStyle('roster')}>Effectif</button>
           <button onClick={() => setActiveTab('selectionGrid')} className={tabButtonStyle('selectionGrid')}>Grille de Sélection</button>
           <button onClick={() => setActiveTab('seasonPlanning')} className={tabButtonStyle('seasonPlanning')}>Planning Saison</button>
@@ -936,7 +936,7 @@ export const RosterSection: React.FC<RosterSectionProps> = ({
         </nav>
       </div>
 
-      <div>
+      <div className="mt-2">
         {activeTab === 'roster' && renderRosterTab()}
         {activeTab === 'selectionGrid' && renderSelectionGrid()}
         {activeTab === 'seasonPlanning' && (
