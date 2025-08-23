@@ -44,7 +44,7 @@ import {
   signOut,
 } from "firebase/auth";
 import { auth, db } from "./firebaseConfig";
-import { doc, setDoc } from "firebase/firestore";
+import { doc, setDoc, updateDoc, deleteDoc, addDoc, collection } from "firebase/firestore";
 import * as firebaseService from "./services/firebaseService";
 
 
@@ -1186,6 +1186,22 @@ const App: React.FC = () => {
                       currentTeamId={appState.activeTeamId || ''}
                       onApprove={async (membership) => {
                         try {
+                          // Vérifier les permissions
+                          if (!currentUser || !effectivePermissions) {
+                            alert('Erreur: Permissions non définies. Veuillez vous reconnecter.');
+                            return;
+                          }
+
+                          // Vérifier si l'utilisateur a le droit d'approuver des adhésions
+                          const canApproveMemberships = effectivePermissions['userManagement']?.includes('edit') || 
+                                                      currentUser.permissionRole === TeamRole.ADMINISTRATOR ||
+                                                      currentUser.userRole === UserRole.MANAGER;
+                          
+                          if (!canApproveMemberships) {
+                            alert('Erreur: Vous n\'avez pas les permissions nécessaires pour approuver des adhésions.');
+                            return;
+                          }
+
                           // Mettre à jour le statut de l'adhésion
                           const membershipRef = doc(db, 'teamMemberships', membership.id);
                           await updateDoc(membershipRef, {
@@ -1228,11 +1244,41 @@ const App: React.FC = () => {
                           }
                         } catch (error) {
                           console.error('Erreur lors de l\'approbation:', error);
-                          alert('Erreur lors de l\'approbation de l\'adhésion');
+                          let errorMessage = 'Erreur lors de l\'approbation de l\'adhésion';
+                          
+                          if (error instanceof Error) {
+                            if (error.message.includes('permission-denied')) {
+                              errorMessage = 'Permission refusée. Vérifiez vos droits d\'administrateur.';
+                            } else if (error.message.includes('not-found')) {
+                              errorMessage = 'Adhésion introuvable. Elle a peut-être été supprimée.';
+                            } else if (error.message.includes('unavailable')) {
+                              errorMessage = 'Service temporairement indisponible. Réessayez plus tard.';
+                            } else {
+                              errorMessage = `Erreur: ${error.message}`;
+                            }
+                          }
+                          
+                          alert(errorMessage);
                         }
                       }}
                       onDeny={async (membership) => {
                         try {
+                          // Vérifier les permissions
+                          if (!currentUser || !effectivePermissions) {
+                            alert('Erreur: Permissions non définies. Veuillez vous reconnecter.');
+                            return;
+                          }
+
+                          // Vérifier si l'utilisateur a le droit de refuser des adhésions
+                          const canDenyMemberships = effectivePermissions['userManagement']?.includes('edit') || 
+                                                   currentUser.permissionRole === TeamRole.ADMINISTRATOR ||
+                                                   currentUser.userRole === UserRole.MANAGER;
+                          
+                          if (!canDenyMemberships) {
+                            alert('Erreur: Vous n\'avez pas les permissions nécessaires pour refuser des adhésions.');
+                            return;
+                          }
+
                           if (window.confirm(`Refuser l'adhésion de ${membership.email} ?`)) {
                             // Supprimer l'adhésion refusée
                             const membershipRef = doc(db, 'teamMemberships', membership.id);
@@ -1246,11 +1292,39 @@ const App: React.FC = () => {
                           }
                         } catch (error) {
                           console.error('Erreur lors du refus:', error);
-                          alert('Erreur lors du refus de l\'adhésion');
+                          let errorMessage = 'Erreur lors du refus de l\'adhésion';
+                          
+                          if (error instanceof Error) {
+                            if (error.message.includes('permission-denied')) {
+                              errorMessage = 'Permission refusée. Vérifiez vos droits d\'administrateur.';
+                            } else if (error.message.includes('not-found')) {
+                              errorMessage = 'Adhésion introuvable. Elle a peut-être été supprimée.';
+                            } else {
+                              errorMessage = `Erreur: ${error.message}`;
+                            }
+                          }
+                          
+                          alert(errorMessage);
                         }
                       }}
-                      onInvite={async (email, teamId) => {
+                      onInvite={async (email, teamId, userRole = UserRole.COUREUR) => {
                         try {
+                          // Vérifier les permissions
+                          if (!currentUser || !effectivePermissions) {
+                            alert('Erreur: Permissions non définies. Veuillez vous reconnecter.');
+                            return;
+                          }
+
+                          // Vérifier si l'utilisateur a le droit d'inviter des membres
+                          const canInviteMembers = effectivePermissions['userManagement']?.includes('edit') || 
+                                                 currentUser.permissionRole === TeamRole.ADMINISTRATOR ||
+                                                 currentUser.userRole === UserRole.MANAGER;
+                          
+                          if (!canInviteMembers) {
+                            alert('Erreur: Vous n\'avez pas les permissions nécessaires pour inviter des membres.');
+                            return;
+                          }
+
                           // Vérifier si l'utilisateur existe déjà
                           const existingUser = appState.users.find(u => u.email === email);
                           if (existingUser) {
@@ -1264,6 +1338,7 @@ const App: React.FC = () => {
                             email,
                             teamId,
                             status: TeamMembershipStatus.PENDING,
+                            requestedUserRole: userRole, // Rôle demandé lors de l'invitation
                             requestedAt: new Date().toISOString(),
                             requestedBy: currentUser.id,
                             firstName: '',
