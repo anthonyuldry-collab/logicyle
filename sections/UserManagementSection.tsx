@@ -257,7 +257,22 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                                                     <ActionButton 
                                                         onClick={async () => {
                                                             try {
-                                                                await onApprove(membership);
+                                                                // Transformer les données pour correspondre à l'interface attendue
+                                                                const transformedMembership = {
+                                                                    id: membership.userId, // Utiliser userId comme id
+                                                                    email: user.email,     // Récupérer l'email de l'utilisateur
+                                                                    teamId: membership.teamId,
+                                                                    status: membership.status,
+                                                                    userRole: membership.userRole,
+                                                                    firstName: user.firstName,
+                                                                    lastName: user.lastName,
+                                                                    requestedUserRole: membership.userRole,
+                                                                    requestedAt: membership.requestedAt,
+                                                                    requestedBy: membership.requestedBy
+                                                                };
+                                                                
+                                                                console.log('🔍 DEBUG: Membership transformé:', transformedMembership);
+                                                                await onApprove(transformedMembership);
                                                             } catch (error) {
                                                                 console.error('Erreur lors de l\'approbation:', error);
                                                                 alert('Erreur lors de l\'approbation');
@@ -272,7 +287,22 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                                                     <ActionButton 
                                                         onClick={async () => {
                                                             try {
-                                                                await onDeny(membership);
+                                                                // Transformer les données pour correspondre à l'interface attendue
+                                                                const transformedMembership = {
+                                                                    id: membership.userId, // Utiliser userId comme id
+                                                                    email: user.email,     // Récupérer l'email de l'utilisateur
+                                                                    teamId: membership.teamId,
+                                                                    status: membership.status,
+                                                                    userRole: membership.userRole,
+                                                                    firstName: user.firstName,
+                                                                    lastName: user.lastName,
+                                                                    requestedUserRole: membership.userRole,
+                                                                    requestedAt: membership.requestedAt,
+                                                                    requestedBy: membership.requestedBy
+                                                                };
+                                                                
+                                                                console.log('🔍 DEBUG: Membership transformé pour refus:', transformedMembership);
+                                                                await onDeny(transformedMembership);
                                                             } catch (error) {
                                                                 console.error('Erreur lors du refus:', error);
                                                                 alert('Erreur lors du refus');
