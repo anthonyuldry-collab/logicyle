@@ -424,10 +424,15 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                                                         <select
                                                             value={membership.userRole}
                                                             onChange={async (e) => {
+                                                                console.log('🔄 DEBUG: Changement de rôle détecté:', e.target.value);
+                                                                console.log('🔄 DEBUG: User ID:', user.id);
+                                                                console.log('🔄 DEBUG: Team ID:', currentTeamId);
                                                                 try {
+                                                                    console.log('🔄 DEBUG: Appel de onUpdateRole...');
                                                                     await onUpdateRole(user.id, currentTeamId, e.target.value as UserRole);
+                                                                    console.log('✅ DEBUG: onUpdateRole terminé avec succès');
                                                                 } catch (error) {
-                                                                    console.error('Erreur lors de la mise à jour du rôle:', error);
+                                                                    console.error('❌ DEBUG: Erreur lors de la mise à jour du rôle:', error);
                                                                     alert('Erreur lors de la mise à jour du rôle');
                                                                 }
                                                             }}
