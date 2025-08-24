@@ -243,6 +243,10 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                                 </thead>
                                 <tbody className="divide-y">
                                     {pendingMemberships.map(membership => {
+                                        console.log('🔍 DEBUG: Structure complète de membership:', membership);
+                                        console.log('🔍 DEBUG: membership.id =', membership.id);
+                                        console.log('🔍 DEBUG: membership.userId =', membership.userId);
+                                        
                                         const user = getUser(membership.userId);
                                         const team = getTeam(membership.teamId);
                                         if (!user || !team) return null;
