@@ -257,21 +257,33 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                                                     <ActionButton 
                                                         onClick={async () => {
                                                             try {
+                                                                console.log('🔍 DEBUG: Données brutes - membership:', membership);
+                                                                console.log('🔍 DEBUG: Données brutes - user:', user);
+                                                                console.log('🔍 DEBUG: Données brutes - team:', team);
+                                                                
                                                                 // Transformer les données pour correspondre à l'interface attendue
                                                                 const transformedMembership = {
-                                                                    id: membership.userId, // Utiliser userId comme id
-                                                                    email: user.email,     // Récupérer l'email de l'utilisateur
-                                                                    teamId: membership.teamId,
-                                                                    status: membership.status,
-                                                                    userRole: membership.userRole,
-                                                                    firstName: user.firstName,
-                                                                    lastName: user.lastName,
-                                                                    requestedUserRole: membership.userRole,
-                                                                    requestedAt: membership.requestedAt,
-                                                                    requestedBy: membership.requestedBy
+                                                                    id: membership.userId || 'unknown-id', // Utiliser userId comme id
+                                                                    email: user?.email || 'unknown@email.com', // Récupérer l'email de l'utilisateur
+                                                                    teamId: membership.teamId || 'unknown-team',
+                                                                    status: membership.status || 'PENDING',
+                                                                    userRole: membership.userRole || 'COUREUR',
+                                                                    firstName: user?.firstName || '',
+                                                                    lastName: user?.lastName || '',
+                                                                    requestedUserRole: membership.userRole || 'COUREUR',
+                                                                    requestedAt: membership.requestedAt || new Date().toISOString(),
+                                                                    requestedBy: membership.requestedBy || 'unknown'
                                                                 };
                                                                 
                                                                 console.log('🔍 DEBUG: Membership transformé:', transformedMembership);
+                                                                
+                                                                // Vérifier que toutes les propriétés requises sont présentes
+                                                                if (!transformedMembership.id || !transformedMembership.email || !transformedMembership.teamId) {
+                                                                    console.error('❌ DEBUG: Données transformées invalides:', transformedMembership);
+                                                                    alert('Erreur: Impossible de transformer les données d\'adhésion');
+                                                                    return;
+                                                                }
+                                                                
                                                                 await onApprove(transformedMembership);
                                                             } catch (error) {
                                                                 console.error('Erreur lors de l\'approbation:', error);
@@ -287,21 +299,32 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                                                     <ActionButton 
                                                         onClick={async () => {
                                                             try {
+                                                                console.log('🔍 DEBUG: Données brutes pour refus - membership:', membership);
+                                                                console.log('🔍 DEBUG: Données brutes pour refus - user:', user);
+                                                                
                                                                 // Transformer les données pour correspondre à l'interface attendue
                                                                 const transformedMembership = {
-                                                                    id: membership.userId, // Utiliser userId comme id
-                                                                    email: user.email,     // Récupérer l'email de l'utilisateur
-                                                                    teamId: membership.teamId,
-                                                                    status: membership.status,
-                                                                    userRole: membership.userRole,
-                                                                    firstName: user.firstName,
-                                                                    lastName: user.lastName,
-                                                                    requestedUserRole: membership.userRole,
-                                                                    requestedAt: membership.requestedAt,
-                                                                    requestedBy: membership.requestedBy
+                                                                    id: membership.userId || 'unknown-id', // Utiliser userId comme id
+                                                                    email: user?.email || 'unknown@email.com', // Récupérer l'email de l'utilisateur
+                                                                    teamId: membership.teamId || 'unknown-team',
+                                                                    status: membership.status || 'PENDING',
+                                                                    userRole: membership.userRole || 'COUREUR',
+                                                                    firstName: user?.firstName || '',
+                                                                    lastName: user?.lastName || '',
+                                                                    requestedUserRole: membership.userRole || 'COUREUR',
+                                                                    requestedAt: membership.requestedAt || new Date().toISOString(),
+                                                                    requestedBy: membership.requestedBy || 'unknown'
                                                                 };
                                                                 
                                                                 console.log('🔍 DEBUG: Membership transformé pour refus:', transformedMembership);
+                                                                
+                                                                // Vérifier que toutes les propriétés requises sont présentes
+                                                                if (!transformedMembership.id || !transformedMembership.email || !transformedMembership.teamId) {
+                                                                    console.error('❌ DEBUG: Données transformées invalides pour refus:', transformedMembership);
+                                                                    alert('Erreur: Impossible de transformer les données d\'adhésion pour le refus');
+                                                                    return;
+                                                                }
+                                                                
                                                                 await onDeny(transformedMembership);
                                                             } catch (error) {
                                                                 console.error('Erreur lors du refus:', error);
