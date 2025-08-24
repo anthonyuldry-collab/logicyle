@@ -1191,8 +1191,18 @@ const App: React.FC = () => {
                       currentTeamId={appState.activeTeamId || ''}
                       onApprove={async (membership) => {
                         try {
+                          console.log('🔍 DEBUG: Début de onApprove avec membership:', membership);
+                          
+                          // Vérifier que membership est valide
+                          if (!membership || !membership.id || !membership.email || !membership.teamId) {
+                            console.error('❌ DEBUG: Membership invalide:', membership);
+                            alert('Erreur: Données d\'adhésion invalides');
+                            return;
+                          }
+                          
                           // Vérifier les permissions
                           if (!currentUser || !effectivePermissions) {
+                            console.error('❌ DEBUG: currentUser ou effectivePermissions manquant:', { currentUser, effectivePermissions });
                             alert('Erreur: Permissions non définies. Veuillez vous reconnecter.');
                             return;
                           }
@@ -1201,6 +1211,8 @@ const App: React.FC = () => {
                           const canApproveMemberships = (effectivePermissions && effectivePermissions['userManagement'] && Array.isArray(effectivePermissions['userManagement']) && effectivePermissions['userManagement'].includes('edit')) || 
                                                       currentUser.permissionRole === TeamRole.ADMINISTRATOR ||
                                                       currentUser.userRole === UserRole.MANAGER;
+                          
+                          console.log('🔍 DEBUG: canApproveMemberships =', canApproveMemberships);
                           
                           if (!canApproveMemberships) {
                             alert('Erreur: Vous n\'avez pas les permissions nécessaires pour approuver des adhésions.');
@@ -1226,10 +1238,17 @@ const App: React.FC = () => {
                           }));
 
                           // Créer un profil utilisateur si nécessaire
+                          console.log('🔍 DEBUG: Vérification de l\'utilisateur existant...');
                           const existingUser = appState.users.find(u => u.email === membership.email);
+                          console.log('🔍 DEBUG: existingUser =', existingUser);
+                          
                           if (!existingUser) {
+                            console.log('🔍 DEBUG: Création d\'un nouvel utilisateur...');
+                            const newUserId = generateId();
+                            console.log('🔍 DEBUG: ID généré =', newUserId);
+                            
                             const newUser: User = {
-                              id: generateId(),
+                              id: newUserId,
                               email: membership.email,
                               firstName: membership.firstName || '',
                               lastName: membership.lastName || '',
@@ -1241,14 +1260,25 @@ const App: React.FC = () => {
                               isActive: true
                             };
                             
+                            console.log('🔍 DEBUG: Nouvel utilisateur créé:', newUser);
+                            console.log('🔍 DEBUG: Sauvegarde Firebase...');
+                            
                             await setDoc(doc(db, 'users', newUser.id), newUser);
+                            console.log('🔍 DEBUG: Utilisateur sauvegardé en Firebase');
+                            
                             setAppState((prev: AppState) => ({
                               ...prev,
                               users: [...prev.users, newUser]
                             }));
+                            console.log('🔍 DEBUG: État local mis à jour');
+                          } else {
+                            console.log('🔍 DEBUG: Utilisateur existant trouvé, pas de création nécessaire');
                           }
                         } catch (error) {
-                          console.error('Erreur lors de l\'approbation:', error);
+                          console.error('❌ DEBUG: Erreur détaillée lors de l\'approbation:', error);
+                          console.error('❌ DEBUG: Type d\'erreur:', typeof error);
+                          console.error('❌ DEBUG: Stack trace:', error instanceof Error ? error.stack : 'Pas de stack trace');
+                          
                           let errorMessage = 'Erreur lors de l\'approbation de l\'adhésion';
                           
                           if (error instanceof Error) {
@@ -1263,6 +1293,7 @@ const App: React.FC = () => {
                             }
                           }
                           
+                          console.error('❌ DEBUG: Message d\'erreur final:', errorMessage);
                           alert(errorMessage);
                         }
                       }}
