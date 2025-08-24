@@ -1271,6 +1271,104 @@ const App: React.FC = () => {
                               users: [...prev.users, newUser]
                             }));
                             console.log('🔍 DEBUG: État local mis à jour');
+
+                            // 🎯 AJOUTER L'UTILISATEUR AUX COLLECTIONS CORRESPONDANTES
+                            console.log('🔍 DEBUG: Ajout aux collections riders/staff...');
+                            
+                            if (membership.userRole === UserRole.COUREUR) {
+                              // Créer le profil coureur
+                              const newRider: Rider = {
+                                id: newUserId,
+                                firstName: newUser.firstName,
+                                lastName: newUser.lastName,
+                                email: newUser.email,
+                                // Propriétés obligatoires avec valeurs par défaut
+                                qualitativeProfile: {
+                                  sprint: 0,
+                                  anaerobic: 0,
+                                  puncher: 0,
+                                  climbing: 0,
+                                  rouleur: 0,
+                                  generalPerformance: 0,
+                                  fatigueResistance: 0
+                                },
+                                disciplines: [DisciplinePracticed.ROUTE],
+                                categories: ['Senior'],
+                                forme: FormeStatus.BONNE,
+                                moral: MoralStatus.BON,
+                                healthCondition: HealthCondition.BON,
+                                // Autres propriétés avec valeurs par défaut
+                                resultsHistory: [],
+                                favoriteRaces: [],
+                                performanceGoals: '',
+                                physiquePerformanceProject: { score: 0, notes: '' },
+                                techniquePerformanceProject: { score: 0, notes: '' },
+                                mentalPerformanceProject: { score: 0, notes: '' },
+                                environnementPerformanceProject: { score: 0, notes: '' },
+                                tactiquePerformanceProject: { score: 0, notes: '' },
+                                allergies: [],
+                                performanceNutrition: {
+                                  hydrationStrategy: '',
+                                  preRaceMeal: '',
+                                  duringRaceNutrition: '',
+                                  recoveryNutrition: ''
+                                },
+                                roadBikeSetup: { bikeType: BikeType.ROUTE, size: '', brand: '', model: '' },
+                                ttBikeSetup: { bikeType: BikeType.CONTRE_LA_MONTRE, size: '', brand: '', model: '' },
+                                clothing: [],
+                                charSprint: 0,
+                                charAnaerobic: 0,
+                                charPuncher: 0,
+                                charClimbing: 0,
+                                charRouleur: 0,
+                                generalPerformanceScore: 0,
+                                fatigueResistanceScore: 0
+                              };
+
+                              // Sauvegarder en Firebase
+                              console.log('💾 DEBUG: Sauvegarde Firebase du coureur...');
+                              await setDoc(doc(db, 'teams', membership.teamId, 'riders', newUserId), newRider);
+                              console.log('✅ DEBUG: Coureur sauvegardé en Firebase');
+
+                              // Mettre à jour l'état local
+                              setAppState((prev: AppState) => ({
+                                ...prev,
+                                riders: [...prev.riders, newRider]
+                              }));
+                              console.log('✅ DEBUG: État local mis à jour avec le coureur');
+
+                            } else if (membership.userRole === UserRole.STAFF) {
+                              // Créer le profil staff
+                              const newStaffMember: StaffMember = {
+                                id: newUserId,
+                                firstName: newUser.firstName,
+                                lastName: newUser.lastName,
+                                email: newUser.email,
+                                role: StaffRole.AUTRE,
+                                status: StaffStatus.VACATAIRE,
+                                openToExternalMissions: false,
+                                skills: [],
+                                availability: []
+                              };
+
+                              // Sauvegarder en Firebase
+                              console.log('💾 DEBUG: Sauvegarde Firebase du staff...');
+                              await setDoc(doc(db, 'teams', membership.teamId, 'staff', newUserId), newStaffMember);
+                              console.log('✅ DEBUG: Staff sauvegardé en Firebase');
+
+                              // Mettre à jour l'état local
+                              setAppState((prev: AppState) => ({
+                                ...prev,
+                                staff: [...prev.staff, newStaffMember]
+                              }));
+                              console.log('✅ DEBUG: État local mis à jour avec le staff');
+                            }
+
+                            console.log('🎉 DEBUG: Utilisateur ajouté avec succès aux collections correspondantes !');
+                            
+                            // Message de confirmation pour l'utilisateur
+                            const roleText = membership.userRole === UserRole.COUREUR ? 'coureurs' : 'staff';
+                            alert(`✅ ${newUser.firstName} ${newUser.lastName} a été approuvé et ajouté aux ${roleText} !`);
                           } else {
                             console.log('🔍 DEBUG: Utilisateur existant trouvé, pas de création nécessaire');
                           }
@@ -1435,6 +1533,12 @@ const App: React.FC = () => {
                       }}
                       onUpdateRole={async (userId, teamId, newUserRole) => {
                         try {
+                          const user = appState.users.find(u => u.id === userId);
+                          if (!user) {
+                            alert('Utilisateur non trouvé');
+                            return;
+                          }
+
                           // Mettre à jour le rôle utilisateur
                           const userRef = doc(db, 'users', userId);
                           await updateDoc(userRef, {
@@ -1442,7 +1546,7 @@ const App: React.FC = () => {
                             updatedAt: new Date().toISOString()
                           });
 
-                          // Mettre à jour l'état local
+                          // Mettre à jour l'état local des utilisateurs
                           setAppState((prev: AppState) => ({
                             ...prev,
                             users: prev.users.map(u => 
@@ -1452,7 +1556,99 @@ const App: React.FC = () => {
                             )
                           }));
 
-                          alert('Rôle utilisateur mis à jour avec succès');
+                          // Ajouter l'utilisateur aux bonnes collections selon son nouveau rôle
+                          console.log('🔍 DEBUG: Création du profil coureur pour:', user.email);
+                          if (newUserRole === UserRole.COUREUR) {
+                            // Ajouter aux riders
+                            const newRider: Rider = {
+                              id: userId,
+                              firstName: user.firstName,
+                              lastName: user.lastName,
+                              email: user.email,
+                              // Propriétés obligatoires avec valeurs par défaut
+                              qualitativeProfile: {
+                                sprint: 0,
+                                anaerobic: 0,
+                                puncher: 0,
+                                climbing: 0,
+                                rouleur: 0,
+                                generalPerformance: 0,
+                                fatigueResistance: 0
+                              },
+                              disciplines: [DisciplinePracticed.ROUTE],
+                              categories: ['Senior'],
+                              forme: FormeStatus.BONNE,
+                              moral: MoralStatus.BON,
+                              healthCondition: HealthCondition.BON,
+                              // Autres propriétés avec valeurs par défaut
+                              resultsHistory: [],
+                              favoriteRaces: [],
+                              performanceGoals: '',
+                              physiquePerformanceProject: { score: 0, notes: '' },
+                              techniquePerformanceProject: { score: 0, notes: '' },
+                              mentalPerformanceProject: { score: 0, notes: '' },
+                              environnementPerformanceProject: { score: 0, notes: '' },
+                              tactiquePerformanceProject: { score: 0, notes: '' },
+                              allergies: [],
+                              performanceNutrition: {
+                                hydrationStrategy: '',
+                                preRaceMeal: '',
+                                duringRaceNutrition: '',
+                                recoveryNutrition: ''
+                              },
+                              roadBikeSetup: { bikeType: BikeType.ROUTE, size: '', brand: '', model: '' },
+                              ttBikeSetup: { bikeType: BikeType.CONTRE_LA_MONTRE, size: '', brand: '', model: '' },
+                              clothing: [],
+                              charSprint: 0,
+                              charAnaerobic: 0,
+                              charPuncher: 0,
+                              charClimbing: 0,
+                              charRouleur: 0,
+                              generalPerformanceScore: 0,
+                              fatigueResistanceScore: 0
+                            };
+
+                            // Sauvegarder en Firebase
+                            console.log('💾 DEBUG: Sauvegarde Firebase du coureur...');
+                            await setDoc(doc(db, 'teams', teamId, 'riders', userId), newRider);
+                            console.log('✅ DEBUG: Coureur sauvegardé en Firebase');
+
+                            // Mettre à jour l'état local
+                            setAppState((prev: AppState) => ({
+                              ...prev,
+                              riders: [...prev.riders, newRider]
+                            }));
+                            console.log('✅ DEBUG: État local mis à jour avec le coureur');
+
+                          } else if (newUserRole === UserRole.STAFF) {
+                            console.log('🔍 DEBUG: Création du profil staff pour:', user.email);
+                            // Ajouter aux staff
+                            const newStaffMember: StaffMember = {
+                              id: userId,
+                              firstName: user.firstName,
+                              lastName: user.lastName,
+                              email: user.email,
+                              role: StaffRole.AUTRE,
+                              status: StaffStatus.VACATAIRE,
+                              openToExternalMissions: false,
+                              skills: [],
+                              availability: []
+                            };
+
+                            // Sauvegarder en Firebase
+                            console.log('💾 DEBUG: Sauvegarde Firebase du staff...');
+                            await setDoc(doc(db, 'teams', teamId, 'staff', userId), newStaffMember);
+                            console.log('✅ DEBUG: Staff sauvegardé en Firebase');
+
+                            // Mettre à jour l'état local
+                            setAppState((prev: AppState) => ({
+                              ...prev,
+                              staff: [...prev.staff, newStaffMember]
+                            }));
+                            console.log('✅ DEBUG: État local mis à jour avec le staff');
+                          }
+
+                          alert(`Rôle utilisateur mis à jour avec succès. ${user.firstName} ${user.lastName} a été ajouté aux ${newUserRole === UserRole.COUREUR ? 'coureurs' : 'staff'}.`);
                         } catch (error) {
                           console.error('Erreur lors de la mise à jour du rôle:', error);
                           alert('Erreur lors de la mise à jour du rôle');
