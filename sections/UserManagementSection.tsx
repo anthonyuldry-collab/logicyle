@@ -266,8 +266,16 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                                                                 console.log('🔍 DEBUG: Données brutes - team:', team);
                                                                 
                                                                 // Transformer les données pour correspondre à l'interface attendue
+                                                                // IMPORTANT: Dans Firebase, chaque document a un ID unique
+                                                                // Si membership.id n'existe pas, nous devons le récupérer différemment
+                                                                const membershipId = membership.id || membership.userId || 'unknown-id';
+                                                                
+                                                                console.log('🔍 DEBUG: ID choisi pour le document:', membershipId);
+                                                                console.log('🔍 DEBUG: membership.id =', membership.id);
+                                                                console.log('🔍 DEBUG: membership.userId =', membership.userId);
+                                                                
                                                                 const transformedMembership = {
-                                                                    id: membership.id || 'unknown-id', // Utiliser l'ID du document teamMembership
+                                                                    id: membershipId, // Utiliser l'ID disponible
                                                                     email: user?.email || 'unknown@email.com', // Récupérer l'email de l'utilisateur
                                                                     teamId: membership.teamId || 'unknown-team',
                                                                     status: membership.status || 'PENDING',
@@ -307,8 +315,16 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                                                                 console.log('🔍 DEBUG: Données brutes pour refus - user:', user);
                                                                 
                                                                 // Transformer les données pour correspondre à l'interface attendue
+                                                                // IMPORTANT: Dans Firebase, chaque document a un ID unique
+                                                                // Si membership.id n'existe pas, nous devons le récupérer différemment
+                                                                const membershipId = membership.id || membership.userId || 'unknown-id';
+                                                                
+                                                                console.log('🔍 DEBUG: ID choisi pour le document (refus):', membershipId);
+                                                                console.log('🔍 DEBUG: membership.id (refus) =', membership.id);
+                                                                console.log('🔍 DEBUG: membership.userId (refus) =', membership.userId);
+                                                                
                                                                 const transformedMembership = {
-                                                                    id: membership.id || 'unknown-id', // Utiliser l'ID du document teamMembership
+                                                                    id: membershipId, // Utiliser l'ID disponible
                                                                     email: user?.email || 'unknown@email.com', // Récupérer l'email de l'utilisateur
                                                                     teamId: membership.teamId || 'unknown-team',
                                                                     status: membership.status || 'PENDING',
