@@ -237,7 +237,7 @@ export const getGlobalData = async (): Promise<Partial<GlobalState>> => {
     return {
         users: usersSnap.docs.map(d => ({ id: d.id, ...d.data() } as User)),
         teams: teamsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Team)),
-        teamMemberships: membershipsSnap.docs.map(d => d.data() as TeamMembership),
+        teamMemberships: membershipsSnap.docs.map(d => ({ id: d.id, ...d.data() } as TeamMembership)),
         permissions: permissionsDoc ? (permissionsDoc.data() as AppPermissions) : {},
         permissionRoles
     };
