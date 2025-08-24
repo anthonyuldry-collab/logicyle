@@ -263,7 +263,7 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                                                                 
                                                                 // Transformer les données pour correspondre à l'interface attendue
                                                                 const transformedMembership = {
-                                                                    id: membership.userId || 'unknown-id', // Utiliser userId comme id
+                                                                    id: membership.id || 'unknown-id', // Utiliser l'ID du document teamMembership
                                                                     email: user?.email || 'unknown@email.com', // Récupérer l'email de l'utilisateur
                                                                     teamId: membership.teamId || 'unknown-team',
                                                                     status: membership.status || 'PENDING',
@@ -304,7 +304,7 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                                                                 
                                                                 // Transformer les données pour correspondre à l'interface attendue
                                                                 const transformedMembership = {
-                                                                    id: membership.userId || 'unknown-id', // Utiliser userId comme id
+                                                                    id: membership.id || 'unknown-id', // Utiliser l'ID du document teamMembership
                                                                     email: user?.email || 'unknown@email.com', // Récupérer l'email de l'utilisateur
                                                                     teamId: membership.teamId || 'unknown-team',
                                                                     status: membership.status || 'PENDING',
