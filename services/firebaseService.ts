@@ -222,11 +222,18 @@ export const createTeamForUser = async (userId: string, teamData: { name: string
 
 // --- GLOBAL DATA ---
 export const getGlobalData = async (): Promise<Partial<GlobalState>> => {
-    const usersSnap = await getDocs(collection(db, 'users'));
-    const teamsSnap = await getDocs(collection(db, 'teams'));
-    const membershipsSnap = await getDocs(collection(db, 'teamMemberships'));
-    const permissionsSnap = await getDocs(collection(db, 'permissions'));
-    const permissionRolesSnap = await getDocs(collection(db, 'permissionRoles'));
+    try {
+        console.log('🔍 DEBUG: Tentative de connexion à Firestore...');
+        const usersSnap = await getDocs(collection(db, 'users'));
+        console.log('✅ DEBUG: Collection users récupérée');
+        const teamsSnap = await getDocs(collection(db, 'teams'));
+        console.log('✅ DEBUG: Collection teams récupérée');
+        const membershipsSnap = await getDocs(collection(db, 'teamMemberships'));
+        console.log('✅ DEBUG: Collection teamMemberships récupérée');
+        const permissionsSnap = await getDocs(collection(db, 'permissions'));
+        console.log('✅ DEBUG: Collection permissions récupérée');
+        const permissionRolesSnap = await getDocs(collection(db, 'permissionRoles'));
+        console.log('✅ DEBUG: Collection permissionRoles récupérée');
     
     const permissionsDoc = permissionsSnap.docs[0];
     const fallbackPermissionRoles = getInitialGlobalState().permissionRoles;
@@ -234,13 +241,20 @@ export const getGlobalData = async (): Promise<Partial<GlobalState>> => {
         ? permissionRolesSnap.docs.map(d => ({ id: d.id, ...d.data() } as any))
         : fallbackPermissionRoles;
 
-    return {
-        users: usersSnap.docs.map(d => ({ id: d.id, ...d.data() } as User)),
-        teams: teamsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Team)),
-        teamMemberships: membershipsSnap.docs.map(d => ({ id: d.id, ...d.data() } as TeamMembership)),
-        permissions: permissionsDoc ? (permissionsDoc.data() as AppPermissions) : {},
-        permissionRoles
-    };
+        return {
+            users: usersSnap.docs.map(d => ({ id: d.id, ...d.data() } as User)),
+            teams: teamsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Team)),
+            teamMemberships: membershipsSnap.docs.map(d => ({ id: d.id, ...d.data() } as TeamMembership)),
+            permissions: permissionsDoc ? (permissionsDoc.data() as AppPermissions) : {},
+            permissionRoles
+        };
+    } catch (error) {
+        console.error('❌ DEBUG: Erreur lors de la récupération des données globales:', error);
+        console.error('❌ DEBUG: Type d\'erreur:', typeof error);
+        console.error('❌ DEBUG: Message d\'erreur:', error instanceof Error ? error.message : 'Erreur inconnue');
+        console.error('❌ DEBUG: Stack trace:', error instanceof Error ? error.stack : 'Pas de stack trace');
+        throw error;
+    }
 };
 
 export const getEffectivePermissions = (user: User, basePermissions: AppPermissions, staff: StaffMember[] = []): Partial<Record<AppSection, PermissionLevel[]>> => {
