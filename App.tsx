@@ -36,6 +36,12 @@ import {
   User,
   UserRole,
   Vehicle,
+  // Enums pour les coureurs
+  DisciplinePracticed,
+  FormeStatus,
+  MoralStatus,
+  HealthCondition,
+  BikeType,
 } from "./types";
 
 // Firebase imports
@@ -129,6 +135,62 @@ function getSafeStaffStatus(status: string): string {
     console.warn('⚠️ StaffStatus non disponible, utilisation de valeur par défaut');
   }
   return "Vacataire";
+}
+
+// Fonctions de sécurité pour les enums des coureurs
+function getSafeDisciplinePracticed(discipline: string): string {
+  try {
+    if (typeof DisciplinePracticed !== 'undefined' && DisciplinePracticed.ROUTE) {
+      return DisciplinePracticed.ROUTE;
+    }
+  } catch (error) {
+    console.warn('⚠️ DisciplinePracticed non disponible, utilisation de valeur par défaut');
+  }
+  return "Route";
+}
+
+function getSafeFormeStatus(status: string): string {
+  try {
+    if (typeof FormeStatus !== 'undefined' && FormeStatus.BONNE) {
+      return FormeStatus.BONNE;
+    }
+  } catch (error) {
+    console.warn('⚠️ FormeStatus non disponible, utilisation de valeur par défaut');
+  }
+  return "Bonne";
+}
+
+function getSafeMoralStatus(status: string): string {
+  try {
+    if (typeof MoralStatus !== 'undefined' && MoralStatus.BON) {
+      return MoralStatus.BON;
+    }
+  } catch (error) {
+    console.warn('⚠️ MoralStatus non disponible, utilisation de valeur par défaut');
+  }
+  return "Bon";
+}
+
+function getSafeHealthCondition(condition: string): string {
+  try {
+    if (typeof HealthCondition !== 'undefined' && HealthCondition.BON) {
+      return HealthCondition.BON;
+    }
+  } catch (error) {
+    console.warn('⚠️ HealthCondition non disponible, utilisation de valeur par défaut');
+  }
+  return "Bon";
+}
+
+function getSafeBikeType(type: string): string {
+  try {
+    if (typeof BikeType !== 'undefined' && BikeType.ROUTE) {
+      return BikeType.ROUTE;
+    }
+  } catch (error) {
+    console.warn('⚠️ BikeType non disponible, utilisation de valeur par défaut');
+  }
+  return "Route";
 }
 
 function lightenDarkenColor(col: string, amt: number): string {
@@ -1319,11 +1381,11 @@ const App: React.FC = () => {
                                   generalPerformance: 0,
                                   fatigueResistance: 0
                                 },
-                                disciplines: [DisciplinePracticed.ROUTE],
-                                categories: ['Senior'],
-                                forme: FormeStatus.BONNE,
-                                moral: MoralStatus.BON,
-                                healthCondition: HealthCondition.BON,
+                                                              disciplines: [getSafeDisciplinePracticed("Route")],
+                              categories: ['Senior'],
+                              forme: getSafeFormeStatus("Bonne"),
+                              moral: getSafeMoralStatus("Bon"),
+                              healthCondition: getSafeHealthCondition("Bon"),
                                 // Autres propriétés avec valeurs par défaut
                                 resultsHistory: [],
                                 favoriteRaces: [],
@@ -1340,8 +1402,8 @@ const App: React.FC = () => {
                                   duringRaceNutrition: '',
                                   recoveryNutrition: ''
                                 },
-                                roadBikeSetup: { bikeType: BikeType.ROUTE, size: '', brand: '', model: '' },
-                                ttBikeSetup: { bikeType: BikeType.CONTRE_LA_MONTRE, size: '', brand: '', model: '' },
+                                                              roadBikeSetup: { bikeType: getSafeBikeType("Route"), size: '', brand: '', model: '' },
+                              ttBikeSetup: { bikeType: getSafeBikeType("Contre-la-montre"), size: '', brand: '', model: '' },
                                 clothing: [],
                                 charSprint: 0,
                                 charAnaerobic: 0,
@@ -1611,11 +1673,11 @@ const App: React.FC = () => {
                                 generalPerformance: 0,
                                 fatigueResistance: 0
                               },
-                              disciplines: [DisciplinePracticed.ROUTE],
+                              disciplines: [getSafeDisciplinePracticed("Route")],
                               categories: ['Senior'],
-                              forme: FormeStatus.BONNE,
-                              moral: MoralStatus.BON,
-                              healthCondition: HealthCondition.BON,
+                              forme: getSafeFormeStatus("Bonne"),
+                              moral: getSafeMoralStatus("Bon"),
+                              healthCondition: getSafeHealthCondition("Bon"),
                               // Autres propriétés avec valeurs par défaut
                               resultsHistory: [],
                               favoriteRaces: [],
@@ -1632,8 +1694,8 @@ const App: React.FC = () => {
                                 duringRaceNutrition: '',
                                 recoveryNutrition: ''
                               },
-                              roadBikeSetup: { bikeType: BikeType.ROUTE, size: '', brand: '', model: '' },
-                              ttBikeSetup: { bikeType: BikeType.CONTRE_LA_MONTRE, size: '', brand: '', model: '' },
+                              roadBikeSetup: { bikeType: getSafeBikeType("Route"), size: '', brand: '', model: '' },
+                              ttBikeSetup: { bikeType: getSafeBikeType("Contre-la-montre"), size: '', brand: '', model: '' },
                               clothing: [],
                               charSprint: 0,
                               charAnaerobic: 0,
