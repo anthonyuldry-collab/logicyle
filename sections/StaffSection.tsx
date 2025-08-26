@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, ChangeEvent } from 'react';
-import { StaffMember, RaceEvent, EventStaffAvailability, StaffRoleKey, EventBudgetItem, StaffRole, StaffStatus, AvailabilityStatus, EventType, ContractType, BudgetItemCategory, User, TeamRole, WorkExperience, Team, PerformanceEntry, Mission, MissionStatus, MissionCompensationType, Address, EducationOrCertification, AppSection, PermissionLevel, Vehicle } from '../types'; 
+import { StaffMember, RaceEvent, EventStaffAvailability, StaffRoleKey, EventBudgetItem, StaffRole, StaffStatus, AvailabilityStatus, EventType, ContractType, BudgetItemCategory, User, TeamRole, WorkExperience, Team, PerformanceEntry, Mission, MissionStatus, MissionCompensationType, Address, EducationOrCertification, AppSection, PermissionLevel, Vehicle, EventTransportLeg } from '../types'; 
 import { STAFF_ROLE_COLORS, STAFF_STATUS_COLORS, EVENT_TYPE_COLORS, STAFF_ROLES_CONFIG } from '../constants'; 
 import SectionWrapper from '../components/SectionWrapper';
 import ActionButton from '../components/ActionButton';
@@ -60,6 +60,7 @@ interface StaffSectionProps {
   users?: User[];
   permissionRoles?: any[];
   vehicles?: Vehicle[];
+  eventTransportLegs?: EventTransportLeg[];
   onSaveRaceEvent?: (event: RaceEvent) => Promise<void>;
 }
 
@@ -171,6 +172,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
   users,
   permissionRoles,
   vehicles,
+  eventTransportLegs,
   onSaveRaceEvent,
 }: StaffSectionProps) => {
   // Debug: Log des props reçues
@@ -245,6 +247,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
   const [localEventStaffAvailabilities, setLocalEventStaffAvailabilities] = useState<EventStaffAvailability[]>(eventStaffAvailabilities || []);
   const [localPermissionRoles, setLocalPermissionRoles] = useState<any[]>([]);
   const [localVehicles, setLocalVehicles] = useState<Vehicle[]>(vehicles || []);
+  const [localEventTransportLegs, setLocalEventTransportLegs] = useState<EventTransportLeg[]>(eventTransportLegs || []);
 
   const lightInputClass = `mt-1 block w-full px-3 py-2 border rounded-md shadow-sm sm:text-sm bg-white text-gray-900 border-gray-300 placeholder-gray-400 focus:ring-blue-500 focus:border-blue-500`;
   const lightSelectClass = `mt-1 block w-full pl-3 pr-10 py-2 border rounded-md shadow-sm sm:text-sm bg-white text-gray-900 border-gray-300 focus:ring-blue-500 focus:border-blue-500`;
@@ -998,12 +1001,23 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
     const event = localRaceEvents.find(e => e.id === eventId);
     if (!event) return budgetItems;
     
+    // Récupérer tous les déplacements pour cet événement
+    const transportLegsForEvent = localEventTransportLegs.filter(leg => leg.eventId === eventId);
+    
     // Calculer la durée de l'événement
     const startDate = new Date(event.date + 'T00:00:00Z');
     const endDate = new Date((event.endDate || event.date) + 'T23:59:59Z');
-    const durationDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    const eventDurationDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
     
-    // Parcourir toutes les assignations pour identifier les vacataires
+    // Map pour éviter les doublons (un vacataire peut être assigné à la fois à l'événement ET aux déplacements)
+    const vacataireCosts = new Map<string, { 
+      totalCost: number; 
+      description: string; 
+      notes: string; 
+      source: 'event' | 'transport' | 'both' 
+    }>();
+    
+    // 1. Calculer le coût des vacataires assignés directement à l'événement
     Object.entries(assignments).forEach(([roleKey, staffIds]) => {
       if (!Array.isArray(staffIds)) return;
       
@@ -1011,23 +1025,84 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
         const staffMember = localStaff.find(s => s.id === staffId);
         if (!staffMember || staffMember.status !== StaffStatus.VACATAIRE || !staffMember.dailyRate) return;
         
-        // Calculer le coût total pour ce vacataire
-        const totalCost = staffMember.dailyRate * durationDays;
+        const totalCost = staffMember.dailyRate * eventDurationDays;
+        const description = `Vacataire ${staffMember.firstName} ${staffMember.lastName} - ${roleKey} (${eventDurationDays} jour${eventDurationDays > 1 ? 's' : ''})`;
+        const notes = `Tarif journalier: ${staffMember.dailyRate}€/jour\nRôle: ${roleKey}\nPériode: ${startDate.toLocaleDateString('fr-FR')} au ${endDate.toLocaleDateString('fr-FR')}`;
         
-        // Créer l'élément de budget
-        const budgetItem: EventBudgetItem = {
-          id: `vacataire_${staffId}_${eventId}_${Date.now()}`,
-          eventId: eventId,
-          category: BudgetItemCategory.SALAIRES,
-          description: `Vacataire ${staffMember.firstName} ${staffMember.lastName} - ${roleKey} (${durationDays} jour${durationDays > 1 ? 's' : ''})`,
-          estimatedCost: totalCost,
-          actualCost: undefined,
-          notes: `Tarif journalier: ${staffMember.dailyRate}€/jour\nRôle: ${roleKey}\nPériode: ${startDate.toLocaleDateString('fr-FR')} au ${endDate.toLocaleDateString('fr-FR')}`,
-        };
-        
-        budgetItems.push(budgetItem);
-        console.log(`💰 Budget vacataire calculé pour ${staffMember.firstName} ${staffMember.lastName}: ${totalCost}€ (${durationDays} jours × ${staffMember.dailyRate}€/jour)`);
+        vacataireCosts.set(staffId, {
+          totalCost,
+          description,
+          notes,
+          source: 'event'
+        });
       });
+    });
+    
+    // 2. Calculer le coût des vacataires assignés aux déplacements
+    transportLegsForEvent.forEach(leg => {
+      if (!leg.occupants) return;
+      
+      leg.occupants.forEach(occupant => {
+        if (occupant.type !== 'staff') return;
+        
+        const staffMember = localStaff.find(s => s.id === occupant.id);
+        if (!staffMember || staffMember.status !== StaffStatus.VACATAIRE || !staffMember.dailyRate) return;
+        
+        // Calculer la durée du déplacement
+        let transportDurationDays = 1;
+        if (leg.departureDate && leg.arrivalDate) {
+          const depDate = new Date(leg.departureDate + 'T12:00:00Z');
+          const arrDate = new Date(leg.arrivalDate + 'T12:00:00Z');
+          transportDurationDays = Math.max(1, Math.ceil((arrDate.getTime() - depDate.getTime()) / (1000 * 60 * 60 * 24)) + 1);
+        }
+        
+        const transportCost = staffMember.dailyRate * transportDurationDays;
+        const transportDescription = `Vacataire ${staffMember.firstName} ${staffMember.lastName} - Transport ${leg.direction} (${transportDurationDays} jour${transportDurationDays > 1 ? 's' : ''})`;
+        const transportNotes = `Tarif journalier: ${staffMember.dailyRate}€/jour\nTransport: ${leg.direction}\nDépart: ${leg.departureDate ? new Date(leg.departureDate).toLocaleDateString('fr-FR') : 'N/A'}\nArrivée: ${leg.arrivalDate ? new Date(leg.arrivalDate).toLocaleDateString('fr-FR') : 'N/A'}`;
+        
+        if (vacataireCosts.has(occupant.id)) {
+          // Le vacataire est déjà assigné à l'événement, ajouter le coût du transport
+          const existing = vacataireCosts.get(occupant.id)!;
+          const totalCost = existing.totalCost + transportCost;
+          const combinedDescription = `${existing.description} + Transport ${leg.direction}`;
+          const combinedNotes = `${existing.notes}\n\n${transportNotes}`;
+          
+          vacataireCosts.set(occupant.id, {
+            totalCost,
+            description: combinedDescription,
+            notes: combinedNotes,
+            source: 'both'
+          });
+        } else {
+          // Le vacataire n'est assigné qu'au transport
+          vacataireCosts.set(occupant.id, {
+            totalCost: transportCost,
+            description: transportDescription,
+            notes: transportNotes,
+            source: 'transport'
+          });
+        }
+      });
+    });
+    
+    // 3. Créer les éléments de budget
+    vacataireCosts.forEach((data, staffId) => {
+      const budgetItem: EventBudgetItem = {
+        id: `vacataire_${staffId}_${eventId}_${Date.now()}`,
+        eventId: eventId,
+        category: BudgetItemCategory.SALAIRES,
+        description: data.description,
+        estimatedCost: data.totalCost,
+        actualCost: undefined,
+        notes: data.notes,
+      };
+      
+      budgetItems.push(budgetItem);
+      
+      const staffMember = localStaff.find(s => s.id === staffId);
+      if (staffMember) {
+        console.log(`💰 Budget vacataire calculé pour ${staffMember.firstName} ${staffMember.lastName}: ${data.totalCost}€ (Source: ${data.source})`);
+      }
     });
     
     return budgetItems;
