@@ -208,6 +208,15 @@ export enum EquipmentType {
   AUTRE = "Autre Matériel",
 }
 
+export enum BikeType {
+  ROUTE = "Route",
+  CONTRE_LA_MONTRE = "Contre-la-montre",
+  VTT = "VTT",
+  PISTE = "Piste",
+  BMX = "BMX",
+  AUTRE = "Autre",
+}
+
 export enum EquipmentStatus {
   DISPONIBLE = "Disponible",
   EN_MAINTENANCE = "En Maintenance",
