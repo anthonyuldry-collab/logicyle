@@ -106,6 +106,31 @@ function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
 }
 
+// Fonction de sécurité pour StaffRole et StaffStatus
+function getSafeStaffRole(role: string): string {
+  try {
+    // Vérifier si StaffRole est disponible
+    if (typeof StaffRole !== 'undefined' && StaffRole.AUTRE) {
+      return StaffRole.AUTRE;
+    }
+  } catch (error) {
+    console.warn('⚠️ StaffRole non disponible, utilisation de valeur par défaut');
+  }
+  return "Autre";
+}
+
+function getSafeStaffStatus(status: string): string {
+  try {
+    // Vérifier si StaffStatus est disponible
+    if (typeof StaffStatus !== 'undefined' && StaffStatus.VACATAIRE) {
+      return StaffStatus.VACATAIRE;
+    }
+  } catch (error) {
+    console.warn('⚠️ StaffStatus non disponible, utilisation de valeur par défaut');
+  }
+  return "Vacataire";
+}
+
 function lightenDarkenColor(col: string, amt: number): string {
   if (!col) return "#000000";
   col = col.replace("#", "");
@@ -1639,8 +1664,8 @@ const App: React.FC = () => {
                               firstName: user.firstName,
                               lastName: user.lastName,
                               email: user.email,
-                              role: StaffRole.AUTRE,
-                              status: StaffStatus.VACATAIRE,
+                              role: getSafeStaffRole("Autre"),
+                              status: getSafeStaffStatus("Vacataire"),
                               openToExternalMissions: false,
                               skills: [],
                               availability: []
