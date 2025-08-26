@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { Rider, RiderQualitativeProfile as RiderQualitativeProfileEnum, FormeStatus, MoralStatus, HealthCondition, DisciplinePracticed as DisciplinePracticedEnum, Sex } from '../../types';
 import { SPIDER_CHART_CHARACTERISTICS_CONFIG, RIDER_LEVEL_CATEGORIES } from '../../constants';
+import { getRiderCharacteristicSafe } from '../../utils/riderUtils';
 import ActionButton from '../ActionButton';
 import TrashIcon from '../icons/TrashIcon';
 import UserCircleIcon from '../icons/UserCircleIcon';
@@ -165,14 +166,14 @@ const ProfileInfoTab: React.FC<ProfileInfoTabProps> = ({
     const spiderChartData = useMemo(() => {
         return SPIDER_CHART_CHARACTERISTICS_CONFIG.map(char => ({
             axis: char.label,
-            value: (formData as any)[char.key] || 0,
+            value: getRiderCharacteristicSafe(formData, char.key),
         }));
     }, [formData]);
 
     const calculatedCharsData = useMemo(() => {
         return SPIDER_CHART_CHARACTERISTICS_CONFIG.map(char => ({
             label: char.label,
-            value: (formData as any)[char.key] || 0,
+            value: getRiderCharacteristicSafe(formData, char.key),
         }));
     }, [formData]);
 

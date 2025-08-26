@@ -2,6 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { Rider, AppState, RiderQualitativeProfile as RiderQualitativeProfileEnum, Sex, User, UserRole, ScoutingRequestStatus, TeamMembershipStatus } from '../types';
 import { RIDER_LEVEL_CATEGORIES, SPIDER_CHART_CHARACTERISTICS_CONFIG, ALL_COUNTRIES } from '../constants';
+import { getRiderCharacteristicSafe } from '../utils/riderUtils';
 import ActionButton from './ActionButton';
 import SearchIcon from './icons/SearchIcon';
 import UserCircleIcon from './icons/UserCircleIcon';
@@ -88,7 +89,7 @@ const TalentSearchTab: React.FC<TalentSearchTabProps> = ({ appState, onProfileSe
     const spiderChartData = (user: User) => {
         return SPIDER_CHART_CHARACTERISTICS_CONFIG.map(char => ({
             axis: char.label,
-            value: (user as any)[char.key] || 0,
+            value: getRiderCharacteristicSafe(user, char.key),
         }));
     };
 
