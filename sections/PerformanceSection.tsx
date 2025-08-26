@@ -17,11 +17,16 @@ import EyeIcon from '../components/icons/EyeIcon';
 import EyeSlashIcon from '../components/icons/EyeSlashIcon';
 import UsersIcon from '../components/icons/UsersIcon';
 import CakeIcon from '../components/icons/CakeIcon';
+import { getAgeCategory } from '../utils/ageUtils';
+import { getRiderCharacteristicSafe } from '../utils/riderUtils';
+import { RiderComparisonChart, RiderRadarChart, PerformanceTrendsChart, RiderComparisonRadarChart, RiderComparisonSelector } from '../components/PerformanceCharts';
 
 // Type definitions for the new section
-type PerformancePoleTab = 'global' | 'powerAnalysis' | 'nutritionProducts' | 'planning';
+type PerformancePoleTab = 'global' | 'powerAnalysis' | 'charts' | 'comparison' | 'nutritionProducts' | 'planning';
 type RiderPerformanceTab = 'ppr' | 'project' | 'results';
 type ObjectiveCode = 'bleu' | 'vert' | 'orange';
+type PowerDisplayMode = 'watts' | 'wattsPerKg';
+type PowerDuration = '1s' | '5s' | '30s' | '1min' | '3min' | '5min' | '12min' | '20min' | 'cp';
 
 // Helper function for ID generation
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
@@ -39,39 +44,6 @@ const initialProductFormState: Omit<TeamProduct, 'id'> = {
   notes: ''
 };
 
-const getAgeCategory = (birthDate?: string): { category: string; age: number | null } => {
-    if (!birthDate || typeof birthDate !== 'string') {
-        return { category: 'N/A', age: null };
-    }
-    
-    // Use Date.parse for more flexible parsing, then create a Date object.
-    const birthTime = Date.parse(birthDate);
-    if (isNaN(birthTime)) {
-        return { category: 'N/A', age: null };
-    }
-    
-    const birth = new Date(birthTime);
-    const today = new Date();
-    
-    let age = today.getFullYear() - birth.getFullYear();
-    const m = today.getMonth() - birth.getMonth();
-    if (m < 0 || (m === 0 && today.getDate() < birth.getDate())) {
-        age--;
-    }
-    
-    if (age < 0 || age > 120) { // Sanity check
-        return { category: 'N/A', age: null };
-    }
-
-    let category = 'Senior';
-    if (age <= 14) category = 'U15';
-    else if (age <= 16) category = 'U17';
-    else if (age <= 18) category = 'U19';
-    else if (age <= 22) category = 'U23';
-    
-    return { category, age };
-};
-
 const calculateWkg = (power?: number, weight?: number): string => {
   if (typeof power === 'number' && typeof weight === 'number' && weight > 0) {
     return (power / weight).toFixed(1);
@@ -79,698 +51,592 @@ const calculateWkg = (power?: number, weight?: number): string => {
   return "-";
 };
 
-const gcf = (a: number, b: number): number => {
-    return b === 0 ? a : gcf(b, a % b);
+// Configuration des durées de puissance pour le tri et l'affichage
+const POWER_DURATIONS_CONFIG: { key: PowerDuration; label: string; powerKey: keyof PowerProfile; unit: string; color: string }[] = [
+  { key: '1s', label: '1 Seconde', powerKey: 'power1s', unit: 'W', color: 'bg-red-500' },
+  { key: '5s', label: '5 Secondes', powerKey: 'power5s', unit: 'W', color: 'bg-orange-500' },
+  { key: '30s', label: '30 Secondes', powerKey: 'power30s', unit: 'W', color: 'bg-yellow-500' },
+  { key: '1min', label: '1 Minute', powerKey: 'power1min', unit: 'W', color: 'bg-lime-500' },
+  { key: '3min', label: '3 Minutes', powerKey: 'power3min', unit: 'W', color: 'bg-green-500' },
+  { key: '5min', label: '5 Minutes', powerKey: 'power5min', unit: 'W', color: 'bg-teal-500' },
+  { key: '12min', label: '12 Minutes', powerKey: 'power12min', unit: 'W', color: 'bg-blue-500' },
+  { key: '20min', label: '20 Minutes', powerKey: 'power20min', unit: 'W', color: 'bg-indigo-500' },
+  { key: 'cp', label: 'CP/FTP', powerKey: 'criticalPower', unit: 'W', color: 'bg-purple-500' }
+];
+
+// Fonction pour obtenir la valeur de puissance d'un rider
+const getRiderPowerValue = (rider: Rider, duration: PowerDuration, mode: PowerDisplayMode): number => {
+  const config = POWER_DURATIONS_CONFIG.find(c => c.key === duration);
+  if (!config) return 0;
+  
+  const powerProfile = rider.powerProfileFresh;
+  if (!powerProfile) return 0;
+  
+  const powerValue = powerProfile[config.powerKey] as number;
+  if (typeof powerValue !== 'number' || isNaN(powerValue)) return 0;
+  
+  if (mode === 'wattsPerKg' && rider.weightKg) {
+    return powerValue / rider.weightKg;
+  }
+  
+  return powerValue;
 };
 
-const calculateRatio = (glucose?: number, fructose?: number): { display: string; value: string } => {
-    if (glucose === undefined || fructose === undefined || fructose <= 0) {
-        if (glucose && glucose > 0) return { display: '> 2:1', value: `${glucose}:0` };
-        return { display: 'N/A', value: 'N/A' };
-    }
-    if (glucose <= 0) {
-      return { display: '0:1', value: `0:${fructose}` };
-    }
+// Fonction pour obtenir la couleur de performance basée sur la valeur
+const getPerformanceColor = (value: number, duration: PowerDuration, mode: PowerDisplayMode): string => {
+  // Seuils de performance (à ajuster selon vos critères)
+  const thresholds = {
+    '1s': { excellent: mode === 'wattsPerKg' ? 18 : 1000, veryGood: mode === 'wattsPerKg' ? 16 : 900, good: mode === 'wattsPerKg' ? 14 : 800 },
+    '5s': { excellent: mode === 'wattsPerKg' ? 16 : 900, veryGood: mode === 'wattsPerKg' ? 14 : 800, good: mode === 'wattsPerKg' ? 12 : 700 },
+    '30s': { excellent: mode === 'wattsPerKg' ? 12 : 700, veryGood: mode === 'wattsPerKg' ? 10 : 600, good: mode === 'wattsPerKg' ? 8 : 500 },
+    '1min': { excellent: mode === 'wattsPerKg' ? 10 : 600, veryGood: mode === 'wattsPerKg' ? 8 : 500, good: mode === 'wattsPerKg' ? 6 : 400 },
+    '3min': { excellent: mode === 'wattsPerKg' ? 8 : 500, veryGood: mode === 'wattsPerKg' ? 6 : 400, good: mode === 'wattsPerKg' ? 5 : 300 },
+    '5min': { excellent: mode === 'wattsPerKg' ? 7 : 400, veryGood: mode === 'wattsPerKg' ? 5 : 300, good: mode === 'wattsPerKg' ? 4 : 250 },
+    '12min': { excellent: mode === 'wattsPerKg' ? 6 : 350, veryGood: mode === 'wattsPerKg' ? 4 : 250, good: mode === 'wattsPerKg' ? 3 : 200 },
+    '20min': { excellent: mode === 'wattsPerKg' ? 5 : 300, veryGood: mode === 'wattsPerKg' ? 4 : 250, good: mode === 'wattsPerKg' ? 3 : 200 },
+    'cp': { excellent: mode === 'wattsPerKg' ? 5 : 300, veryGood: mode === 'wattsPerKg' ? 4 : 250, good: mode === 'wattsPerKg' ? 3 : 200 }
+  };
+  
+  const threshold = thresholds[duration];
+  if (value >= threshold.excellent) return 'bg-blue-500 text-white';
+  if (value >= threshold.veryGood) return 'bg-green-500 text-white';
+  if (value >= threshold.good) return 'bg-yellow-500 text-white';
+  return 'bg-gray-500 text-white';
+};
 
-    const ratioValue = glucose / fructose;
-    const commonDivisor = gcf(glucose, fructose);
-    const simplifiedRatio = `${glucose / commonDivisor}:${fructose / commonDivisor}`;
+// Fonction pour obtenir le label de performance
+const getPerformanceLabel = (value: number, duration: PowerDuration, mode: PowerDisplayMode): string => {
+  const thresholds = {
+    '1s': { excellent: mode === 'wattsPerKg' ? 18 : 1000, veryGood: mode === 'wattsPerKg' ? 16 : 900, good: mode === 'wattsPerKg' ? 14 : 800 },
+    '5s': { excellent: mode === 'wattsPerKg' ? 16 : 900, veryGood: mode === 'wattsPerKg' ? 14 : 800, good: mode === 'wattsPerKg' ? 12 : 700 },
+    '30s': { excellent: mode === 'wattsPerKg' ? 12 : 700, veryGood: mode === 'wattsPerKg' ? 10 : 600, good: mode === 'wattsPerKg' ? 8 : 500 },
+    '1min': { excellent: mode === 'wattsPerKg' ? 10 : 600, veryGood: mode === 'wattsPerKg' ? 8 : 500, good: mode === 'wattsPerKg' ? 6 : 400 },
+    '3min': { excellent: mode === 'wattsPerKg' ? 8 : 500, veryGood: mode === 'wattsPerKg' ? 6 : 400, good: mode === 'wattsPerKg' ? 5 : 300 },
+    '5min': { excellent: mode === 'wattsPerKg' ? 7 : 400, veryGood: mode === 'wattsPerKg' ? 5 : 300, good: mode === 'wattsPerKg' ? 4 : 250 },
+    '12min': { excellent: mode === 'wattsPerKg' ? 6 : 350, veryGood: mode === 'wattsPerKg' ? 4 : 250, good: mode === 'wattsPerKg' ? 3 : 200 },
+    '20min': { excellent: mode === 'wattsPerKg' ? 5 : 300, veryGood: mode === 'wattsPerKg' ? 4 : 250, good: mode === 'wattsPerKg' ? 3 : 200 },
+    'cp': { excellent: mode === 'wattsPerKg' ? 5 : 300, veryGood: mode === 'wattsPerKg' ? 4 : 250, good: mode === 'wattsPerKg' ? 3 : 200 }
+  };
+  
+  const threshold = thresholds[duration];
+  if (value >= threshold.excellent) return 'Excellent';
+  if (value >= threshold.veryGood) return 'Très Bon';
+  if (value >= threshold.good) return 'Bon';
+  return 'Modéré';
+};
 
-    if (ratioValue > 2) {
-        return { display: `> 2:1`, value: simplifiedRatio };
-    } else if (ratioValue > 1.5) {
-        return { display: `2:1`, value: simplifiedRatio };
-    } else if (ratioValue > 1) {
-        return { display: `1.5:1`, value: simplifiedRatio };
-    } else if (ratioValue > 0.5) {
-        return { display: `1:1`, value: simplifiedRatio };
+// Composant principal du tableau de synthèse des performances
+const PowerPerformanceTable: React.FC<{ riders: Rider[] }> = ({ riders }) => {
+  const [displayMode, setDisplayMode] = useState<PowerDisplayMode>('wattsPerKg');
+  const [sortBy, setSortBy] = useState<PowerDuration>('cp');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  const [genderFilter, setGenderFilter] = useState<'all' | Sex>('all');
+  const [ageFilter, setAgeFilter] = useState<'all' | string>('all');
+  const [selectedDurations, setSelectedDurations] = useState<PowerDuration[]>(['1s', '5s', '30s', '1min', '3min', '5min', '12min', '20min', 'cp']);
+
+  // Filtrage des riders
+  const filteredRiders = useMemo(() => {
+    return riders.filter(rider => {
+      const genderMatch = genderFilter === 'all' || rider.sex === genderFilter;
+      const { category } = getAgeCategory(rider.birthDate);
+      const ageMatch = ageFilter === 'all' || category === ageFilter;
+      return genderMatch && ageMatch;
+    });
+  }, [riders, genderFilter, ageFilter]);
+
+  // Tri des riders par performance
+  const sortedRiders = useMemo(() => {
+    return [...filteredRiders].sort((a, b) => {
+      const aValue = getRiderPowerValue(a, sortBy, displayMode);
+      const bValue = getRiderPowerValue(b, sortBy, displayMode);
+      
+      if (sortDirection === 'desc') {
+        return bValue - aValue;
+      }
+      return aValue - bValue;
+    });
+  }, [filteredRiders, sortBy, sortDirection, displayMode]);
+
+  // Gestion du tri
+  const handleSort = (duration: PowerDuration) => {
+    if (sortBy === duration) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
     } else {
-        return { display: `1:2`, value: simplifiedRatio };
+      setSortBy(duration);
+      setSortDirection('desc');
     }
-};
+  };
 
+  // Rendu du tableau
+  return (
+    <div className="bg-white rounded-lg shadow-lg overflow-hidden">
+      {/* En-tête avec contrôles */}
+      <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-4 text-white">
+        <h2 className="text-xl font-bold mb-2">Centre Stratégique des Performances</h2>
+        <div className="flex flex-wrap gap-4 items-center">
+          {/* Mode d'affichage */}
+          <div className="flex items-center space-x-2">
+            <span className="text-sm font-medium">Affichage:</span>
+            <div className="flex bg-blue-500 rounded-lg p-1">
+              <button
+                onClick={() => setDisplayMode('watts')}
+                className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                  displayMode === 'watts' ? 'bg-white text-blue-600' : 'text-white hover:bg-blue-400'
+                }`}
+              >
+                Watts
+              </button>
+              <button
+                onClick={() => setDisplayMode('wattsPerKg')}
+                className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                  displayMode === 'wattsPerKg' ? 'bg-white text-blue-600' : 'text-white hover:bg-blue-400'
+                }`}
+              >
+                W/kg
+              </button>
+            </div>
+          </div>
 
+          {/* Filtres */}
+          <div className="flex items-center space-x-2">
+            <span className="text-sm font-medium">Sexe:</span>
+            <select
+              value={genderFilter}
+              onChange={(e) => setGenderFilter(e.target.value as 'all' | Sex)}
+              className="px-2 py-1 rounded text-sm text-gray-800"
+            >
+              <option value="all">Tous</option>
+              <option value={Sex.MALE}>Hommes</option>
+              <option value={Sex.FEMALE}>Femmes</option>
+            </select>
+          </div>
 
-// Composant de monitoring collectif (Vue Globale)
-const GlobalMonitoringTab: React.FC<{ riders: Rider[] }> = ({ riders }) => {
-    const [selectedRider, setSelectedRider] = useState<Rider | null>(null);
-    const [riderTab, setRiderTab] = useState<RiderPerformanceTab>('ppr');
+          <div className="flex items-center space-x-2">
+            <span className="text-sm font-medium">Catégorie:</span>
+            <select
+              value={ageFilter}
+              onChange={(e) => setAgeFilter(e.target.value)}
+              className="px-2 py-1 rounded text-sm text-gray-800"
+            >
+              <option value="all">Toutes</option>
+              <option value="U15">U15</option>
+              <option value="U17">U17</option>
+              <option value="U19">U19</option>
+              <option value="U23">U23</option>
+              <option value="Senior">Senior</option>
+            </select>
+          </div>
 
-    // Calcul des statistiques collectives
-    const collectiveStats = useMemo(() => {
-        const totalRiders = riders.length;
-        
-        // Calcul de l'âge moyen
-        const ridersWithAge = riders.filter(r => r.birthDate);
-        const totalAge = ridersWithAge.reduce((sum, r) => {
-            if (r.birthDate) {
-                const birthYear = new Date(r.birthDate).getFullYear();
-                const currentYear = new Date().getFullYear();
-                return sum + (currentYear - birthYear);
-            }
-            return sum;
-        }, 0);
-        const avgAge = ridersWithAge.length > 0 ? Math.round(totalAge / ridersWithAge.length) : 0;
-        
-        // Statistiques de puissance moyennes (supprimées 5s et 20min)
-        const ridersWithPower = riders.filter(r => r.powerProfileFresh && r.weightKg);
-        
-        // Répartition par profil qualitatif
-        const profileDistribution = riders.reduce((acc, r) => {
-            const profile = r.qualitativeProfile || RiderQualitativeProfileEnum.AUTRE;
-            acc[profile] = (acc[profile] || 0) + 1;
-            return acc;
-        }, {} as Record<string, number>);
-
-        // Calcul des vraies statistiques basées sur les résultats des coureurs de l'année en cours
-        const currentYear = new Date().getFullYear();
-        let top10Count = 0;
-        let top5Count = 0;
-        let podiumCount = 0;
-        let victoriesCount = 0;
-
-        riders.forEach(rider => {
-            if (rider.resultsHistory && Array.isArray(rider.resultsHistory)) {
-                rider.resultsHistory.forEach(result => {
-                    // Vérifier que le résultat est de l'année en cours
-                    const resultDate = new Date(result.date);
-                    if (resultDate.getFullYear() === currentYear) {
-                        const rank = typeof result.rank === 'string' ? parseInt(result.rank.replace(/\D/g, ''), 10) : result.rank;
-                        
-                        if (!isNaN(rank) && rank > 0) {
-                            if (rank === 1) victoriesCount++;
-                            if (rank <= 3) podiumCount++;
-                            if (rank <= 5) top5Count++;
-                            if (rank <= 10) top10Count++;
-                        }
+          {/* Sélection des durées */}
+          <div className="flex items-center space-x-2">
+            <span className="text-sm font-medium">Durées:</span>
+            <div className="flex flex-wrap gap-1">
+              {POWER_DURATIONS_CONFIG.map(duration => (
+                <button
+                  key={duration.key}
+                  onClick={() => {
+                    if (selectedDurations.includes(duration.key)) {
+                      setSelectedDurations(prev => prev.filter(d => d !== duration.key));
+                    } else {
+                      setSelectedDurations(prev => [...prev, duration.key]);
                     }
-                });
-            }
-        });
-
-        return {
-            totalRiders,
-            avgAge,
-            profileDistribution,
-            top10Count,
-            top5Count,
-            podiumCount,
-            victoriesCount
-        };
-    }, [riders]);
-
-    return (
-        <div className="space-y-6">
-            {/* Statistiques collectives */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-white p-6 rounded-lg shadow-sm border">
-                    <div className="flex items-center">
-                        <UsersIcon className="w-8 h-8 text-blue-600" />
-                        <div className="ml-3">
-                            <p className="text-sm font-medium text-gray-500">Total Coureurs</p>
-                            <p className="text-2xl font-bold text-gray-900">{collectiveStats.totalRiders}</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <div className="bg-white p-6 rounded-lg shadow-sm border">
-                    <div className="flex items-center">
-                        <CakeIcon className="w-8 h-8 text-green-600" />
-                        <div className="ml-3">
-                            <p className="text-sm font-medium text-gray-500">Âge Moyen</p>
-                            <p className="text-2xl font-bold text-gray-900">{collectiveStats.avgAge} ans</p>
-                        </div>
-                    </div>
-                </div>
-                
-
+                  }}
+                  className={`px-2 py-1 text-xs rounded-full transition-colors ${
+                    selectedDurations.includes(duration.key)
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                  }`}
+                >
+                  {duration.label}
+                </button>
+              ))}
             </div>
+          </div>
 
-            {/* Statistiques de performance */}
-            <div className="mb-4">
-                <h3 className="text-lg font-semibold text-gray-800 mb-2">Statistiques de Performance</h3>
-                <p className="text-sm text-gray-600 mb-4">📊 Basé sur les résultats de l'année {new Date().getFullYear()}</p>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-white p-6 rounded-lg shadow-sm border">
-                    <div className="flex items-center">
-                        <TrophyIcon className="w-8 h-8 text-yellow-500" />
-                        <div className="ml-3">
-                            <p className="text-sm font-medium text-gray-500">Top 10</p>
-                            <p className="text-2xl font-bold text-gray-900">{collectiveStats.top10Count}</p>
-                            <p className="text-xs text-gray-400">Résultats ≤ 10ème place</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <div className="bg-white p-6 rounded-lg shadow-sm border">
-                    <div className="flex items-center">
-                        <StarIcon className="w-8 h-8 text-blue-500" />
-                        <div className="ml-3">
-                            <p className="text-sm font-medium text-gray-500">Top 5</p>
-                            <p className="text-2xl font-bold text-gray-900">{collectiveStats.top5Count}</p>
-                            <p className="text-xs text-gray-400">Résultats ≤ 5ème place</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <div className="bg-white p-6 rounded-lg shadow-sm border">
-                    <div className="flex items-center">
-                        <TrophyIcon className="w-8 h-8 text-orange-500" />
-                        <div className="ml-3">
-                            <p className="text-sm font-medium text-gray-500">Podium</p>
-                            <p className="text-2xl font-bold text-gray-900">{collectiveStats.podiumCount}</p>
-                            <p className="text-xs text-gray-400">1ère, 2ème, 3ème place</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <div className="bg-white p-6 rounded-lg shadow-sm border">
-                    <div className="flex items-center">
-                        <TrophyIcon className="w-8 h-8 text-green-500" />
-                        <div className="ml-3">
-                            <p className="text-sm font-medium text-gray-500">Victoires</p>
-                            <p className="text-2xl font-bold text-gray-900">{collectiveStats.victoriesCount}</p>
-                            <p className="text-xs text-gray-400">1ère place uniquement</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
+          {/* Tri actuel */}
+          <div className="text-sm">
+            <span className="font-medium">Tri par:</span> {POWER_DURATIONS_CONFIG.find(c => c.key === sortBy)?.label} 
+            <span className="ml-1">{sortDirection === 'desc' ? '↓' : '↑'}</span>
+          </div>
+        </div>
+      </div>
 
-            {/* Détail des résultats de l'année en cours */}
-            <div className="bg-white p-6 rounded-lg shadow-sm border">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Détail des Résultats {new Date().getFullYear()}</h3>
-                <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                            <tr>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Coureur</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Victoires</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Podiums</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Top 5</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Top 10</th>
-                                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Courses</th>
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                            {riders.map(rider => {
-                                const currentYear = new Date().getFullYear();
-                                let riderWins = 0;
-                                let riderPodiums = 0;
-                                let riderTop5 = 0;
-                                let riderTop10 = 0;
-                                let totalRaces = 0;
-
-                                if (rider.resultsHistory && Array.isArray(rider.resultsHistory)) {
-                                    rider.resultsHistory.forEach(result => {
-                                        const resultDate = new Date(result.date);
-                                        if (resultDate.getFullYear() === currentYear) {
-                                            totalRaces++;
-                                            const rank = typeof result.rank === 'string' ? parseInt(result.rank.replace(/\D/g, ''), 10) : result.rank;
-                                            
-                                            if (!isNaN(rank) && rank > 0) {
-                                                if (rank === 1) riderWins++;
-                                                if (rank <= 3) riderPodiums++;
-                                                if (rank <= 5) riderTop5++;
-                                                if (rank <= 10) riderTop10++;
-                                            }
-                                        }
-                                    });
-                                }
-
-                                return (
-                                    <tr key={rider.id} className={totalRaces > 0 ? 'bg-green-50' : 'bg-gray-50'}>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                            {rider.firstName} {rider.lastName}
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                                            <span className="font-bold text-green-600">{riderWins}</span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                                            <span className="font-bold text-orange-600">{riderPodiums}</span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                                            <span className="font-bold text-blue-600">{riderTop5}</span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                                            <span className="font-bold text-yellow-600">{riderTop10}</span>
-                                        </td>
-                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 text-center">
-                                            <span className="font-bold">{totalRaces}</span>
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            {/* Répartition par profil qualitatif */}
-            <div className="bg-white p-6 rounded-lg shadow-sm border">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Répartition par Profil Qualitatif</h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {Object.entries(collectiveStats.profileDistribution).map(([profile, count]) => (
-                        <div key={profile} className="text-center p-3 bg-gray-50 rounded-lg">
-                            <p className="text-sm font-medium text-gray-600">{profile}</p>
-                            <p className="text-2xl font-bold text-gray-900">{count}</p>
-                        </div>
-                    ))}
-                </div>
-            </div>
-
-            {/* Sélection d'un coureur pour analyse détaillée */}
-            <div className="bg-white p-6 rounded-lg shadow-sm border">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Analyse Détaillée d'un Coureur</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Sélectionner un Coureur</label>
-                        <select 
-                            value={selectedRider?.id || ''} 
-                            onChange={(e) => {
-                                const rider = riders.find(r => r.id === e.target.value);
-                                setSelectedRider(rider || null);
-                            }}
-                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                        >
-                            <option value="">Choisir un coureur...</option>
-                            {riders.map(rider => (
-                                <option key={rider.id} value={rider.id}>
-                                    {rider.firstName} {rider.lastName}
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                    
-                    {selectedRider && (
-                        <div className="flex space-x-2">
-                            <button
-                                onClick={() => setRiderTab('ppr')}
-                                className={`px-3 py-2 text-sm font-medium rounded-md ${
-                                    riderTab === 'ppr' 
-                                        ? 'bg-blue-600 text-white' 
-                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                                }`}
-                            >
-                                PPR
-                            </button>
-                            <button
-                                onClick={() => setRiderTab('project')}
-                                className={`px-3 py-2 text-sm font-medium rounded-md ${
-                                    riderTab === 'project' 
-                                        ? 'bg-blue-600 text-white' 
-                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                                }`}
-                            >
-                                Projet
-                            </button>
-                            <button
-                                onClick={() => setRiderTab('results')}
-                                className={`px-3 py-2 text-sm font-medium rounded-md ${
-                                    riderTab === 'results' 
-                                        ? 'bg-blue-600 text-white' 
-                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                                }`}
-                            >
-                                Résultats
-                            </button>
-                        </div>
+      {/* Tableau des performances */}
+      <div className="overflow-x-auto">
+        <table className="min-w-full">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="sticky left-0 bg-gray-50 px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider z-10">
+                Coureur
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Sexe
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                Poids
+              </th>
+              {POWER_DURATIONS_CONFIG.filter(d => selectedDurations.includes(d.key)).map(duration => (
+                <th key={duration.key} className="px-4 py-3 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">
+                  <button
+                    onClick={() => handleSort(duration.key)}
+                    className={`group flex flex-col items-center space-y-1 hover:bg-gray-100 rounded p-1 transition-colors ${
+                      sortBy === duration.key ? 'bg-blue-100' : ''
+                    }`}
+                  >
+                    <span className="font-bold">{duration.label}</span>
+                    <span className="text-xs text-gray-500">({duration.unit})</span>
+                    {sortBy === duration.key && (
+                      <span className="text-blue-600 font-bold">
+                        {sortDirection === 'desc' ? '↓' : '↑'}
+                      </span>
                     )}
-                </div>
-                
-                {selectedRider && (
-                    <div className="mt-6">
-                        {riderTab === 'ppr' && (
-                            <div className="bg-gray-50 p-4 rounded-lg">
-                                <h4 className="font-semibold text-gray-800 mb-3">Profil de Puissance - {selectedRider.firstName} {selectedRider.lastName}</h4>
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    <div className="text-center">
-                                        <p className="text-sm text-gray-600">5s</p>
-                                        <p className="text-lg font-bold text-gray-900">
-                                            {selectedRider.powerProfileFresh?.power5s || 'N/A'}W
-                                        </p>
-                                        <p className="text-xs text-gray-500">
-                                            {calculateWkg(selectedRider.powerProfileFresh?.power5s, selectedRider.weightKg)} W/kg
-                                        </p>
-                                    </div>
-                                    <div className="text-center">
-                                        <p className="text-sm text-gray-600">1min</p>
-                                        <p className="text-lg font-bold text-gray-900">
-                                            {selectedRider.powerProfileFresh?.power1min || 'N/A'}W
-                                        </p>
-                                        <p className="text-xs text-gray-500">
-                                            {calculateWkg(selectedRider.powerProfileFresh?.power1min, selectedRider.weightKg)} W/kg
-                                        </p>
-                                    </div>
-                                    <div className="text-center">
-                                        <p className="text-sm text-gray-600">5min</p>
-                                        <p className="text-lg font-bold text-gray-900">
-                                            {selectedRider.powerProfileFresh?.power5min || 'N/A'}W
-                                        </p>
-                                        <p className="text-xs text-gray-500">
-                                            {calculateWkg(selectedRider.powerProfileFresh?.power5min, selectedRider.weightKg)} W/kg
-                                        </p>
-                                    </div>
-                                    <div className="text-center">
-                                        <p className="text-sm text-gray-600">20min</p>
-                                        <p className="text-lg font-bold text-gray-900">
-                                            {selectedRider.powerProfileFresh?.power20min || 'N/A'}W
-                                        </p>
-                                        <p className="text-xs text-gray-500">
-                                            {calculateWkg(selectedRider.powerProfileFresh?.power20min, selectedRider.weightKg)} W/kg
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                        
-                        {riderTab === 'project' && (
-                            <div className="bg-gray-50 p-4 rounded-lg">
-                                <h4 className="font-semibold text-gray-800 mb-3">Projet Performance - {selectedRider.firstName} {selectedRider.lastName}</h4>
-                                <p className="text-gray-600">Interface de projet performance à implémenter</p>
-                            </div>
-                        )}
-                        
-                        {riderTab === 'results' && (
-                            <div className="bg-gray-50 p-4 rounded-lg">
-                                <h4 className="font-semibold text-gray-800 mb-3">Résultats - {selectedRider.firstName} {selectedRider.lastName}</h4>
-                                <p className="text-gray-600">Interface des résultats à implémenter</p>
-                            </div>
-                        )}
+                  </button>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {sortedRiders.map(rider => (
+              <tr key={rider.id} className="hover:bg-gray-50">
+                {/* Informations du coureur */}
+                <td className="sticky left-0 bg-white px-4 py-3 whitespace-nowrap z-10">
+                  <div className="flex items-center space-x-3">
+                    {rider.photoUrl ? (
+                      <img src={rider.photoUrl} alt={rider.firstName} className="w-10 h-10 rounded-full object-cover" />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center">
+                        <span className="text-gray-600 font-medium text-sm">
+                          {rider.firstName.charAt(0)}{rider.lastName.charAt(0)}
+                        </span>
+                      </div>
+                    )}
+                    <div>
+                      <div className="text-sm font-medium text-gray-900">
+                        {rider.firstName} {rider.lastName}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {rider.qualitativeProfile || 'Profil N/A'}
+                      </div>
                     </div>
-                )}
-            </div>
+                  </div>
+                </td>
+
+                {/* Sexe */}
+                <td className="px-4 py-3 whitespace-nowrap">
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    rider.sex === Sex.FEMALE ? 'bg-pink-100 text-pink-800' : 'bg-blue-100 text-blue-800'
+                  }`}>
+                    {rider.sex === Sex.FEMALE ? 'F' : 'M'}
+                  </span>
+                </td>
+
+                {/* Poids */}
+                <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-900">
+                  {rider.weightKg ? `${rider.weightKg} kg` : '-'}
+                </td>
+
+                {/* Performances de puissance */}
+                {POWER_DURATIONS_CONFIG.filter(d => selectedDurations.includes(d.key)).map(duration => {
+                  const powerValue = getRiderPowerValue(rider, duration.key, displayMode);
+                  const performanceColor = getPerformanceColor(powerValue, duration.key, displayMode);
+                  const performanceLabel = getPerformanceLabel(powerValue, duration.key, displayMode);
+                  const unit = displayMode === 'wattsPerKg' ? 'W/kg' : 'W';
+                  
+                  return (
+                    <td key={duration.key} className="px-4 py-3 whitespace-nowrap text-center">
+                      <div className="space-y-1">
+                        {/* Valeur principale */}
+                        <div className="text-lg font-bold text-gray-900">
+                          {powerValue > 0 ? powerValue.toFixed(displayMode === 'wattsPerKg' ? 1 : 0) : '-'}
+                        </div>
+                        
+                        {/* Unité */}
+                        <div className="text-xs text-gray-500">{unit}</div>
+                        
+                        {/* Label de performance */}
+                        <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${performanceColor}`}>
+                          {performanceLabel}
+                        </div>
+                      </div>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Légende des performances */}
+      <div className="bg-gray-50 px-4 py-3 border-t border-gray-200">
+        <div className="flex items-center justify-center space-x-6 text-sm">
+          <div className="flex items-center space-x-2">
+            <div className="w-4 h-4 bg-blue-500 rounded"></div>
+            <span>Excellent</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-4 h-4 bg-green-500 rounded"></div>
+            <span>Très Bon</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-4 h-4 bg-yellow-500 rounded"></div>
+            <span>Bon</span>
+          </div>
+          <div className="flex items-center space-x-2">
+            <div className="w-4 h-4 bg-gray-500 rounded"></div>
+            <span>Modéré</span>
+          </div>
         </div>
-    );
+      </div>
+    </div>
+  );
 };
 
-// Composant d'analyse de puissance avec tableau de synthèse complet
-const PowerAnalysisTab: React.FC<{ riders: Rider[] }> = ({ riders }) => {
-    const [sexFilter, setSexFilter] = useState<'all' | Sex>('all');
-    
-    const getPowerCategory = (power: number, weight: number, sex: Sex, duration: keyof PowerProfile): string => {
-        const wkg = power / weight;
-        const refTable = sex === Sex.MALE ? POWER_PROFILE_REFERENCE_TABLES.men : POWER_PROFILE_REFERENCE_TABLES.women;
-        
-        for (const category of refTable) {
-            const refValue = category[duration] as number;
-            if (wkg >= refValue) {
-                return category.category;
-            }
-        }
-        return "Inf. Novice";
-    };
+// Composant principal de la section des performances
+export const PerformanceSection: React.FC<{ appState: AppState }> = ({ appState }) => {
+  const [activeTab, setActiveTab] = useState<PerformancePoleTab>('powerAnalysis');
+  const [activeRiderTab, setActiveRiderTab] = useState<RiderPerformanceTab>('ppr');
+  const [selectedRider, setSelectedRider] = useState<Rider | null>(null);
+  const [isRiderModalOpen, setIsRiderModalOpen] = useState(false);
 
-    const getPowerColor = (category: string): string => {
-        return COGGAN_CATEGORY_COLORS[category] || 'bg-gray-200 text-gray-700';
-    };
+  const riders = appState.riders || [];
 
-    // Filtrage des coureurs par sexe
-    const filteredRiders = useMemo(() => {
-        if (sexFilter === 'all') return riders;
-        return riders.filter(rider => rider.sex === sexFilter);
-    }, [riders, sexFilter]);
+  const tabButtonStyle = (tabName: PerformancePoleTab) => 
+    `px-4 py-2 font-medium text-sm rounded-t-lg whitespace-nowrap transition-colors duration-150 focus:outline-none ${
+      activeTab === tabName 
+        ? 'bg-white text-blue-600 border-b-2 border-blue-500 shadow-sm' 
+        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+    }`;
 
-    // Calcul des statistiques globales de puissance pour toutes les durées
-    const powerStats = useMemo(() => {
-        const ridersWithPower = filteredRiders.filter(r => r.powerProfileFresh && r.weightKg);
-        
-        if (ridersWithPower.length === 0) return null;
+  return (
+    <SectionWrapper title="Centre Stratégique des Performances">
+      {/* Onglets principaux */}
+      <div className="mb-6 border-b border-gray-200">
+        <nav className="-mb-px flex space-x-1 overflow-x-auto" aria-label="Tabs">
+          <button onClick={() => setActiveTab('powerAnalysis')} className={tabButtonStyle('powerAnalysis')}>
+            <ChartBarIcon className="w-4 h-4 inline mr-2" />
+            Analyse des Puissances
+          </button>
+          <button onClick={() => setActiveTab('charts')} className={tabButtonStyle('charts')}>
+            <TrendingUpIcon className="w-4 h-4 inline mr-2" />
+            Graphiques
+          </button>
+          <button onClick={() => setActiveTab('comparison')} className={tabButtonStyle('comparison')}>
+            <ChartBarIcon className="w-4 h-4 inline mr-2" />
+            Comparaison
+          </button>
+          <button onClick={() => setActiveTab('global')} className={tabButtonStyle('global')}>
+            <UsersIcon className="w-4 h-4 inline mr-2" />
+            Vue d'Ensemble
+          </button>
+          <button onClick={() => setActiveTab('nutritionProducts')} className={tabButtonStyle('nutritionProducts')}>
+            <TrophyIcon className="w-4 h-4 inline mr-2" />
+            Produits Nutrition
+          </button>
+          <button onClick={() => setActiveTab('planning')} className={tabButtonStyle('planning')}>
+            <StarIcon className="w-4 h-4 inline mr-2" />
+            Planning
+          </button>
+        </nav>
+      </div>
 
-        // Calcul des moyennes pour toutes les durées
-        const durationStats = POWER_ANALYSIS_DURATIONS_CONFIG.map(duration => {
-            const avgPower = ridersWithPower.reduce((sum, r) => 
-                sum + (r.powerProfileFresh?.[duration.key] || 0), 0) / ridersWithPower.length;
-            
-            const avgWkg = ridersWithPower.reduce((sum, r) => {
-                const power = r.powerProfileFresh?.[duration.key] || 0;
-                const weight = r.weightKg || 1;
-                return sum + (power / weight);
-            }, 0) / ridersWithPower.length;
-
-            return {
-                duration: duration.key,
-                label: duration.label,
-                unit: duration.unit,
-                avgPower: Math.round(avgPower),
-                avgWkg: avgWkg.toFixed(1)
-            };
-        });
-
-        return {
-            totalRiders: ridersWithPower.length,
-            durationStats
-        };
-    }, [filteredRiders]);
-
-    return (
-        <div className="space-y-4">
-            {/* Filtres et statistiques en haut */}
-            <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-                {/* Filtre par sexe */}
-                <div className="bg-white p-4 rounded-lg shadow-sm border">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Filtrer par sexe</label>
-                    <select 
-                        value={sexFilter} 
-                        onChange={(e) => setSexFilter(e.target.value as 'all' | Sex)}
-                        className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-                    >
-                        <option value="all">Tous</option>
-                        <option value={Sex.MALE}>Hommes</option>
-                        <option value={Sex.FEMALE}>Femmes</option>
-                    </select>
-                </div>
-                
-                {/* Statistiques compactes */}
-                {powerStats && (
-                    <>
-                        <div className="bg-white p-4 rounded-lg shadow-sm border">
-                            <div className="text-center">
-                                <p className="text-sm font-medium text-gray-500">Total Coureurs</p>
-                                <p className="text-xl font-bold text-gray-900">{powerStats.totalRiders}</p>
-                            </div>
-                        </div>
-                        
-                        <div className="bg-white p-4 rounded-lg shadow-sm border">
-                            <div className="text-center">
-                                <p className="text-sm font-medium text-gray-500">Durées Analysées</p>
-                                <p className="text-xl font-bold text-gray-900">{powerStats.durationStats.length}</p>
-                            </div>
-                        </div>
-                        
-                        <div className="bg-white p-4 rounded-lg shadow-sm border">
-                            <div className="text-center">
-                                <p className="text-sm font-medium text-gray-500">Puissance Max Moy</p>
-                                <p className="text-xl font-bold text-gray-900">
-                                    {Math.max(...powerStats.durationStats.map(d => d.avgPower))}W
-                                </p>
-                            </div>
-                        </div>
-                        
-                        <div className="bg-white p-4 rounded-lg shadow-sm border">
-                            <div className="text-center">
-                                <p className="text-sm font-medium text-gray-500">W/kg Max Moy</p>
-                                <p className="text-xl font-bold text-gray-900">
-                                    {Math.max(...powerStats.durationStats.map(d => parseFloat(d.avgWkg))).toFixed(1)} W/kg
-                                </p>
-                            </div>
-                        </div>
-                    </>
-                )}
+      {/* Contenu des onglets */}
+      <div className="mt-6">
+        {activeTab === 'powerAnalysis' && (
+          <div className="space-y-6">
+            <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-lg border border-blue-200">
+              <h3 className="text-lg font-semibold text-blue-900 mb-2">
+                🎯 Tableau de Synthèse - Toutes les Durées de Puissance
+              </h3>
+              <p className="text-blue-700">
+                Analysez et comparez les performances de puissance de vos athlètes. 
+                Triez par durée spécifique, filtrez par sexe et catégorie d'âge, 
+                et basculez entre watts bruts et watts par kilo pour optimiser vos stratégies.
+              </p>
             </div>
             
-            {/* Tableau de synthèse compact */}
-            <div className="bg-white rounded-lg shadow-sm border">
-                <div className="p-4 border-b">
-                    <h4 className="text-lg font-semibold text-gray-800">Tableau de Synthèse - Toutes les Durées de Puissance</h4>
-                </div>
-                
-                <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                        <thead className="bg-gray-50">
-                            <tr>
-                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r">
-                                    Coureur
-                                </th>
-                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r">
-                                    Sexe
-                                </th>
-                                <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-r">
-                                    Poids
-                                </th>
-                                {POWER_ANALYSIS_DURATIONS_CONFIG.map(duration => (
-                                    <th key={duration.key} className="px-2 py-2 text-center text-xs font-medium text-gray-500 uppercase tracking-wider border-r">
-                                        <div className="flex flex-col">
-                                            <span>{duration.label}</span>
-                                            <span className="text-xs text-gray-400">({duration.unit})</span>
-                                        </div>
-                                    </th>
-                                ))}
-                            </tr>
-                        </thead>
-                        <tbody className="bg-white divide-y divide-gray-200">
-                            {filteredRiders
-                                .filter(rider => rider.powerProfileFresh && rider.weightKg)
-                                .map((rider) => {
-                                    const weight = rider.weightKg;
-                                    const sex = rider.sex || Sex.MALE;
-                                    
-                                    if (!weight) return null;
-                                    
-                                    return (
-                                        <tr key={rider.id} className="hover:bg-gray-50">
-                                            <td className="px-3 py-2 whitespace-nowrap text-sm font-medium text-gray-900 border-r">
-                                                {rider.firstName} {rider.lastName}
-                                            </td>
-                                            <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-500 border-r">
-                                                {sex === Sex.MALE ? 'H' : 'F'}
-                                            </td>
-                                            <td className="px-3 py-2 whitespace-nowrap text-sm text-gray-900 border-r">
-                                                {weight} kg
-                                            </td>
-                                            {POWER_ANALYSIS_DURATIONS_CONFIG.map(duration => {
-                                                const power = rider.powerProfileFresh?.[duration.key];
-                                                if (!power) {
-                                                    return (
-                                                        <td key={duration.key} className="px-2 py-2 whitespace-nowrap text-sm text-gray-400 border-r text-center">
-                                                            -
-                                                        </td>
-                                                    );
-                                                }
-                                                
-                                                const wkg = power / weight;
-                                                const category = getPowerCategory(power, weight, sex, duration.key);
-                                                const colorClass = getPowerColor(category);
-                                                
-                                                return (
-                                                    <td key={duration.key} className="px-2 py-2 whitespace-nowrap border-r text-center">
-                                                        <div className="flex flex-col items-center space-y-1">
-                                                            <span className="text-sm font-medium text-gray-900">
-                                                                {power} W
-                                                            </span>
-                                                            <span className="text-xs text-gray-600">
-                                                                {wkg.toFixed(1)} W/kg
-                                                            </span>
-                                                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${colorClass}`}>
-                                                                {category}
-                                                            </span>
-                                                        </div>
-                                                    </td>
-                                                );
-                                            })}
-                                        </tr>
-                                    );
-                                })}
-                        </tbody>
-                    </table>
-                </div>
+            <PowerPerformanceTable riders={riders} />
+          </div>
+        )}
+
+        {activeTab === 'charts' && (
+          <div className="space-y-6">
+            <div className="bg-gradient-to-r from-green-50 to-blue-50 p-6 rounded-lg border border-green-200">
+              <h3 className="text-lg font-semibold text-green-900 mb-2">
+                📊 Centre d'Analyse Graphique des Performances
+              </h3>
+              <p className="text-green-700">
+                Visualisez et analysez les performances de vos athlètes avec des graphiques interactifs. 
+                Comparez les riders, analysez les tendances et identifiez les forces et faiblesses de chacun.
+              </p>
             </div>
             
-            {/* Légende en bas de page */}
-            <div className="bg-white p-4 rounded-lg shadow-sm border">
-                <h4 className="text-lg font-semibold text-gray-800 mb-3">Légende des Niveaux de Puissance</h4>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                    {Object.entries(COGGAN_CATEGORY_COLORS).map(([category, colorClass]) => (
-                        <div key={category} className="flex items-center space-x-2">
-                            <div className={`w-4 h-4 rounded-full ${colorClass.split(' ')[0]}`}></div>
-                            <span className="text-sm text-gray-700">{category}</span>
-                        </div>
-                    ))}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Graphique de comparaison */}
+              <div className="lg:col-span-2">
+                <RiderComparisonChart 
+                  riders={riders} 
+                  displayMode="wattsPerKg" 
+                  selectedDurations={['1s', '5s', '30s', '1min', '3min', '5min', '12min', '20min', 'cp']} 
+                />
+              </div>
+              
+              {/* Graphiques individuels */}
+              {riders.slice(0, 4).map(rider => (
+                <div key={rider.id}>
+                  <RiderRadarChart rider={rider} displayMode="wattsPerKg" />
                 </div>
+              ))}
+              
+              {/* Graphique des tendances */}
+              <div className="lg:col-span-2">
+                <PerformanceTrendsChart riders={riders} displayMode="wattsPerKg" />
+              </div>
             </div>
-        </div>
-    );
+          </div>
+        )}
+
+        {activeTab === 'comparison' && (
+          <div className="space-y-6">
+            <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-lg border border-purple-200">
+              <h3 className="text-lg font-semibold text-purple-900 mb-2">
+                ⚔️ Comparaison Côte à Côte des Performances
+              </h3>
+              <p className="text-purple-700">
+                Comparez directement deux athlètes avec des graphiques radar superposés et des analyses détaillées. 
+                Identifiez les forces et faiblesses de chacun pour optimiser vos stratégies d'équipe.
+              </p>
+            </div>
+            
+            <RiderComparisonSelector 
+              riders={riders}
+              onCompare={(rider1, rider2) => {
+                // Ici on pourrait ouvrir une modal ou naviguer vers la comparaison
+                console.log('Comparaison entre:', rider1.firstName, 'et', rider2.firstName);
+              }}
+            />
+            
+            {/* Exemple de comparaison avec les 2 premiers riders */}
+            {riders.length >= 2 && (
+              <div className="mt-8">
+                <RiderComparisonRadarChart
+                  rider1={riders[0]}
+                  rider2={riders[1]}
+                  displayMode="wattsPerKg"
+                  title={`${riders[0].firstName} ${riders[0].lastName} vs ${riders[1].firstName} ${riders[1].lastName}`}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'global' && (
+          <div className="text-center py-12">
+            <h3 className="text-xl font-semibold text-gray-700 mb-4">Vue d'Ensemble des Performances</h3>
+            <p className="text-gray-500">Fonctionnalité en cours de développement...</p>
+          </div>
+        )}
+
+        {activeTab === 'nutritionProducts' && (
+          <div className="text-center py-12">
+            <h3 className="text-xl font-semibold text-gray-700 mb-4">Gestion des Produits Nutrition</h3>
+            <p className="text-gray-500">Fonctionnalité en cours de développement...</p>
+          </div>
+        )}
+
+        {activeTab === 'planning' && (
+          <div className="text-center py-12">
+            <h3 className="text-xl font-semibold text-gray-700 mb-4">Planning des Performances</h3>
+            <p className="text-gray-500">Fonctionnalité en cours de développement...</p>
+          </div>
+        )}
+      </div>
+
+      {/* Modal de détail du rider */}
+      {isRiderModalOpen && selectedRider && (
+        <Modal isOpen={isRiderModalOpen} onClose={() => setIsRiderModalOpen(false)} title={`Profil de ${selectedRider.firstName} ${selectedRider.lastName}`}>
+          <div className="space-y-4">
+            <div className="flex items-center space-x-3">
+              {selectedRider.photoUrl ? (
+                <img src={selectedRider.photoUrl} alt={selectedRider.firstName} className="w-16 h-16 rounded-full object-cover" />
+              ) : (
+                <div className="w-16 h-16 rounded-full bg-gray-300 flex items-center justify-center">
+                  <span className="text-gray-600 font-medium text-lg">
+                    {selectedRider.firstName.charAt(0)}{selectedRider.lastName.charAt(0)}
+                  </span>
+                </div>
+              )}
+              <div>
+                <h3 className="text-lg font-semibold">{selectedRider.firstName} {selectedRider.lastName}</h3>
+                <p className="text-gray-600">{selectedRider.qualitativeProfile || 'Profil N/A'}</p>
+              </div>
+            </div>
+            
+            {/* Onglets du rider */}
+            <div className="border-b border-gray-200">
+              <nav className="-mb-px flex space-x-8">
+                <button
+                  onClick={() => setActiveRiderTab('ppr')}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                    activeRiderTab === 'ppr'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  Profil de Puissance
+                </button>
+                <button
+                  onClick={() => setActiveRiderTab('project')}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                    activeRiderTab === 'project'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  Projets
+                </button>
+                <button
+                  onClick={() => setActiveRiderTab('results')}
+                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                    activeRiderTab === 'results'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                >
+                  Résultats
+                </button>
+              </nav>
+            </div>
+
+            {/* Contenu des onglets du rider */}
+            <div className="min-h-[400px]">
+              {activeRiderTab === 'ppr' && (
+                <PerformanceProjectTab
+                  rider={selectedRider}
+                  onSaveRider={() => {}}
+                  isEditMode={false}
+                  powerDurationsConfig={POWER_ANALYSIS_DURATIONS_CONFIG}
+                  calculateWkg={calculateWkg}
+                />
+              )}
+              {activeRiderTab === 'project' && (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">Gestion des projets en cours de développement...</p>
+                </div>
+              )}
+              {activeRiderTab === 'results' && (
+                <ResultsTab
+                  rider={selectedRider}
+                  raceEvents={appState.raceEvents || []}
+                  riderEventSelections={appState.riderEventSelections || []}
+                  performanceEntries={appState.performanceEntries || []}
+                />
+              )}
+            </div>
+          </div>
+        </Modal>
+      )}
+    </SectionWrapper>
+  );
 };
-
-// Interface des props
-interface PerformancePoleSectionProps {
-    appState: AppState;
-    navigateTo: (section: AppSection, eventId?: string) => void;
-    setTeamProducts: React.Dispatch<React.SetStateAction<TeamProduct[]>>;
-    setRiders: React.Dispatch<React.SetStateAction<Rider[]>>;
-    currentUser: User;
-}
-
-// Composant principal
-const PerformancePoleSection: React.FC<PerformancePoleSectionProps> = ({ 
-    appState, 
-    navigateTo, 
-    setTeamProducts, 
-    setRiders, 
-    currentUser 
-}) => {
-    const [activeTab, setActiveTab] = useState<PerformancePoleTab>('global');
-    const riders = appState.riders || [];
-    const teamProducts = appState.teamProducts || [];
-
-    const tabs: { id: PerformancePoleTab; label: string; icon: React.ReactNode }[] = [
-        { id: 'global', label: 'Vue Globale', icon: <ChartBarIcon className="w-5 h-5" /> },
-        { id: 'powerAnalysis', label: 'Analyse Puissance', icon: <TrendingUpIcon className="w-5 h-5" /> },
-        { id: 'nutritionProducts', label: 'Produits Nutrition', icon: <CakeIcon className="w-5 h-5" /> },
-        { id: 'planning', label: 'Planning', icon: <TrophyIcon className="w-5 h-5" /> }
-    ];
-
-    const renderTabContent = () => {
-        switch (activeTab) {
-            case 'global':
-                return <GlobalMonitoringTab riders={riders} />;
-            case 'powerAnalysis':
-                return <PowerAnalysisTab riders={riders} />;
-            case 'nutritionProducts':
-                return (
-                    <div className="space-y-6">
-                        <div className="flex justify-between items-center">
-                            <h3 className="text-lg font-semibold text-gray-800">Produits de Nutrition</h3>
-                            <ActionButton onClick={() => {}} icon={<PlusCircleIcon className="w-5 h-5" />}>
-                                Ajouter un Produit
-                            </ActionButton>
-                        </div>
-                        {/* Contenu des produits de nutrition */}
-                    </div>
-                );
-            case 'planning':
-                return (
-                    <div className="space-y-6">
-                        <h3 className="text-lg font-semibold text-gray-800">Planning des Performances</h3>
-                        {/* Contenu du planning */}
-                    </div>
-                );
-            default:
-                return null;
-        }
-    };
-
-    return (
-        <SectionWrapper title="Pôle Performance">
-            <div className="space-y-6">
-                {/* Onglets principaux */}
-                <div className="border-b border-gray-200">
-                    <nav className="-mb-px flex space-x-8">
-                        {tabs.map(tab => (
-                            <button
-                                key={tab.id}
-                                onClick={() => setActiveTab(tab.id)}
-                                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                                    activeTab === tab.id
-                                        ? 'border-blue-500 text-blue-600'
-                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                                }`}
-                            >
-                                <div className="flex items-center space-x-2">
-                                    {tab.icon}
-                                    <span>{tab.label}</span>
-                                </div>
-                            </button>
-                        ))}
-                    </nav>
-                </div>
-
-                {/* Contenu de l'onglet actif */}
-                {renderTabContent()}
-            </div>
-        </SectionWrapper>
-    );
-};
-
-export default PerformancePoleSection;
 
