@@ -1533,19 +1533,27 @@ const App: React.FC = () => {
                       }}
                       onUpdateRole={async (userId, teamId, newUserRole) => {
                         try {
+                          console.log('🔍 DEBUG: onUpdateRole appelé avec:', { userId, teamId, newUserRole });
+                          
                           const user = appState.users.find(u => u.id === userId);
+                          console.log('🔍 DEBUG: Utilisateur trouvé:', user);
+                          
                           if (!user) {
+                            console.error('❌ DEBUG: Utilisateur non trouvé pour ID:', userId);
                             alert('Utilisateur non trouvé');
                             return;
                           }
 
+                          console.log('🔍 DEBUG: Mise à jour du rôle utilisateur en Firebase...');
                           // Mettre à jour le rôle utilisateur
                           const userRef = doc(db, 'users', userId);
                           await updateDoc(userRef, {
                             userRole: newUserRole,
                             updatedAt: new Date().toISOString()
                           });
+                          console.log('✅ DEBUG: Rôle utilisateur mis à jour en Firebase');
 
+                          console.log('🔍 DEBUG: Mise à jour de l\'état local des utilisateurs...');
                           // Mettre à jour l'état local des utilisateurs
                           setAppState((prev: AppState) => ({
                             ...prev,
@@ -1555,6 +1563,7 @@ const App: React.FC = () => {
                                 : u
                             )
                           }));
+                          console.log('✅ DEBUG: État local des utilisateurs mis à jour');
 
                           // Ajouter l'utilisateur aux bonnes collections selon son nouveau rôle
                           console.log('🔍 DEBUG: Création du profil coureur pour:', user.email);
@@ -1650,8 +1659,24 @@ const App: React.FC = () => {
 
                           alert(`Rôle utilisateur mis à jour avec succès. ${user.firstName} ${user.lastName} a été ajouté aux ${newUserRole === UserRole.COUREUR ? 'coureurs' : 'staff'}.`);
                         } catch (error) {
-                          console.error('Erreur lors de la mise à jour du rôle:', error);
-                          alert('Erreur lors de la mise à jour du rôle');
+                          console.error('❌ DEBUG: Erreur détaillée lors de la mise à jour du rôle:', error);
+                          console.error('❌ DEBUG: Type d\'erreur:', typeof error);
+                          console.error('❌ DEBUG: Message d\'erreur:', error instanceof Error ? error.message : 'Erreur inconnue');
+                          console.error('❌ DEBUG: Stack trace:', error instanceof Error ? error.stack : 'Pas de stack trace');
+                          
+                          let errorMessage = 'Erreur lors de la mise à jour du rôle';
+                          
+                          if (error instanceof Error) {
+                            if (error.message.includes('permission-denied')) {
+                              errorMessage = 'Permission refusée. Vérifiez vos droits d\'administrateur.';
+                            } else if (error.message.includes('not-found')) {
+                              errorMessage = 'Utilisateur introuvable.';
+                            } else {
+                              errorMessage = `Erreur: ${error.message}`;
+                            }
+                          }
+                          
+                          alert(errorMessage);
                         }
                       }}
                       onUpdatePermissionRole={async (userId, newPermissionRole) => {
