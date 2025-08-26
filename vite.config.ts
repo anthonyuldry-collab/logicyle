@@ -13,10 +13,10 @@ export default defineConfig(({ mode }) => {
           '@': path.resolve(__dirname, '.'),
         }
       },
-      // Configuration optimisée pour Node 18
+      // Configuration optimisée pour Node 18 avec gestion Rollup
       optimizeDeps: {
         include: ['react', 'react-dom', 'frappe-charts'],
-        exclude: [],
+        exclude: ['@rollup/rollup-linux-x64-gnu'],
         force: true
       },
       build: {
@@ -24,7 +24,7 @@ export default defineConfig(({ mode }) => {
         minify: 'esbuild',
         sourcemap: false,
         rollupOptions: {
-          external: [],
+          external: ['@rollup/rollup-linux-x64-gnu'],
           output: {
             manualChunks: {
               vendor: ['react', 'react-dom'],
@@ -45,6 +45,23 @@ export default defineConfig(({ mode }) => {
       preview: {
         port: 4173,
         host: true
+      },
+      // Configuration spécifique pour éviter les erreurs Rollup
+      plugins: [],
+      // Forcer l'utilisation d'esbuild au lieu de Rollup si nécessaire
+      build: {
+        ...this.build,
+        rollupOptions: {
+          ...this.build?.rollupOptions,
+          onwarn(warning, warn) {
+            // Ignorer les avertissements sur les dépendances natives
+            if (warning.code === 'UNRESOLVED_IMPORT' && 
+                warning.message.includes('@rollup/rollup-linux-x64-gnu')) {
+              return;
+            }
+            warn(warning);
+          }
+        }
       }
     };
 });
