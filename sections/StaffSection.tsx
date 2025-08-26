@@ -24,6 +24,8 @@ import CalendarDaysIcon from '../components/icons/CalendarDaysIcon';
 import BanknotesIcon from '../components/icons/BanknotesIcon';
 import { useTranslations } from '../hooks/useTranslations';
 
+
+
 interface StaffSectionProps {
   staff: StaffMember[];
   onSave: (staffMember: StaffMember) => void;
@@ -152,13 +154,26 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
   vehicles,
   onSaveRaceEvent,
 }: StaffSectionProps) => {
+  // Debug: Log des props reçues
+  console.log('🔍 DEBUG StaffSection - Props reçues:', {
+    staff: staff,
+    staffLength: staff?.length,
+    currentUser: currentUser,
+    effectivePermissions: effectivePermissions
+  });
+  
   // Protection simplifiée - seulement staff et currentUser sont requis
   if (!staff || !currentUser) {
+    console.log('❌ DEBUG StaffSection - Données manquantes:', { staff: !!staff, currentUser: !!currentUser });
     return (
       <SectionWrapper title="Gestion du Staff">
         <div className="text-center p-8 bg-gray-50 rounded-lg border">
           <h3 className="text-xl font-semibold text-gray-700">Chargement...</h3>
           <p className="mt-2 text-gray-500">Initialisation des données...</p>
+          <div className="mt-4 text-sm text-gray-600">
+            <p><strong>Staff:</strong> {staff ? `${staff.length} membres` : 'Non défini'}</p>
+            <p><strong>CurrentUser:</strong> {currentUser ? 'Connecté' : 'Non connecté'}</p>
+          </div>
         </div>
       </SectionWrapper>
     );
