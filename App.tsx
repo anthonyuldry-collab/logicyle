@@ -1198,6 +1198,7 @@ const App: React.FC = () => {
                       raceEvents={appState.raceEvents}
                       eventStaffAvailabilities={appState.eventStaffAvailabilities}
                       eventBudgetItems={appState.eventBudgetItems}
+                      setEventBudgetItems={createBatchSetHandler<EventBudgetItem>("eventBudgetItems")}
                       currentUser={currentUser}
                       team={appState.teams.find(t => t.id === appState.activeTeamId)}
                       performanceEntries={appState.performanceEntries}
