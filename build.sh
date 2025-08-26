@@ -74,8 +74,8 @@ else
     npm install rollup@^4.9.0 --legacy-peer-deps
 fi
 
-# Build du projet
-echo "🔨 Build du projet..."
+# Build du projet avec configuration principale
+echo "🔨 Build du projet avec configuration principale..."
 if npm run build; then
     echo "✅ Build réussi !"
 else
@@ -84,35 +84,33 @@ else
         echo "✅ Build Vite direct réussi !"
     else
         echo "❌ Échec du build Vite direct"
-        echo "🔧 Tentative de build avec configuration minimale..."
+        echo "🔧 Tentative de build avec configuration Vite simple..."
         
-        # Création d'une configuration Vite minimale
-        cat > vite.minimal.config.ts << 'EOF'
+        # Utilisation de la configuration Vite simple
+        if npx vite build --config vite.simple.config.ts; then
+            echo "✅ Build avec configuration simple réussi !"
+        else
+            echo "❌ Échec du build avec configuration simple"
+            echo "🔧 Tentative de build avec configuration minimale..."
+            
+            # Création d'une configuration Vite minimale
+            cat > vite.minimal.config.ts << 'EOF'
 import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
 
 export default defineConfig({
-  plugins: [react()],
   build: {
     target: 'es2020',
-    minify: 'esbuild',
-    rollupOptions: {
-      external: ['@rollup/rollup-linux-x64-gnu'],
-      output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom']
-        }
-      }
-    }
+    minify: 'esbuild'
   }
 })
 EOF
-        
-        if npx vite build --config vite.minimal.config.ts; then
-            echo "✅ Build avec configuration minimale réussi !"
-        else
-            echo "❌ Échec du build avec configuration minimale"
-            exit 1
+            
+            if npx vite build --config vite.minimal.config.ts; then
+                echo "✅ Build avec configuration minimale réussi !"
+            else
+                echo "❌ Échec du build avec configuration minimale"
+                exit 1
+            fi
         fi
     fi
 fi
@@ -151,3 +149,4 @@ echo "   - npm: $(npm --version)"
 echo "   - Dossier dist: $(du -sh dist 2>/dev/null || echo 'N/A')"
 echo "   - Fichiers générés: $(find dist -type f | wc -l)"
 echo "   - Rollup: $(npm ls rollup 2>/dev/null | head -1 || echo 'Non installé')"
+echo "   - Configuration utilisée: $(if [ -f "vite.simple.config.ts" ] && [ -f "vite.minimal.config.ts" ]; then echo "Configuration minimale"; elif [ -f "vite.simple.config.ts" ]; then echo "Configuration simple"; else echo "Configuration principale"; fi)"

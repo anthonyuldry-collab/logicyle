@@ -76,7 +76,7 @@ import NoTeamView from "./sections/NoTeamView";
 import NutritionSection from "./sections/NutritionSection";
 import PendingApprovalView from "./sections/PendingApprovalView";
 import { PerformanceProjectSection } from "./sections/PerformanceProjectSection";
-import PerformancePoleSection from "./sections/PerformanceSection";
+import PerformanceSection from "./sections/PerformanceSection";
 import PermissionsSection from "./sections/PermissionsSection";
 import RiderEquipmentSection from "./sections/RiderEquipmentSection";
 import { RosterSection } from "./sections/RosterSection";
@@ -1234,7 +1234,7 @@ const App: React.FC = () => {
                     />
                   )}
                   {currentSection === "performance" && appState.riders && currentUser && (
-                    <PerformancePoleSection
+                    <PerformanceSection
                       appState={appState}
                       navigateTo={navigateTo}
                       setTeamProducts={createBatchSetHandler<TeamProduct>("teamProducts")}
