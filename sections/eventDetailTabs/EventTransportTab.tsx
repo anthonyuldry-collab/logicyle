@@ -5,6 +5,7 @@ import ChevronDownIcon from "../../components/icons/ChevronDownIcon";
 import PencilIcon from "../../components/icons/PencilIcon";
 import PlusCircleIcon from "../../components/icons/PlusCircleIcon";
 import TrashIcon from "../../components/icons/TrashIcon";
+import TransportDebug from "../../components/TransportDebug";
 import {
   AppState,
   BudgetItemCategory,
@@ -724,6 +725,13 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Composant de debug pour diagnostiquer les problèmes */}
+      <TransportDebug 
+        eventId={eventId}
+        eventTransportLegs={appState.eventTransportLegs}
+        setEventTransportLegs={setEventTransportLegs}
+      />
+      
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-xl font-semibold text-gray-700">
           Plan de Transport pour {event.name}

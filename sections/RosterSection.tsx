@@ -22,8 +22,10 @@ import MailIcon from '../components/icons/MailIcon';
 import PhoneIcon from '../components/icons/PhoneIcon';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { useTranslations } from '../hooks/useTranslations';
+import { useAppStateSafe } from '../hooks/useAppState';
 import CalendarIcon from '../components/icons/CalendarIcon';
 import TableCellsIcon from '../components/icons/TableCellsIcon';
+import RiderSaveDebug from '../components/RiderSaveDebug';
 
 
 interface RosterSectionProps {
@@ -396,6 +398,9 @@ export const RosterSection: React.FC<RosterSectionProps> = ({
   currentUser,
   appState
 }) => {
+  // Utilisation sécurisée d'appState
+  const safeAppState = useAppStateSafe(appState);
+  
   // Protection minimale - seulement riders est requis
   if (!riders) {
     return (
@@ -1031,6 +1036,12 @@ export const RosterSection: React.FC<RosterSectionProps> = ({
       title="Gestion de l'Effectif"
       actionButton={<ActionButton onClick={openAddModal} icon={<PlusCircleIcon className="w-5 h-5"/>}>Ajouter Coureur</ActionButton>}
     >
+      {/* Composant de debug pour diagnostiquer les problèmes de sauvegarde */}
+      <RiderSaveDebug 
+        onSaveRider={onSaveRider}
+        riders={riders}
+      />
+      
       <div className="mb-2 border-b border-gray-200">
         <nav className="-mb-px flex space-x-1 overflow-x-auto" aria-label="Tabs">
           <button onClick={() => setActiveTab('roster')} className={tabButtonStyle('roster')}>Effectif</button>

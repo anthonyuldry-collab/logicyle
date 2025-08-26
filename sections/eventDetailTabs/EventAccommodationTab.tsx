@@ -7,6 +7,7 @@ import Modal from '../../components/Modal';
 import PlusCircleIcon from '../../components/icons/PlusCircleIcon';
 import PencilIcon from '../../components/icons/PencilIcon';
 import TrashIcon from '../../components/icons/TrashIcon';
+import AccommodationDebug from '../../components/AccommodationDebug';
 
 interface EventAccommodationTabProps {
   event: RaceEvent;
@@ -111,6 +112,13 @@ const EventAccommodationTab: React.FC<EventAccommodationTabProps> = ({ event, ev
 
   return (
     <div>
+      {/* Composant de debug pour diagnostiquer les problèmes */}
+      <AccommodationDebug 
+        eventId={eventId}
+        eventAccommodations={appState.eventAccommodations}
+        setEventAccommodations={setEventAccommodations}
+      />
+      
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-xl font-semibold text-gray-700">Hébergement pour {event.name}</h3>
         <ActionButton onClick={openAddModal} icon={<PlusCircleIcon className="w-5 h-5"/>}>
