@@ -1207,6 +1207,7 @@ const App: React.FC = () => {
                       users={appState.users}
                       permissionRoles={appState.permissionRoles}
                       vehicles={appState.vehicles}
+                      eventTransportLegs={appState.eventTransportLegs}
                       onSaveRaceEvent={onSaveRaceEvent}
                     />
                   )}
