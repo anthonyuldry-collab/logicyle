@@ -651,7 +651,13 @@ export const emptyEventAccommodation = (eventId: string, id: string): EventAccom
     numberOfNights: 1,
 });
 
-export const RIDER_LEVEL_CATEGORIES: string[] = ["Elite", "U23", "U19", "U17", "Pro", "Handisport"];
+export const RIDER_LEVEL_CATEGORIES: string[] = ["Elite", "Pro", "Open 1", "Open 2", "Open 3", "Handisport"];
+
+// Nouvelles constantes pour les catégories d'âge (calculées automatiquement)
+export const RIDER_AGE_CATEGORIES: string[] = ["U15", "U17", "U19", "U23", "Senior"];
+
+// Nouvelles constantes pour les catégories de niveau (sélectionnables manuellement)
+export const RIDER_PERFORMANCE_LEVELS: string[] = ["Elite", "Pro", "Open 1", "Open 2", "Open 3", "Handisport"];
 
 export const POWER_ANALYSIS_DURATIONS_CONFIG: { key: keyof PowerProfile; label: string; unit: string; sortable: boolean; }[] = [
     { key: 'power1s', label: '1s', unit: 'W', sortable: true },

@@ -257,6 +257,26 @@ export const RiderDetailModal: React.FC<RiderDetailModalProps> = ({
             currentLevel[lastKey] = processedValue;
         }
 
+        // Gestion automatique des catégories d'âge lors du changement de date de naissance
+        if (name === 'birthDate' && value) {
+            const { category } = getAgeCategory(value);
+            if (category && category !== 'N/A') {
+                // S'assurer que categories est un tableau
+                if (!newFormData.categories) {
+                    newFormData.categories = [];
+                }
+                
+                // Retirer l'ancienne catégorie d'âge si elle existe
+                const ageCategories = ['U15', 'U17', 'U19', 'U23', 'Senior'];
+                newFormData.categories = newFormData.categories.filter(cat => !ageCategories.includes(cat));
+                
+                // Ajouter la nouvelle catégorie d'âge
+                newFormData.categories.push(category);
+                
+                console.log(`✅ Catégorie d'âge mise à jour automatiquement: ${category}`);
+            }
+        }
+
         return newFormData;
     });
   };
@@ -301,6 +321,26 @@ export const RiderDetailModal: React.FC<RiderDetailModalProps> = ({
         ...(formData as Omit<Rider, 'id'>),
         id: (formData as Rider).id || `rider_${generateId()}`
     };
+    
+    // Ajouter automatiquement la catégorie d'âge calculée
+    if (dataToSave.birthDate) {
+        const { category } = getAgeCategory(dataToSave.birthDate);
+        if (category && category !== 'N/A') {
+            // S'assurer que categories est un tableau
+            if (!dataToSave.categories) {
+                dataToSave.categories = [];
+            }
+            
+            // Retirer l'ancienne catégorie d'âge si elle existe
+            const ageCategories = ['U15', 'U17', 'U19', 'U23', 'Senior'];
+            dataToSave.categories = dataToSave.categories.filter(cat => !ageCategories.includes(cat));
+            
+            // Ajouter la nouvelle catégorie d'âge
+            dataToSave.categories.push(category);
+            
+            console.log(`✅ Catégorie d'âge automatiquement ajoutée: ${category}`);
+        }
+    }
     
     console.log('dataToSave avant uploads:', dataToSave);
 

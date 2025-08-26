@@ -295,16 +295,48 @@ const ProfileInfoTab: React.FC<ProfileInfoTabProps> = ({
                             ))}
                         </div>
                     </div>
-                     <div className="bg-slate-700 p-3 rounded-lg">
-                        <h4 className="font-semibold text-slate-200 mb-2">Catégories de Niveau</h4>
-                        <div className="space-y-1 max-h-32 overflow-y-auto">
-                            {RIDER_LEVEL_CATEGORIES.map(level => (
-                                <div key={level} className="flex items-center">
-                                    <input type="checkbox" id={`category-${level}`} name="categories" value={level} checked={(formData.categories || []).includes(level)} onChange={handleInputChange} disabled={!formFieldsEnabled} className="checkbox-field"/>
-                                    <label htmlFor={`category-${level}`} className="ml-2 text-sm text-slate-300">{level}</label>
-                                </div>
-                            ))}
+                    
+                    {/* Catégories d'âge (calculées automatiquement) */}
+                    <div className="bg-slate-700 p-3 rounded-lg">
+                        <h4 className="font-semibold text-slate-200 mb-2">Catégorie d'Âge (Automatique)</h4>
+                        <div className="space-y-1">
+                            {(() => {
+                                const { category, age } = getAgeCategory(formData.birthDate);
+                                return (
+                                    <div className="text-sm text-slate-300">
+                                        <div className="flex justify-between items-center">
+                                            <span>Catégorie :</span>
+                                            <span className="font-semibold text-blue-400">{category}</span>
+                                        </div>
+                                        {age !== null && (
+                                            <div className="flex justify-between items-center">
+                                                <span>Âge :</span>
+                                                <span className="font-semibold text-green-400">{age} ans</span>
+                                            </div>
+                                        )}
+                                        <div className="text-xs text-slate-400 mt-2">
+                                            Basé sur la date de naissance : {formData.birthDate || 'Non définie'}
+                                        </div>
+                                    </div>
+                                );
+                            })()}
                         </div>
+                    </div>
+                </div>
+
+                {/* Catégories de niveau (sélectionnables manuellement) */}
+                <div className="bg-slate-700 p-3 rounded-lg">
+                    <h4 className="font-semibold text-slate-200 mb-2">Catégories de Niveau (Sélectionnables)</h4>
+                    <div className="space-y-1 max-h-32 overflow-y-auto">
+                        {RIDER_LEVEL_CATEGORIES.map(level => (
+                            <div key={level} className="flex items-center">
+                                <input type="checkbox" id={`category-${level}`} name="categories" value={level} checked={(formData.categories || []).includes(level)} onChange={handleInputChange} disabled={!formFieldsEnabled} className="checkbox-field"/>
+                                <label htmlFor={`category-${level}`} className="ml-2 text-sm text-slate-300">{level}</label>
+                            </div>
+                        ))}
+                    </div>
+                    <div className="text-xs text-slate-400 mt-2">
+                        Sélectionnez les catégories de niveau auxquelles le coureur peut participer
                     </div>
                 </div>
 
