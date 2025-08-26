@@ -28,6 +28,7 @@ import { ResultsTab } from './riderDetailTabs/ResultsTab';
 import CalendarTab from './riderDetailTabs/CalendarTab';
 import { calculateRiderCharacteristics } from '../utils/performanceCalculations';
 import { uploadFile } from '../services/firebaseService';
+import { getAgeCategory } from '../utils/ageUtils';
 
 
 interface RiderDetailModalProps {
