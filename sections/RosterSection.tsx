@@ -25,8 +25,6 @@ import { useTranslations } from '../hooks/useTranslations';
 import { useAppStateSafe } from '../hooks/useAppState';
 import CalendarIcon from '../components/icons/CalendarIcon';
 import TableCellsIcon from '../components/icons/TableCellsIcon';
-import RiderSaveDebug from '../components/RiderSaveDebug';
-import RiderProfileDebug from '../components/RiderProfileDebug';
 
 
 interface RosterSectionProps {
@@ -815,14 +813,6 @@ export const RosterSection: React.FC<RosterSectionProps> = ({
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {filteredRidersForAdmin.map(rider => (
             <div key={rider.id} className="bg-gray-50 rounded-lg shadow-md overflow-hidden flex flex-col border border-gray-200 hover:shadow-lg transition-shadow">
-                 {/* Composant de debug pour chaque athlète */}
-                 <RiderProfileDebug 
-                   rider={rider}
-                   onSaveRider={onSaveRider}
-                   onEditRider={openEditModal}
-                   onViewRider={openViewModal}
-                 />
-                 
                  <div className="p-3">
                     <div className="flex items-center space-x-3">
                         {rider.photoUrl ? <img src={rider.photoUrl} alt={rider.firstName} className="w-12 h-12 rounded-full object-cover"/> : <UserCircleIcon className="w-12 h-12 text-gray-400"/>}
@@ -1045,13 +1035,7 @@ export const RosterSection: React.FC<RosterSectionProps> = ({
       title="Gestion de l'Effectif"
       actionButton={<ActionButton onClick={openAddModal} icon={<PlusCircleIcon className="w-5 h-5"/>}>Ajouter Coureur</ActionButton>}
     >
-      {/* Composant de debug pour diagnostiquer les problèmes de sauvegarde */}
-      <RiderSaveDebug 
-        onSaveRider={onSaveRider}
-        riders={riders}
-      />
-      
-      <div className="mb-2 border-b border-gray-200">
+             <div className="mb-2 border-b border-gray-200">
         <nav className="-mb-px flex space-x-1 overflow-x-auto" aria-label="Tabs">
           <button onClick={() => setActiveTab('roster')} className={tabButtonStyle('roster')}>Effectif</button>
           <button onClick={() => setActiveTab('selectionGrid')} className={tabButtonStyle('selectionGrid')}>Grille de Sélection</button>
