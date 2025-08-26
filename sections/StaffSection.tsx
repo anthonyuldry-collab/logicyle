@@ -1,5 +1,3 @@
-
-
 import React, { useState, useMemo, useEffect, ChangeEvent } from 'react';
 import { StaffMember, RaceEvent, EventStaffAvailability, StaffRoleKey, EventBudgetItem, StaffRole, StaffStatus, AvailabilityStatus, EventType, ContractType, BudgetItemCategory, User, TeamRole, WorkExperience, Team, PerformanceEntry, Mission, MissionStatus, MissionCompensationType, Address, EducationOrCertification, AppSection, PermissionLevel, Vehicle } from '../types'; 
 import { STAFF_ROLE_COLORS, STAFF_STATUS_COLORS, EVENT_TYPE_COLORS, STAFF_ROLES_CONFIG } from '../constants'; 
@@ -26,7 +24,24 @@ import BanknotesIcon from '../components/icons/BanknotesIcon';
 import EyeIcon from '../components/icons/EyeIcon';
 import { useTranslations } from '../hooks/useTranslations';
 
+// Déclarations de types temporaires pour résoudre les erreurs JSX
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      [elemName: string]: any;
+    }
+  }
+}
 
+// Interface pour les alertes
+interface Alert {
+  type: 'warning' | 'info' | 'error';
+  message: string;
+  eventId: string;
+  eventName: string;
+  action: 'assignDS' | 'assignRiders' | 'assignStaff';
+  priority: 'high' | 'medium' | 'low';
+}
 
 interface StaffSectionProps {
   staff: StaffMember[];
@@ -420,7 +435,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
       setLocalRaceEvents((prevEvents: RaceEvent[]) => prevEvents.map((event: RaceEvent) => {
         if (event.id === eventId) {
           // Créer un événement mis à jour avec toutes les assignations
-          const eventUpdated = { 
+          const eventUpdated: RaceEvent = { 
             ...event, 
             ...assignments,
             // Mettre à jour explicitement chaque propriété de rôle
@@ -892,8 +907,8 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
     const openMissions = myTeamMissions.filter((m: Mission) => m.status === MissionStatus.OPEN).sort((a: Mission, b: Mission) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
     const archivedMissions = myTeamMissions.filter((m: Mission) => m.status !== MissionStatus.OPEN).sort((a: Mission, b: Mission) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime());
     
-    const MissionListItem = ({ mission }: { mission: Mission}) => (
-         <div key={mission.id} className="p-3 bg-white rounded-md border flex justify-between items-center flex-wrap gap-2">
+    const MissionListItem: React.FC<{ mission: Mission }> = ({ mission }) => (
+         <div className="p-3 bg-white rounded-md border flex justify-between items-center flex-wrap gap-2">
              <div>
                 <p className="font-bold">{mission.title} ({mission.role})</p>
                 <p className="text-sm text-gray-500">Statut: {mission.status} - Du {new Date(mission.startDate+'T12:00:00Z').toLocaleDateString('fr-CA')} au {new Date(mission.endDate+'T12:00:00Z').toLocaleDateString('fr-CA')}</p>
