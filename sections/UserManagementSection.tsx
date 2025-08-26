@@ -425,8 +425,16 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                                                             value={membership.userRole}
                                                             onChange={async (e) => {
                                                                 console.log('🔄 DEBUG: Changement de rôle détecté:', e.target.value);
+                                                                console.log('🔄 DEBUG: Type de valeur:', typeof e.target.value);
                                                                 console.log('🔄 DEBUG: User ID:', user.id);
                                                                 console.log('🔄 DEBUG: Team ID:', currentTeamId);
+                                                                console.log('🔄 DEBUG: UserRole.STAFF:', UserRole.STAFF);
+                                                                console.log('🔄 DEBUG: UserRole.COUREUR:', UserRole.COUREUR);
+                                                                console.log('🔄 DEBUG: Comparaison STAFF:', e.target.value === UserRole.STAFF);
+                                                                console.log('🔄 DEBUG: Comparaison COUREUR:', e.target.value === UserRole.COUREUR);
+                                                                console.log('🔍 DEBUG: Structure membership:', membership);
+                                                                console.log('🔍 DEBUG: Structure user:', user);
+                                                                console.log('🔍 DEBUG: Différence userRole:', user.userRole !== membership.userRole);
                                                                 try {
                                                                     console.log('🔄 DEBUG: Appel de onUpdateRole...');
                                                                     await onUpdateRole(user.id, currentTeamId, e.target.value as UserRole);
@@ -558,7 +566,13 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                     </div>
                 </div>
             </div>
-             {editingPermissionsForUser && (
+
+            {/* Composant de test des enums - TEMPORAIRE */}
+            <div className="mt-6">
+                <TestEnums />
+            </div>
+
+            {editingPermissionsForUser && (
                 <UserPermissionsModal
                     isOpen={!!editingPermissionsForUser}
                     onClose={() => setEditingPermissionsForUser(null)}

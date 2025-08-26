@@ -6,6 +6,7 @@ import { STAFF_ROLE_COLORS, STAFF_STATUS_COLORS, EVENT_TYPE_COLORS, STAFF_ROLES_
 import SectionWrapper from '../components/SectionWrapper';
 import ActionButton from '../components/ActionButton';
 import StaffDetailModal from '../components/StaffDetailModal';
+import StaffViewModal from '../components/StaffViewModal';
 import PlusCircleIcon from '../components/icons/PlusCircleIcon';
 import PencilIcon from '../components/icons/PencilIcon';
 import TrashIcon from '../components/icons/TrashIcon';
@@ -200,6 +201,8 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
   // State for Staff Details Tab
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [editingStaffMember, setEditingStaffMember] = useState<StaffMember | null>(null);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [viewingStaffMember, setViewingStaffMember] = useState<StaffMember | null>(null);
   const [staffSearchTerm, setStaffSearchTerm] = useState('');
   const [staffRoleFilter, setStaffRoleFilter] = useState<StaffRole | 'all'>('all');
   const [staffStatusFilter, setStaffStatusFilter] = useState<StaffStatus | 'all'>('all');
@@ -588,6 +591,11 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
     setEditingStaffMember(member);
     setIsDetailModalOpen(true);
   };
+
+  const openViewModal = (member: StaffMember) => {
+    setViewingStaffMember(member);
+    setIsViewModalOpen(true);
+  };
   const openAddNewMissionModal = () => {
     setEditingMission(null);
     setNewMissionData(initialMissionFormState);
@@ -717,6 +725,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
                     </div>
                 </div>
                 <div className="p-3 bg-gray-50 border-t flex justify-end space-x-2">
+                    <ActionButton onClick={() => openViewModal(member)} variant="primary" size="sm" icon={<EyeIcon className="w-4 h-4"/>}>Voir</ActionButton>
                     <ActionButton onClick={() => openEditModal(member)} variant="secondary" size="sm" icon={<PencilIcon className="w-4 h-4"/>}>Modifier</ActionButton>
                     <ActionButton onClick={() => handleDeleteStaff(member.id)} variant="danger" size="sm" icon={<TrashIcon className="w-4 h-4"/>}>Supprimer</ActionButton>
                 </div>
@@ -1000,6 +1009,18 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
           allRaceEvents={raceEvents}
           performanceEntries={performanceEntries}
           daysAssigned={editingStaffMember ? calculateDaysAssigned(editingStaffMember.id, raceEvents || []) : 0}
+        />
+      )}
+
+      {/* Staff View Modal */}
+      {isViewModalOpen && viewingStaffMember && (
+        <StaffViewModal 
+          isOpen={isViewModalOpen}
+          onClose={() => setIsViewModalOpen(false)}
+          staffMember={viewingStaffMember}
+          allRaceEvents={raceEvents}
+          performanceEntries={performanceEntries}
+          daysAssigned={calculateDaysAssigned(viewingStaffMember.id, raceEvents || [])}
         />
       )}
 
