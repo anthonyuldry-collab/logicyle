@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, ChangeEvent, FormEvent } from 'react';
 import { AppState, TeamMembership, TeamMembershipStatus, TeamRole, User, UserRole, PermissionLevel, AppSection, Team } from '../types';
 import SectionWrapper from '../components/SectionWrapper';
 import ActionButton from '../components/ActionButton';
@@ -69,7 +69,7 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
     const getUser = (userId: string) => users.find(u => u.id === userId);
     const getTeam = (teamId: string) => teams.find(t => t.id === teamId);
 
-    const handleInviteSubmit = async (e: React.FormEvent) => {
+    const handleInviteSubmit = async (e: FormEvent) => {
         e.preventDefault();
         if (inviteEmail) {
             try {
@@ -111,9 +111,9 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
     const exportTeamData = () => {
         try {
             const teamData = {
-                team: teams.find(t => t.id === currentTeamId),
-                members: activeMemberships.map(m => {
-                    const user = getUser(m.userId);
+                team: teams.find((t: Team) => t.id === currentTeamId),
+                members: activeMemberships.map((m: TeamMembership) => {
+                    const user = getUser(m.userId || '');
                     return {
                         ...m,
                         user: user ? { firstName: user.firstName, lastName: user.lastName, email: user.email } : null
@@ -138,22 +138,22 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
 
     const exportUserList = () => {
         try {
-            const userList = activeMemberships.map(m => {
-                const user = getUser(m.userId);
+            const userList = activeMemberships.map((m: TeamMembership) => {
+                const user = getUser(m.userId || '');
                 return {
                     firstName: user?.firstName || '',
                     lastName: user?.lastName || '',
                     email: user?.email || '',
                     role: m.userRole,
-                    permissionRole: m.permissionRole,
+                    permissionRole: user?.permissionRole || 'MEMBER',
                     joinedAt: m.requestedAt
                 };
             });
 
             const csvContent = [
                 ['Prénom', 'Nom', 'Email', 'Rôle', 'Permission', 'Date d\'adhésion'],
-                ...userList.map(u => [u.firstName, u.lastName, u.email, u.role, u.permissionRole, u.joinedAt])
-            ].map(row => row.join(',')).join('\n');
+                ...userList.map((u: any) => [u.firstName, u.lastName, u.email, u.role, u.permissionRole, u.joinedAt])
+            ].map((row: string[]) => row.join(',')).join('\n');
 
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement('a');
@@ -177,7 +177,13 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
 
     const getRecentActivityLogs = () => {
         // Simulation de logs d'activité - À connecter avec un vrai système de logs
-        return [
+        interface ActivityLog {
+            type: 'success' | 'warning' | 'info';
+            message: string;
+            timestamp: string;
+        }
+        
+        const logs: ActivityLog[] = [
             {
                 type: 'success',
                 message: 'Nouveau membre approuvé: Jean Dupont',
@@ -194,6 +200,8 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                 timestamp: 'Il y a 6h'
             }
         ];
+        
+        return logs;
     };
 
     return (
@@ -205,14 +213,14 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                         <input
                             type="email"
                             value={inviteEmail}
-                            onChange={(e) => setInviteEmail(e.target.value)}
+                            onChange={(e: ChangeEvent<HTMLInputElement>) => setInviteEmail(e.target.value)}
                             placeholder="email@du.nouveau.membre"
                             required
                             className="flex-grow px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                         />
                         <select
                             value={inviteRole}
-                            onChange={(e) => setInviteRole(e.target.value as UserRole)}
+                            onChange={(e: ChangeEvent<HTMLSelectElement>) => setInviteRole(e.target.value as UserRole)}
                             className="px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white"
                         >
                             <option value={UserRole.COUREUR}>🚴 Coureur</option>
@@ -242,13 +250,13 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y">
-                                    {pendingMemberships.map(membership => {
+                                    {pendingMemberships.map((membership: TeamMembership) => {
                                         console.log('🔍 DEBUG: Structure complète de membership:', membership);
                                         console.log('🔍 DEBUG: membership.id =', membership.id);
                                         console.log('🔍 DEBUG: membership.userId =', membership.userId);
                                         
-                                        const user = getUser(membership.userId);
-                                        const team = getTeam(membership.teamId);
+                                        const user = getUser(membership.userId || '');
+                                        const team = getTeam(membership.teamId || '');
                                         if (!user || !team) return null;
 
                                         return (
@@ -379,13 +387,16 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                     </div>
                     <div className="p-4 bg-green-50 rounded-lg border border-green-200">
                         <div className="text-2xl font-bold text-green-600">
-                            {activeMemberships.filter(m => m.permissionRole === 'ADMIN' || m.permissionRole === 'EDITOR').length}
+                            {activeMemberships.filter((m: TeamMembership) => {
+                                const user = getUser(m.userId || '');
+                                return user?.permissionRole === TeamRole.ADMIN || user?.permissionRole === TeamRole.EDITOR;
+                            }).length}
                         </div>
                         <div className="text-sm text-green-600">Managers/Admins</div>
                     </div>
                     <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
                         <div className="text-2xl font-bold text-purple-600">
-                            {activeMemberships.filter(m => m.userRole === 'COUREUR').length}
+                            {activeMemberships.filter((m: TeamMembership) => m.userRole === UserRole.COUREUR).length}
                         </div>
                         <div className="text-sm text-purple-600">Coureurs</div>
                     </div>
@@ -408,11 +419,11 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y">
-                                    {activeMemberships.map(membership => {
-                                        const user = getUser(membership.userId);
+                                    {activeMemberships.map((membership: TeamMembership) => {
+                                        const user = getUser(membership.userId || '');
                                         if (!user) return null;
 
-                                        const isLastAdmin = user.permissionRole === TeamRole.ADMIN && users.filter(u => u.permissionRole === TeamRole.ADMIN).length <= 1;
+                                        const isLastAdmin = user.permissionRole === TeamRole.ADMIN && users.filter((u: User) => u.permissionRole === TeamRole.ADMIN).length <= 1;
 
                                         return (
                                             <tr key={membership.userId + membership.teamId}>
@@ -423,7 +434,7 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                                                     ) : (
                                                         <select
                                                             value={membership.userRole}
-                                                            onChange={async (e) => {
+                                                            onChange={async (e: ChangeEvent<HTMLSelectElement>) => {
                                                                 console.log('🔄 DEBUG: Changement de rôle détecté:', e.target.value);
                                                                 console.log('🔄 DEBUG: Type de valeur:', typeof e.target.value);
                                                                 console.log('🔄 DEBUG: User ID:', user.id);
@@ -446,7 +457,7 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                                                             }}
                                                             className="w-full px-2 py-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-xs bg-white text-gray-900"
                                                         >
-                                                            {Object.values(UserRole).map(role => (
+                                                            {Object.values(UserRole).map((role: UserRole) => (
                                                                 <option key={role} value={role}>{role}</option>
                                                             ))}
                                                         </select>
@@ -455,7 +466,7 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                                                 <td className="px-4 py-2 text-gray-600 w-48">
                                                     <select
                                                         value={user.permissionRole}
-                                                        onChange={async (e) => {
+                                                        onChange={async (e: ChangeEvent<HTMLSelectElement>) => {
                                                             try {
                                                                 await onUpdatePermissionRole(user.id, e.target.value as TeamRole);
                                                             } catch (error) {
@@ -467,7 +478,7 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                                                         disabled={isLastAdmin}
                                                         title={isLastAdmin ? "Impossible de modifier le rôle du dernier administrateur." : ""}
                                                     >
-                                                        {Object.values(TeamRole).map(role => (
+                                                        {Object.values(TeamRole).map((role: TeamRole) => (
                                                             <option key={role} value={role}>{role}</option>
                                                         ))}
                                                     </select>
@@ -556,7 +567,7 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                 <div className="p-4 bg-white rounded-lg shadow-md border">
                     <h3 className="text-lg font-semibold text-gray-800 mb-4">Logs d'Activité Récente</h3>
                     <div className="space-y-2 max-h-40 overflow-y-auto">
-                        {getRecentActivityLogs().map((log, index) => (
+                        {getRecentActivityLogs().map((log, index: number) => (
                             <div key={index} className="flex items-center space-x-3 p-2 bg-gray-50 rounded-md">
                                 <div className={`w-2 h-2 rounded-full ${log.type === 'success' ? 'bg-green-500' : log.type === 'warning' ? 'bg-yellow-500' : 'bg-blue-500'}`}></div>
                                 <span className="text-sm text-gray-600">{log.message}</span>
@@ -568,9 +579,9 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
             </div>
 
             {/* Composant de test des enums - TEMPORAIRE */}
-            <div className="mt-6">
+            {/* <div className="mt-6">
                 <TestEnums />
-            </div>
+            </div> */}
 
             {editingPermissionsForUser && (
                 <UserPermissionsModal
@@ -590,11 +601,11 @@ const UserManagementSection: React.FC<UserManagementSectionProps> = ({
                             <select
                                 id="destination-team"
                                 value={destinationTeamId}
-                                onChange={(e) => setDestinationTeamId(e.target.value)}
+                                onChange={(e: ChangeEvent<HTMLSelectElement>) => setDestinationTeamId(e.target.value)}
                                 className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
                             >
                                 <option value="">-- Sélectionnez --</option>
-                                {teams.filter(t => t.id !== currentTeamId).map(team => (
+                                {teams.filter((t: Team) => t.id !== currentTeamId).map((team: Team) => (
                                     <option key={team.id} value={team.id}>{team.name}</option>
                                 ))}
                             </select>

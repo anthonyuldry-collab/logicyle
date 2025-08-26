@@ -1,6 +1,6 @@
 
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, ChangeEvent } from 'react';
 import { StaffMember, RaceEvent, EventStaffAvailability, StaffRoleKey, EventBudgetItem, StaffRole, StaffStatus, AvailabilityStatus, EventType, ContractType, BudgetItemCategory, User, TeamRole, WorkExperience, Team, PerformanceEntry, Mission, MissionStatus, MissionCompensationType, Address, EducationOrCertification, AppSection, PermissionLevel, Vehicle } from '../types'; 
 import { STAFF_ROLE_COLORS, STAFF_STATUS_COLORS, EVENT_TYPE_COLORS, STAFF_ROLES_CONFIG } from '../constants'; 
 import SectionWrapper from '../components/SectionWrapper';
@@ -23,6 +23,7 @@ import MissionSearchSection from './MissionSearchSection';
 import StarIcon from '../components/icons/StarIcon';
 import CalendarDaysIcon from '../components/icons/CalendarDaysIcon';
 import BanknotesIcon from '../components/icons/BanknotesIcon';
+import EyeIcon from '../components/icons/EyeIcon';
 import { useTranslations } from '../hooks/useTranslations';
 
 
@@ -265,12 +266,12 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
   // Memo for details tab
   const filteredStaffMembers = useMemo(() => {
     if (!localStaff) return [];
-    const filtered = localStaff.filter(member => {
+    const filtered = localStaff.filter((member: StaffMember) => {
       const nameMatch = `${member.firstName} ${member.lastName}`.toLowerCase().includes(staffSearchTerm.toLowerCase());
       const roleMatch = staffRoleFilter === 'all' || member.role === staffRoleFilter;
       const statusMatch = staffStatusFilter === 'all' || member.status === staffStatusFilter;
       return nameMatch && roleMatch && statusMatch;
-    }).sort((a, b) => a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName));
+    }).sort((a: StaffMember, b: StaffMember) => a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName));
     return filtered;
   }, [localStaff, staffSearchTerm, staffRoleFilter, staffStatusFilter]);
 
@@ -287,9 +288,18 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
   const alertsAndActions = useMemo(() => {
     if (!localRaceEvents || !localStaff) return [];
     
-    const alerts = [];
+    interface Alert {
+      type: 'warning' | 'info' | 'error';
+      message: string;
+      eventId: string;
+      eventName: string;
+      action: 'assignDS' | 'assignRiders' | 'assignStaff';
+      priority: 'high' | 'medium' | 'low';
+    }
     
-    localRaceEvents.forEach(event => {
+    const alerts: Alert[] = [];
+    
+    localRaceEvents.forEach((event: RaceEvent) => {
       // Vérifier si l'événement est à venir
       const eventDate = new Date(event.date);
       const today = new Date();
@@ -348,7 +358,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
     });
     
     // Trier par priorité et date
-    return alerts.sort((a, b) => {
+    return alerts.sort((a: Alert, b: Alert) => {
       const priorityOrder = { high: 3, medium: 2, low: 1 };
       return priorityOrder[b.priority] - priorityOrder[a.priority];
     });
@@ -376,14 +386,14 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
 
   const handleDeleteStaff = (staffId: string) => {
     if (!localStaff) return;
-    const member = localStaff.find(s => s.id === staffId);
+    const member = localStaff.find((s: StaffMember) => s.id === staffId);
     if (!member) return;
 
     setConfirmAction({
       title: `Supprimer ${member.firstName} ${member.lastName}`,
       message: "Êtes-vous sûr de vouloir supprimer ce membre du staff ? Cette action est irréversible.",
       onConfirm: () => {
-        setLocalStaff(prev => prev.filter(s => s.id !== staffId));
+        setLocalStaff((prev: StaffMember[]) => prev.filter((s: StaffMember) => s.id !== staffId));
         if (onDelete) {
           onDelete(member);
         }
@@ -407,7 +417,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
       // 1. Mettre à jour l'événement localement avec TOUTES les assignations
       let updatedEvent: RaceEvent | null = null;
       
-      setLocalRaceEvents(prevEvents => prevEvents.map(event => {
+      setLocalRaceEvents((prevEvents: RaceEvent[]) => prevEvents.map((event: RaceEvent) => {
         if (event.id === eventId) {
           // Créer un événement mis à jour avec toutes les assignations
           const eventUpdated = { 
@@ -423,9 +433,9 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
           
           // Mettre à jour selectedStaffIds avec tous les staff assignés
           const allAssignedStaff = new Set<string>();
-          Object.values(assignments).forEach(roleIds => {
+          Object.values(assignments).forEach((roleIds: string[] | undefined) => {
             if (Array.isArray(roleIds)) {
-              roleIds.forEach(id => allAssignedStaff.add(id));
+              roleIds.forEach((id: string) => allAssignedStaff.add(id));
             }
           });
           
@@ -440,28 +450,22 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
       }));
 
       // 2. Synchronisation bidirectionnelle : mettre à jour les profils staff
-      setLocalStaff(prevStaff => prevStaff.map(staffMember => {
-        const isAssignedToThisEvent = Object.values(assignments).some(roleIds => 
+      setLocalStaff((prevStaff: StaffMember[]) => prevStaff.map((staffMember: StaffMember) => {
+        const isAssignedToThisEvent = Object.values(assignments).some((roleIds: string[] | undefined) => 
           Array.isArray(roleIds) && roleIds.includes(staffMember.id)
         );
         
         if (isAssignedToThisEvent) {
           // Ajouter l'événement à la liste des événements du staff
-          const updatedStaffMember = { ...staffMember };
-          if (!updatedStaffMember.assignedEvents) {
-            updatedStaffMember.assignedEvents = [];
-          }
-          if (!updatedStaffMember.assignedEvents.includes(eventId)) {
-            updatedStaffMember.assignedEvents = [...updatedStaffMember.assignedEvents, eventId];
-          }
+          const updatedStaffMember = { ...staffMember, assignedEvents: [...(staffMember as any).assignedEvents || [], eventId] };
           console.log(`Staff ${staffMember.firstName} ${staffMember.lastName} assigné à l'événement ${eventId}`);
           return updatedStaffMember;
         } else {
           // Retirer l'événement de la liste des événements du staff
-          const updatedStaffMember = { ...staffMember };
-          if (updatedStaffMember.assignedEvents) {
-            updatedStaffMember.assignedEvents = updatedStaffMember.assignedEvents.filter(id => id !== eventId);
-          }
+          const updatedStaffMember = { 
+            ...staffMember, 
+            assignedEvents: (staffMember as any).assignedEvents?.filter((id: string) => id !== eventId) || [] 
+          };
           console.log(`Staff ${staffMember.firstName} ${staffMember.lastName} retiré de l'événement ${eventId}`);
           return updatedStaffMember;
         }
@@ -469,24 +473,18 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
 
       // 3. Synchronisation bidirectionnelle : mettre à jour les profils véhicules
       if (vehicles && vehicles.length > 0) {
-        setLocalVehicles(prevVehicles => prevVehicles.map(vehicle => {
+        setLocalVehicles((prevVehicles: Vehicle[]) => prevVehicles.map((vehicle: Vehicle) => {
           const isAssignedToThisEvent = (assignmentModalEvent && assignmentModalEvent.selectedVehicleIds && Array.isArray(assignmentModalEvent.selectedVehicleIds) && assignmentModalEvent.selectedVehicleIds.includes(vehicle.id)) || false;
           
           if (isAssignedToThisEvent) {
-            const updatedVehicle = { ...vehicle };
-            if (!updatedVehicle.assignedEvents) {
-              updatedVehicle.assignedEvents = [];
-            }
-            if (!updatedVehicle.assignedEvents.includes(eventId)) {
-              updatedVehicle.assignedEvents = [...updatedVehicle.assignedEvents, eventId];
-            }
+            const updatedVehicle = { ...vehicle, assignedEvents: [...(vehicle as any).assignedEvents || [], eventId] };
             console.log(`Véhicule ${vehicle.name} assigné à l'événement ${eventId}`);
             return updatedVehicle;
           } else {
-            const updatedVehicle = { ...vehicle };
-            if (updatedVehicle.assignedEvents) {
-              updatedVehicle.assignedEvents = updatedVehicle.assignedEvents.filter(id => id !== eventId);
-            }
+            const updatedVehicle = { 
+              ...vehicle, 
+              assignedEvents: (vehicle as any).assignedEvents?.filter((id: string) => id !== eventId) || [] 
+            };
             console.log(`Véhicule ${vehicle.name} retiré de l'événement ${eventId}`);
             return updatedVehicle;
           }
@@ -524,11 +522,11 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
           console.log('🔄 Sauvegarde automatique des profils staff mis à jour...');
           
           // Récupérer tous les staff qui ont été modifiés
-          const updatedStaffMembers = localStaff.filter(staffMember => {
-            const isAssignedToThisEvent = Object.values(assignments).some(roleIds => 
+          const updatedStaffMembers = localStaff.filter((staffMember: StaffMember) => {
+            const isAssignedToThisEvent = Object.values(assignments).some((roleIds: string[] | undefined) => 
               Array.isArray(roleIds) && roleIds.includes(staffMember.id)
             );
-            const wasAssignedToThisEvent = (staffMember.assignedEvents && Array.isArray(staffMember.assignedEvents) && staffMember.assignedEvents.includes(eventId)) || false;
+            const wasAssignedToThisEvent = ((staffMember as any).assignedEvents && Array.isArray((staffMember as any).assignedEvents) && (staffMember as any).assignedEvents.includes(eventId)) || false;
             const hasChanged = isAssignedToThisEvent !== wasAssignedToThisEvent;
             
             if (hasChanged) {
@@ -542,10 +540,10 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
             return hasChanged;
           });
           
-          console.log(`📝 ${updatedStaffMembers.length} profils staff à sauvegarder:`, updatedStaffMembers.map(s => `${s.firstName} ${s.lastName}`));
+          console.log(`📝 ${updatedStaffMembers.length} profils staff à sauvegarder:`, updatedStaffMembers.map((s: StaffMember) => `${s.firstName} ${s.lastName}`));
           
           // Sauvegarde en parallèle pour plus de rapidité
-          const savePromises = updatedStaffMembers.map(async (staffMember) => {
+          const savePromises = updatedStaffMembers.map(async (staffMember: StaffMember) => {
             await onSave(staffMember);
             console.log(`✅ Profil ${staffMember.firstName} ${staffMember.lastName} sauvegardé`);
           });
@@ -557,9 +555,9 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
           if (vehicles && vehicles.length > 0) {
             console.log('🚗 Sauvegarde automatique des profils véhicules mis à jour...');
             
-            const updatedVehicles = vehicles.filter(vehicle => {
+            const updatedVehicles = vehicles.filter((vehicle: Vehicle) => {
               const isAssignedToThisEvent = (assignmentModalEvent && assignmentModalEvent.selectedVehicleIds && Array.isArray(assignmentModalEvent.selectedVehicleIds) && assignmentModalEvent.selectedVehicleIds.includes(vehicle.id)) || false;
-              const wasAssignedToThisEvent = (vehicle.assignedEvents && Array.isArray(vehicle.assignedEvents) && vehicle.assignedEvents.includes(eventId)) || false;
+              const wasAssignedToThisEvent = ((vehicle as any).assignedEvents && Array.isArray((vehicle as any).assignedEvents) && (vehicle as any).assignedEvents.includes(eventId)) || false;
               return isAssignedToThisEvent !== wasAssignedToThisEvent;
             });
             
@@ -616,20 +614,20 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
           title: `Supprimer l'annonce "${missionToDelete.title}"`,
           message: "Êtes-vous sûr de vouloir supprimer cette annonce ? Cette action est irréversible.",
           onConfirm: () => {
-              setLocalMissions(prev => prev.filter(m => m.id !== missionToDelete.id));
+              setLocalMissions((prev: Mission[]) => prev.filter((m: Mission) => m.id !== missionToDelete.id));
           }
       });
   };
   
   const handleUpdateMissionStatus = (missionId: string, status: MissionStatus) => {
-    setLocalMissions(prev => prev.map(m => m.id === missionId ? { ...m, status } : m));
+    setLocalMissions((prev: Mission[]) => prev.map((m: Mission) => m.id === missionId ? { ...m, status } : m));
   };
 
   const handleSaveMission = () => {
     if (!team) return;
     
     if (editingMission) {
-        setLocalMissions(prev => prev.map(m => 
+        setLocalMissions((prev: Mission[]) => prev.map((m: Mission) => 
             m.id === editingMission.id 
             ? { ...m, ...newMissionData, id: editingMission.id, teamId: team.id } 
             : m
@@ -642,7 +640,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
             status: MissionStatus.OPEN,
             applicants: []
         };
-        setLocalMissions(prev => [...prev, newMission]);
+        setLocalMissions((prev: Mission[]) => [...prev, newMission]);
     }
     setIsPostMissionModalOpen(false);
     setEditingMission(null);
@@ -656,21 +654,21 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
             type="text"
             placeholder="Rechercher par nom..."
             value={staffSearchTerm}
-            onChange={(e) => setStaffSearchTerm(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setStaffSearchTerm(e.target.value)}
             className={lightInputClass}
           />
-          <select value={staffRoleFilter} onChange={(e) => setStaffRoleFilter(e.target.value as any)} className={lightSelectClass}>
+          <select value={staffRoleFilter} onChange={(e: ChangeEvent<HTMLSelectElement>) => setStaffRoleFilter(e.target.value as StaffRole | 'all')} className={lightSelectClass}>
             <option value="all">Tous les rôles</option>
-            {Object.values(StaffRole).map(role => <option key={role} value={role}>{role}</option>)}
+            {Object.values(StaffRole).map((role: StaffRole) => <option key={role} value={role}>{role}</option>)}
           </select>
-          <select value={staffStatusFilter} onChange={(e) => setStaffStatusFilter(e.target.value as any)} className={lightSelectClass}>
+          <select value={staffStatusFilter} onChange={(e: ChangeEvent<HTMLSelectElement>) => setStaffStatusFilter(e.target.value as StaffStatus | 'all')} className={lightSelectClass}>
             <option value="all">Tous les statuts</option>
-            {Object.values(StaffStatus).map(status => <option key={status} value={status}>{status}</option>)}
+            {Object.values(StaffStatus).map((status: StaffStatus) => <option key={status} value={status}>{status}</option>)}
           </select>
         </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredStaffMembers.map(member => {
+        {filteredStaffMembers.map((member: StaffMember) => {
             const daysAssigned = calculateDaysAssigned(member.id, localRaceEvents);
             return (
               <div key={member.id} className="bg-white rounded-lg shadow-md overflow-hidden flex flex-col border">
@@ -689,12 +687,12 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
                         {member.address?.city && <p className="flex items-center"><LocationMarkerIcon className="w-4 h-4 mr-2 text-gray-400"/> {member.address.city}</p>}
                         <div className="pt-2">
                             <p className="flex items-center font-semibold"><CalendarDaysIcon className="w-4 h-4 mr-2 text-gray-400"/> Jours de mission : {daysAssigned}</p>
-                            {member.assignedEvents && member.assignedEvents.length > 0 && (
+                            {(member as any).assignedEvents && (member as any).assignedEvents.length > 0 && (
                                 <div className="mt-2">
                                     <p className="text-xs text-gray-500 mb-1">Événements assignés :</p>
                                     <div className="space-y-1">
-                                        {member.assignedEvents.slice(0, 3).map(eventId => {
-                                            const event = localRaceEvents.find(e => e.id === eventId);
+                                        {(member as any).assignedEvents.slice(0, 3).map((eventId: string) => {
+                                            const event = localRaceEvents.find((e: RaceEvent) => e.id === eventId);
                                             if (!event) return null;
                                             
                                             // Déterminer le rôle assigné pour cet événement
@@ -713,9 +711,9 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
                                                 </div>
                                             );
                                         })}
-                                        {member.assignedEvents.length > 3 && (
+                                        {(member as any).assignedEvents.length > 3 && (
                                             <div className="text-xs text-gray-500">
-                                                +{member.assignedEvents.length - 3} autres...
+                                                +{(member as any).assignedEvents.length - 3} autres...
                                             </div>
                                         )}
                                     </div>
@@ -743,7 +741,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
         <div className="bg-white p-6 rounded-lg shadow-sm border">
           <h3 className="text-lg font-semibold text-gray-800 mb-4">Alertes & Actions Requises</h3>
           <div className="space-y-3">
-            {alertsAndActions.map((alert, index) => (
+            {alertsAndActions.map((alert: Alert, index: number) => (
               <div key={index} className={`p-4 rounded-lg border-l-4 ${
                 alert.type === 'warning' ? 'bg-red-50 border-red-400' :
                 alert.type === 'info' ? 'bg-blue-50 border-blue-400' :
@@ -779,7 +777,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
                         variant="primary"
                         size="sm"
                         onClick={() => {
-                          const event = localRaceEvents.find(e => e.id === alert.eventId);
+                          const event = localRaceEvents.find((e: RaceEvent) => e.id === alert.eventId);
                           if (event) {
                             setAssignmentModalEvent(event);
                             // Pré-sélectionner l'onglet directeur sportif
@@ -809,7 +807,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
                         variant="primary"
                         size="sm"
                         onClick={() => {
-                          const event = localRaceEvents.find(e => e.id === alert.eventId);
+                          const event = localRaceEvents.find((e: RaceEvent) => e.id === alert.eventId);
                           if (event) {
                             setAssignmentModalEvent(event);
                           }
@@ -822,7 +820,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
                       variant="secondary"
                       size="sm"
                       onClick={() => {
-                        const event = localRaceEvents.find(e => e.id === alert.eventId);
+                        const event = localRaceEvents.find((e: RaceEvent) => e.id === alert.eventId);
                         if (event) {
                           setAssignmentModalEvent(event);
                         }
@@ -868,14 +866,14 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
 
   const renderMyApplicationsTab = () => {
     if (!currentUser?.id || !Array.isArray(localMissions)) return <div className="text-center text-gray-500">Chargement des candidatures...</div>;
-            const myApplications = localMissions.filter(m => m.applicants && Array.isArray(m.applicants) && m.applicants.includes(currentUser.id));
+            const myApplications = localMissions.filter((m: Mission) => m.applicants && Array.isArray(m.applicants) && m.applicants.includes(currentUser.id));
     return (
         <div className="space-y-3">
             <h3 className="text-xl font-semibold">Mes Candidatures</h3>
-            {myApplications.length > 0 ? myApplications.map(mission => (
+            {myApplications.length > 0 ? myApplications.map((mission: Mission) => (
                 <div key={mission.id} className="p-3 bg-white rounded-md border flex justify-between items-center">
                     <div>
-                        <p className="font-bold">{mission.title} - <span className="font-normal text-gray-600">{teams.find(t=>t.id === mission.teamId)?.name}</span></p>
+                        <p className="font-bold">{mission.title} - <span className="font-normal text-gray-600">{teams?.find((t: Team) => t.id === mission.teamId)?.name}</span></p>
                         <p className="text-sm text-gray-500">Statut: En attente</p>
                     </div>
                     <ActionButton variant="secondary" size="sm" onClick={() => setSelectedMissionForDetails(mission)}>Voir l'annonce</ActionButton>
@@ -890,9 +888,9 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
     if (currentUser.permissionRole !== TeamRole.ADMIN && currentUser.permissionRole !== TeamRole.EDITOR) {
       return null;
     }
-    const myTeamMissions = localMissions.filter(m => m.teamId === team?.id);
-    const openMissions = myTeamMissions.filter(m => m.status === MissionStatus.OPEN).sort((a,b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
-    const archivedMissions = myTeamMissions.filter(m => m.status !== MissionStatus.OPEN).sort((a,b) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime());
+    const myTeamMissions = localMissions.filter((m: Mission) => m.teamId === team?.id);
+    const openMissions = myTeamMissions.filter((m: Mission) => m.status === MissionStatus.OPEN).sort((a: Mission, b: Mission) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime());
+    const archivedMissions = myTeamMissions.filter((m: Mission) => m.status !== MissionStatus.OPEN).sort((a: Mission, b: Mission) => new Date(b.endDate).getTime() - new Date(a.endDate).getTime());
     
     const MissionListItem = ({ mission }: { mission: Mission}) => (
          <div key={mission.id} className="p-3 bg-white rounded-md border flex justify-between items-center flex-wrap gap-2">
@@ -926,7 +924,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
               <h4 className="text-lg font-semibold text-gray-700 mb-2 border-b pb-1">Annonces Actives</h4>
               <div className="space-y-3">
                 {openMissions.length > 0 ? (
-                  openMissions.map(m => <MissionListItem key={m.id} mission={m} />)
+                  openMissions.map((m: Mission) => <MissionListItem key={m.id} mission={m} />)
                 ) : (
                   <p className="italic text-gray-500 p-3">Aucune annonce active.</p>
                 )}
@@ -937,7 +935,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
               <h4 className="text-lg font-semibold text-gray-700 mb-2 border-b pb-1">Annonces Archivées</h4>
               <div className="space-y-3">
                 {archivedMissions.length > 0 ? (
-                  archivedMissions.map(m => <MissionListItem key={m.id} mission={m} />)
+                  archivedMissions.map((m: Mission) => <MissionListItem key={m.id} mission={m} />)
                 ) : (
                   <p className="italic text-gray-500 p-3">Aucune annonce archivée.</p>
                 )}
@@ -1047,10 +1045,10 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
                              <strong>⚠️ Restriction :</strong> Un staff ne peut être assigné qu'à un seul poste
                            </div>
                            
-                           {localStaff && localStaff
-                             .map(member => {
+                                                       {localStaff && localStaff
+                              .map((member: StaffMember) => {
                             // Vérifier la disponibilité (conflits d'événements)
-                            const isUnavailable = localRaceEvents.some(otherEvent => {
+                            const isUnavailable = localRaceEvents.some((otherEvent: RaceEvent) => {
                               if (otherEvent.id === assignmentModalEvent.id || !(otherEvent.selectedStaffIds || []).includes(member.id)) {
                                 return false;
                               }
@@ -1082,8 +1080,8 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
                                     
                                     if (isCurrentlySelected) {
                                       // Désélectionner : toujours autorisé
-                                      const newSelection = selectedForRole.filter(id => id !== member.id);
-                                      setModalAssignments(prev => ({...prev, [roleKey]: newSelection}));
+                                      const newSelection = selectedForRole.filter((id: string) => id !== member.id);
+                                      setModalAssignments((prev: Partial<Record<StaffRoleKey, string[]>>) => ({...prev, [roleKey]: newSelection}));
                                     } else {
                                       // Vérifier si le staff est déjà assigné à un autre poste
                                       const isAlreadyAssignedElsewhere = Object.entries(modalAssignments).some(([otherRoleKey, otherRoleIds]) => {
@@ -1099,7 +1097,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
                                       
                                       // Assignation autorisée
                                       const newSelection = [...selectedForRole, member.id];
-                                      setModalAssignments(prev => ({...prev, [roleKey]: newSelection}));
+                                      setModalAssignments((prev: Partial<Record<StaffRoleKey, string[]>>) => ({...prev, [roleKey]: newSelection}));
                                     }
                                   }}
                                   className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
@@ -1132,9 +1130,9 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
                   <div>
                     <label className="block text-sm font-medium text-gray-700">Véhicules assignés à l'événement</label>
                     <div className="mt-1 p-2 border rounded-md space-y-1 bg-gray-50 max-h-40 overflow-y-auto">
-                      {vehicles.map(vehicle => {
+                      {vehicles.map((vehicle: Vehicle) => {
                         const isAssignedToThisEvent = assignmentModalEvent.selectedVehicleIds?.includes(vehicle.id) || false;
-                        const isUnavailable = localRaceEvents.some(otherEvent => {
+                        const isUnavailable = localRaceEvents.some((otherEvent: RaceEvent) => {
                           if (otherEvent.id === assignmentModalEvent.id || !(otherEvent.selectedVehicleIds || []).includes(vehicle.id)) {
                             return false;
                           }
@@ -1156,18 +1154,18 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
                               onChange={() => {
                                 const currentVehicleIds = assignmentModalEvent.selectedVehicleIds || [];
                                 const newVehicleIds = isAssignedToThisEvent
-                                  ? currentVehicleIds.filter(id => id !== vehicle.id)
+                                  ? currentVehicleIds.filter((id: string) => id !== vehicle.id)
                                   : [...currentVehicleIds, vehicle.id];
                                 
                                 // Mettre à jour l'événement localement
-                                setLocalRaceEvents(prevEvents => prevEvents.map(event => 
+                                setLocalRaceEvents((prevEvents: RaceEvent[]) => prevEvents.map((event: RaceEvent) => 
                                   event.id === assignmentModalEvent.id 
                                     ? { ...event, selectedVehicleIds: newVehicleIds }
                                     : event
                                 ));
                                 
                                 // Mettre à jour assignmentModalEvent
-                                setAssignmentModalEvent(prev => prev ? { ...prev, selectedVehicleIds: newVehicleIds } : null);
+                                setAssignmentModalEvent((prev: RaceEvent | null) => prev ? { ...prev, selectedVehicleIds: newVehicleIds } : null);
                               }}
                               className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                             />
@@ -1198,12 +1196,12 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
             <p className="italic text-gray-500 text-center py-4">Aucun candidat pour le moment.</p>
           ) : (
             <div className="space-y-2 max-h-[70vh] overflow-y-auto p-1">
-              {(missionForApplicants.applicants || []).map(applicantId => {
-                const applicantUser = users.find(u => u.id === applicantId);
+              {(missionForApplicants.applicants || []).map((applicantId: string) => {
+                const applicantUser = users?.find((u: User) => u.id === applicantId);
                 if (!applicantUser) {
                     return <div key={applicantId} className="p-2 bg-red-100 rounded-md">Profil candidat non trouvé (ID: {applicantId})</div>;
                 }
-                const staffProfileForApplicant = localStaff ? localStaff.find(s => s.email === applicantUser.email) : null || users.find(u => u.id === applicantId);
+                const staffProfileForApplicant = localStaff ? localStaff.find((s: StaffMember) => s.email === applicantUser.email) : null;
 
                 const applicant = {
                     id: applicantUser.id,
@@ -1220,8 +1218,8 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
                     education: (staffProfileForApplicant as StaffMember)?.education || [],
                 };
                 
-                const ratings = performanceEntries.flatMap(pe => pe.staffRatings || []).filter(r => r.staffId === applicant.id && r.rating > 0);
-                const averageRating = ratings.length > 0 ? ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length : 0;
+                const ratings = performanceEntries?.flatMap((pe: PerformanceEntry) => pe.staffRatings || []).filter((r: any) => r.staffId === applicant.id && r.rating > 0) || [];
+                const averageRating = ratings.length > 0 ? ratings.reduce((sum: number, r: any) => sum + r.rating, 0) / ratings.length : 0;
                 
                 return (
                     <button 
@@ -1293,7 +1291,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
                         <div className="mt-3 pt-3 border-t">
                             <h5 className="text-sm font-semibold text-gray-700">Expériences</h5>
                             <ul className="list-disc list-inside mt-1 space-y-1 text-sm text-gray-600">
-                                {viewingApplicant.workHistory.map(exp => (
+                                {viewingApplicant.workHistory.map((exp: WorkExperience) => (
                                     <li key={exp.id}>
                                         <strong>{exp.position}</strong> chez {exp.company} ({exp.startDate} - {exp.endDate || 'Actuel'})
                                     </li>
@@ -1306,7 +1304,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
                         <div className="mt-3 pt-3 border-t">
                             <h5 className="text-sm font-semibold text-gray-700">Formations</h5>
                             <ul className="list-disc list-inside mt-1 space-y-1 text-sm text-gray-600">
-                                {viewingApplicant.education.map(edu => (
+                                {viewingApplicant.education.map((edu: EducationOrCertification) => (
                                     <li key={edu.id}>
                                         <strong>{edu.degree}</strong> - {edu.institution} ({edu.year})
                                     </li>
@@ -1319,7 +1317,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
                         <div className="mt-3 pt-3 border-t">
                             <h5 className="text-sm font-semibold text-gray-700">Compétences</h5>
                             <div className="flex flex-wrap gap-2 mt-2">
-                                {viewingApplicant.skills.map(skill => (
+                                {viewingApplicant.skills.map((skill: string) => (
                                     <span key={skill} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">{skill}</span>
                                 ))}
                             </div>
@@ -1333,7 +1331,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
       {selectedMissionForDetails && (
         <Modal isOpen={!!selectedMissionForDetails} onClose={() => setSelectedMissionForDetails(null)} title={selectedMissionForDetails.title}>
             <div className="space-y-4 text-gray-700">
-                <p><strong>Équipe:</strong> {teams.find(t => t.id === selectedMissionForDetails.teamId)?.name}</p>
+                <p><strong>Équipe:</strong> {teams?.find((t: Team) => t.id === selectedMissionForDetails.teamId)?.name}</p>
                 <p><strong>Rôle:</strong> {selectedMissionForDetails.role}</p>
                 <p><strong>Dates:</strong> Du {new Date(selectedMissionForDetails.startDate+'T12:00:00Z').toLocaleDateString('fr-CA')} au {new Date(selectedMissionForDetails.endDate+'T12:00:00Z').toLocaleDateString('fr-CA')}</p>
                 <p><strong>Lieu:</strong> {selectedMissionForDetails.location}</p>
@@ -1346,7 +1344,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
                     <div>
                         <strong className="font-semibold text-gray-800">Prérequis:</strong>
                         <ul className="list-disc list-inside mt-1">
-                            {selectedMissionForDetails.requirements.map((req, i) => <li key={i}>{req}</li>)}
+                            {selectedMissionForDetails.requirements.map((req: string, i: number) => <li key={i}>{req}</li>)}
                         </ul>
                     </div>
                 )}
@@ -1356,38 +1354,38 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
 
       <Modal isOpen={isPostMissionModalOpen} onClose={() => setIsPostMissionModalOpen(false)} title={editingMission ? "Modifier la mission" : "Publier une nouvelle mission"}>
         <div className="space-y-3">
-          <input type="text" placeholder="Titre de la mission" value={newMissionData.title} onChange={e => setNewMissionData(p => ({ ...p, title: e.target.value }))} className={lightInputClass}/>
-          <select value={newMissionData.role} onChange={e => setNewMissionData(p => ({ ...p, role: e.target.value as StaffRole }))} className={lightSelectClass}>{Object.values(StaffRole).map(r => <option key={r} value={r}>{r}</option>)}</select>
+          <input type="text" placeholder="Titre de la mission" value={newMissionData.title} onChange={(e: ChangeEvent<HTMLInputElement>) => setNewMissionData((p: any) => ({ ...p, title: e.target.value }))} className={lightInputClass}/>
+          <select value={newMissionData.role} onChange={(e: ChangeEvent<HTMLSelectElement>) => setNewMissionData((p: any) => ({ ...p, role: e.target.value as StaffRole }))} className={lightSelectClass}>{Object.values(StaffRole).map((r: StaffRole) => <option key={r} value={r}>{r}</option>)}</select>
           <div className="grid grid-cols-2 gap-2">
-            <input type="date" value={newMissionData.startDate} onChange={e => setNewMissionData(p => ({ ...p, startDate: e.target.value }))} className={lightInputClass}/>
-            <input type="date" value={newMissionData.endDate} onChange={e => setNewMissionData(p => ({ ...p, endDate: e.target.value }))} className={lightInputClass}/>
+            <input type="date" value={newMissionData.startDate} onChange={(e: ChangeEvent<HTMLInputElement>) => setNewMissionData((p: any) => ({ ...p, startDate: e.target.value }))} className={lightInputClass}/>
+            <input type="date" value={newMissionData.endDate} onChange={(e: ChangeEvent<HTMLInputElement>) => setNewMissionData((p: any) => ({ ...p, endDate: e.target.value }))} className={lightInputClass}/>
           </div>
-          <input type="text" placeholder="Lieu" value={newMissionData.location} onChange={e => setNewMissionData(p => ({ ...p, location: e.target.value }))} className={lightInputClass}/>
-          <textarea placeholder="Description de la mission" value={newMissionData.description} onChange={e => setNewMissionData(p => ({ ...p, description: e.target.value }))} rows={3} className={lightInputClass}></textarea>
+          <input type="text" placeholder="Lieu" value={newMissionData.location} onChange={(e: ChangeEvent<HTMLInputElement>) => setNewMissionData((p: any) => ({ ...p, location: e.target.value }))} className={lightInputClass}/>
+          <textarea placeholder="Description de la mission" value={newMissionData.description} onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setNewMissionData((p: any) => ({ ...p, description: e.target.value }))} rows={3} className={lightInputClass}></textarea>
           <div>
             <label className="text-sm font-medium text-gray-700">Prérequis (un par ligne)</label>
             <textarea placeholder="Permis B obligatoire
-Expérience appréciée" value={Array.isArray(newMissionData.requirements) ? newMissionData.requirements.join('\\n') : ''} onChange={e => setNewMissionData(p => ({ ...p, requirements: e.target.value.split('\\n') }))} className={lightInputClass} rows={3}></textarea>
+Expérience appréciée" value={Array.isArray(newMissionData.requirements) ? newMissionData.requirements.join('\\n') : ''} onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setNewMissionData((p: any) => ({ ...p, requirements: e.target.value.split('\\n') }))} className={lightInputClass} rows={3}></textarea>
           </div>
           <fieldset className="border p-3 rounded-md">
             <legend className="text-sm font-medium">Rémunération</legend>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
                 <div>
                     <label>Type de prestation</label>
-                    <select value={newMissionData.compensationType} onChange={e => setNewMissionData(p => ({ ...p, compensationType: e.target.value as MissionCompensationType }))} className={lightSelectClass}>
-                        {Object.values(MissionCompensationType).map(ct => <option key={ct} value={ct}>{ct}</option>)}
+                    <select value={newMissionData.compensationType} onChange={(e: ChangeEvent<HTMLSelectElement>) => setNewMissionData((p: any) => ({ ...p, compensationType: e.target.value as MissionCompensationType }))} className={lightSelectClass}>
+                        {Object.values(MissionCompensationType).map((ct: MissionCompensationType) => <option key={ct} value={ct}>{ct}</option>)}
                     </select>
                 </div>
                 {newMissionData.compensationType === MissionCompensationType.FREELANCE && (
                     <div>
                         <label>Tarif journalier (€)</label>
-                        <input type="number" placeholder="150" value={newMissionData.dailyRate || ''} onChange={e => setNewMissionData(p => ({ ...p, dailyRate: e.target.value ? parseFloat(e.target.value) : undefined }))} className={lightInputClass}/>
+                        <input type="number" placeholder="150" value={newMissionData.dailyRate || ''} onChange={(e: ChangeEvent<HTMLInputElement>) => setNewMissionData((p: any) => ({ ...p, dailyRate: e.target.value ? parseFloat(e.target.value) : undefined }))} className={lightInputClass}/>
                     </div>
                 )}
             </div>
             <div className="mt-4">
                 <label>Détails sur la compensation</label>
-                <input type="text" placeholder="Ex: Logement et repas pris en charge" value={newMissionData.compensation} onChange={e => setNewMissionData(p => ({ ...p, compensation: e.target.value }))} className={lightInputClass}/>
+                <input type="text" placeholder="Ex: Logement et repas pris en charge" value={newMissionData.compensation} onChange={(e: ChangeEvent<HTMLInputElement>) => setNewMissionData((p: any) => ({ ...p, compensation: e.target.value }))} className={lightInputClass}/>
             </div>
           </fieldset>
           <div className="flex justify-end"><ActionButton onClick={handleSaveMission}>{editingMission ? "Sauvegarder" : "Publier"}</ActionButton></div>
