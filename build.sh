@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Script de build optimisé pour Netlify
+# Script de build optimisé pour Netlify avec gestion Rollup
 echo "🚀 Démarrage du build..."
 
 # Vérification de la version Node.js
@@ -34,6 +34,14 @@ else
     fi
 fi
 
+# Installation spécifique de la dépendance Rollup manquante
+echo "🔧 Installation spécifique de @rollup/rollup-linux-x64-gnu..."
+if npm install @rollup/rollup-linux-x64-gnu@^4.9.0 --legacy-peer-deps --force; then
+    echo "✅ @rollup/rollup-linux-x64-gnu installé avec succès"
+else
+    echo "⚠️ Impossible d'installer @rollup/rollup-linux-x64-gnu, tentative de build sans..."
+fi
+
 # Vérification des dépendances
 echo "🔍 Vérification des dépendances..."
 npm ls --depth=0 || echo "⚠️ Certaines dépendances peuvent avoir des avertissements"
@@ -50,6 +58,22 @@ for dep in "${CRITICAL_DEPS[@]}"; do
     fi
 done
 
+# Vérification spécifique de Rollup
+echo "🔍 Vérification de Rollup..."
+if npm ls rollup >/dev/null 2>&1; then
+    echo "✅ Rollup installé"
+    # Vérification des dépendances natives
+    if [ -d "node_modules/@rollup" ]; then
+        echo "✅ Dossier @rollup présent"
+        ls -la node_modules/@rollup/ || echo "⚠️ Impossible de lister @rollup"
+    else
+        echo "⚠️ Dossier @rollup manquant"
+    fi
+else
+    echo "❌ Rollup manquant - tentative d'installation..."
+    npm install rollup@^4.9.0 --legacy-peer-deps
+fi
+
 # Build du projet
 echo "🔨 Build du projet..."
 if npm run build; then
@@ -60,7 +84,36 @@ else
         echo "✅ Build Vite direct réussi !"
     else
         echo "❌ Échec du build Vite direct"
-        exit 1
+        echo "🔧 Tentative de build avec configuration minimale..."
+        
+        # Création d'une configuration Vite minimale
+        cat > vite.minimal.config.ts << 'EOF'
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+
+export default defineConfig({
+  plugins: [react()],
+  build: {
+    target: 'es2020',
+    minify: 'esbuild',
+    rollupOptions: {
+      external: ['@rollup/rollup-linux-x64-gnu'],
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom']
+        }
+      }
+    }
+  }
+})
+EOF
+        
+        if npx vite build --config vite.minimal.config.ts; then
+            echo "✅ Build avec configuration minimale réussi !"
+        else
+            echo "❌ Échec du build avec configuration minimale"
+            exit 1
+        fi
     fi
 fi
 
@@ -97,3 +150,4 @@ echo "   - Node.js: $(node --version)"
 echo "   - npm: $(npm --version)"
 echo "   - Dossier dist: $(du -sh dist 2>/dev/null || echo 'N/A')"
 echo "   - Fichiers générés: $(find dist -type f | wc -l)"
+echo "   - Rollup: $(npm ls rollup 2>/dev/null | head -1 || echo 'Non installé')"
