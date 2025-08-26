@@ -26,5 +26,15 @@
     "@types/react-dom": "^19.0.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
+  },
+  "overrides": {
+    "frappe-charts": {
+      "dependencies": {
+        "chart.js": "^4.0.0"
+      }
+    }
+  },
+  "resolutions": {
+    "frappe-charts": "^1.6.2"
   }
 }
