@@ -15,7 +15,8 @@ export default defineConfig(({ mode }) => {
       },
       // Configuration pour Node 20+
       optimizeDeps: {
-        include: ['react', 'react-dom', 'frappe-charts']
+        include: ['react', 'react-dom', 'frappe-charts'],
+        exclude: []
       },
       build: {
         target: 'es2022',
@@ -29,6 +30,10 @@ export default defineConfig(({ mode }) => {
             }
           }
         }
+      },
+      // Configuration TypeScript simplifiée
+      esbuild: {
+        jsx: 'automatic'
       }
     };
 });
