@@ -14,6 +14,7 @@ import PaperAirplaneIcon from '../components/icons/PaperAirplaneIcon';
 import TalentSearchTab from '../components/TalentSearchTab';
 import { RiderDetailModal } from '../components/RiderDetailModal';
 import { calculateRiderCharacteristics } from '../utils/performanceCalculations';
+import { getRiderCharacteristicSafe } from '../utils/riderUtils';
 import StarIcon from '../components/icons/StarIcon';
 
 interface ScoutingSectionProps {
@@ -190,8 +191,8 @@ const ScoutingSection: React.FC<ScoutingSectionProps> = ({ scoutingProfiles, onS
                 aValue = getAge(a.birthDate) ?? 99;
                 bValue = getAge(b.birthDate) ?? 99;
             } else if (sortConfig.key === 'charSprint' || sortConfig.key === 'charAnaerobic' || sortConfig.key === 'charPuncher' || sortConfig.key === 'charClimbing' || sortConfig.key === 'charRouleur') {
-                aValue = (a as any)[sortConfig.key] || 0;
-                bValue = (b as any)[sortConfig.key] || 0;
+                aValue = getRiderCharacteristicSafe(a, sortConfig.key);
+                bValue = getRiderCharacteristicSafe(b, sortConfig.key);
             } else {
                 aValue = a[sortConfig.key as keyof ScoutingProfile] ?? '';
                 bValue = b[sortConfig.key as keyof ScoutingProfile] ?? '';
@@ -397,7 +398,7 @@ const ScoutingSection: React.FC<ScoutingSectionProps> = ({ scoutingProfiles, onS
                 <td className="px-3 py-2 text-slate-300">{profile.potentialRating} / 5</td>
                 <td className="px-3 py-2 text-slate-300">{profile.qualitativeProfile}</td>
                 {SPIDER_CHART_CHARACTERISTICS_CONFIG.map(char => (
-                    <td key={char.key} className="px-3 py-2 font-mono text-slate-200">{((profile as any)[char.key] || 0).toFixed(0)}</td>
+                    <td key={char.key} className="px-3 py-2 font-mono text-slate-200">{getRiderCharacteristicSafe(profile, char.key).toFixed(0)}</td>
                 ))}
                 <td className="px-3 py-2 text-right space-x-1">
                   <ActionButton onClick={() => openEditModal(profile)} variant="secondary" size="sm" icon={<PencilIcon className="w-3 h-3"/>} />
@@ -475,7 +476,7 @@ const ScoutingSection: React.FC<ScoutingSectionProps> = ({ scoutingProfiles, onS
                   {selectedProfiles.map(p => (
                     <th key={p.id} className="p-2 border-l border-slate-700">
                       <p className="font-bold text-slate-100">{p.name}</p>
-                      <SpiderChart data={SPIDER_CHART_CHARACTERISTICS_CONFIG.map(char => ({ axis: char.label, value: (p as any)[char.key] || 0 }))} size={80}/>
+                      <SpiderChart data={SPIDER_CHART_CHARACTERISTICS_CONFIG.map(char => ({ axis: char.label, value: getRiderCharacteristicSafe(p, char.key) }))} size={80}/>
                     </th>
                   ))}
                 </tr>

@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { Rider } from '../types';
 import SectionWrapper from '../components/SectionWrapper';
 import { SPIDER_CHART_CHARACTERISTICS_CONFIG } from '../constants';
+import { getRiderCharacteristicSafe } from '../utils/riderUtils';
 
 const SpiderChart: React.FC<{ data: { axis: string; value: number }[]; size?: number; maxValue?: number }> = ({ data, size = 300, maxValue = 100 }) => {
     const numAxes = data.length;
@@ -92,7 +93,7 @@ export const AutomatedPerformanceProfileSection: React.FC<AutomatedPerformancePr
     const spiderChartData = useMemo(() => {
         return SPIDER_CHART_CHARACTERISTICS_CONFIG.map(char => ({
             axis: char.label,
-            value: (rider as any)[char.key] || 0,
+            value: getRiderCharacteristicSafe(rider, char.key),
         }));
     }, [rider]);
 
