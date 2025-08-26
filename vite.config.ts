@@ -15,11 +15,20 @@ export default defineConfig(({ mode }) => {
       },
       // Configuration pour Node 20+
       optimizeDeps: {
-        include: ['react', 'react-dom']
+        include: ['react', 'react-dom', 'frappe-charts']
       },
       build: {
         target: 'es2022',
-        minify: 'esbuild'
+        minify: 'esbuild',
+        rollupOptions: {
+          external: [],
+          output: {
+            manualChunks: {
+              vendor: ['react', 'react-dom'],
+              charts: ['frappe-charts']
+            }
+          }
+        }
       }
     };
 });
