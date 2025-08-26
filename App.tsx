@@ -25,6 +25,8 @@ import {
   RiderEventSelection,
   ScoutingProfile,
   StaffMember,
+  StaffRole,
+  StaffStatus,
   StockItem,
   TeamProduct,
   TeamLevel,
