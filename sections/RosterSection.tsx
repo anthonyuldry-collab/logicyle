@@ -169,7 +169,8 @@ const SeasonPlanningTab: React.FC<SeasonPlanningTabProps> = ({
         return raceDays;
     }, [riders, riderEventSelections, raceEvents]);
 
-    const handlePlanningGridSelectionChange = (riderId: string, eventId: string, newStatus: RiderEventStatus) => {
+    const handlePlanningGridSelectionChange = async (riderId: string, eventId: string, newStatus: RiderEventStatus) => {
+        // Mise à jour locale immédiate pour l'interface
         setRiderEventSelections(prev => {
             const existingSelectionIndex = prev.findIndex(s => s.riderId === riderId && s.eventId === eventId);
             
@@ -189,6 +190,7 @@ const SeasonPlanningTab: React.FC<SeasonPlanningTabProps> = ({
             }
         });
 
+        // Mise à jour locale des événements
         setRaceEvents(prev => prev.map(e => {
             if (e.id === eventId) {
                 const isTitu = newStatus === RiderEventStatus.TITULAIRE;
@@ -202,6 +204,38 @@ const SeasonPlanningTab: React.FC<SeasonPlanningTabProps> = ({
             }
             return e;
         }));
+
+        // Sauvegarde automatique dans Firebase
+        try {
+            if (appState.activeTeamId) {
+                // Sauvegarder la sélection du coureur
+                if (newStatus !== RiderEventStatus.NON_RETENU) {
+                    const selectionData = {
+                        id: generateId(),
+                        eventId,
+                        riderId,
+                        status: newStatus,
+                        createdAt: new Date().toISOString()
+                    };
+                    
+                    // Import dynamique pour éviter les problèmes de dépendances circulaires
+                    const { saveData } = await import('../services/firebaseService');
+                    await saveData(appState.activeTeamId, 'riderEventSelections', selectionData);
+                    console.log('✅ Sélection sauvegardée dans Firebase:', selectionData);
+                }
+
+                // Sauvegarder l'événement mis à jour
+                const updatedEvent = raceEvents.find(e => e.id === eventId);
+                if (updatedEvent) {
+                    const { saveData } = await import('../services/firebaseService');
+                    await saveData(appState.activeTeamId, 'raceEvents', updatedEvent);
+                    console.log('✅ Événement mis à jour dans Firebase:', updatedEvent.id);
+                }
+            }
+        } catch (error) {
+            console.error('❌ Erreur lors de la sauvegarde Firebase:', error);
+            alert('⚠️ Erreur lors de la sauvegarde. Les changements ne sont que temporaires.');
+        }
     };
 
     const renderGridView = () => (
@@ -379,6 +413,7 @@ export const RosterSection: React.FC<RosterSectionProps> = ({
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [editingRider, setEditingRider] = useState<Rider | null>(null);
   const [isNewRider, setIsNewRider] = useState(false);
+  const [isViewMode, setIsViewMode] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [genderFilter, setGenderFilter] = useState<'all' | Sex>('all');
   const [ageCategoryFilter, setAgeCategoryFilter] = useState<'all' | string>('all');
@@ -572,6 +607,14 @@ export const RosterSection: React.FC<RosterSectionProps> = ({
   const openEditModal = (rider: Rider) => {
     setIsNewRider(false);
     setEditingRider(rider);
+    setIsViewMode(false);
+    setIsDetailModalOpen(true);
+  };
+
+  const openViewModal = (rider: Rider) => {
+    setIsNewRider(false);
+    setEditingRider(rider);
+    setIsViewMode(true);
     setIsDetailModalOpen(true);
   };
 
@@ -598,27 +641,58 @@ export const RosterSection: React.FC<RosterSectionProps> = ({
     });
   };
 
-  const handleSaveGrid = () => {
+  const handleSaveGrid = async () => {
     if (!selectedEventForGrid) return;
-    setRiderEventSelections(prev => {
-        // Filter out all selections for the current event from the global state
-        const otherSelections = prev.filter(s => s.eventId !== selectedEventForGrid.id);
-        // Add back only the new or updated selections
-        return [...otherSelections, ...gridSelections.filter(s => s.status !== RiderEventStatus.NON_RETENU)];
-    });
     
-    setRaceEvents(prev => prev.map(e => {
-        if(e.id === selectedEventForGrid.id) {
-            const titulairesIds = gridSelections
-                .filter(s => s.status === RiderEventStatus.TITULAIRE)
-                .map(s => s.riderId);
-            return {...e, selectedRiderIds: titulairesIds};
-        }
-        return e;
-    }));
-    
-    setActiveTab('roster');
-    setSelectedEventForGrid(null);
+    try {
+      // Mise à jour locale
+      setRiderEventSelections(prev => {
+          // Filter out all selections for the current event from the global state
+          const otherSelections = prev.filter(s => s.eventId !== selectedEventForGrid.id);
+          // Add back only the new or updated selections
+          return [...otherSelections, ...gridSelections.filter(s => s.status !== RiderEventStatus.NON_RETENU)];
+      });
+      
+      setRaceEvents(prev => prev.map(e => {
+          if(e.id === selectedEventForGrid.id) {
+              const titulairesIds = gridSelections
+                  .filter(s => s.status === RiderEventStatus.TITULAIRE)
+                  .map(s => s.riderId);
+              return {...e, selectedRiderIds: titulairesIds};
+          }
+          return e;
+      }));
+
+      // Sauvegarde automatique dans Firebase
+      if (appState.activeTeamId) {
+          const { saveData } = await import('../services/firebaseService');
+          
+          // Sauvegarder toutes les sélections mises à jour
+          const selectionsToSave = gridSelections.filter(s => s.status !== RiderEventStatus.NON_RETENU);
+          for (const selection of selectionsToSave) {
+              await saveData(appState.activeTeamId, 'riderEventSelections', selection);
+          }
+          
+          // Sauvegarder l'événement mis à jour
+          const updatedEvent = raceEvents.find(e => e.id === selectedEventForGrid.id);
+          if (updatedEvent) {
+              const titulairesIds = gridSelections
+                  .filter(s => s.status === RiderEventStatus.TITULAIRE)
+                  .map(s => s.riderId);
+              const eventToSave = { ...updatedEvent, selectedRiderIds: titulairesIds };
+              await saveData(appState.activeTeamId, 'raceEvents', eventToSave);
+          }
+          
+          console.log('✅ Grille de sélection sauvegardée dans Firebase');
+      }
+      
+      setActiveTab('roster');
+      setSelectedEventForGrid(null);
+      
+    } catch (error) {
+      console.error('❌ Erreur lors de la sauvegarde Firebase:', error);
+      alert('⚠️ Erreur lors de la sauvegarde. Les changements ne sont que temporaires.');
+    }
   };
     
   const tabButtonStyle = (tabName: 'roster' | 'selectionGrid' | 'groupMonitoring' | 'seasonPlanning') => 
@@ -747,11 +821,41 @@ export const RosterSection: React.FC<RosterSectionProps> = ({
                         <p><strong>Forme:</strong> {rider.forme || '?'}</p>
                         <p><strong>Moral:</strong> {rider.moral || '?'}</p>
                         <p><strong>Santé:</strong> {rider.healthCondition || '-'}</p>
+                        
+                        {/* Âge et catégorie d'âge en haut à droite */}
+                        {(() => {
+                            const { category, age } = getAgeCategory(rider.birthDate);
+                            return (
+                                <div className="mt-2 pt-2 border-t border-gray-200">
+                                    <p><strong>Âge:</strong> {age !== null ? `${age} ans` : '?'} <span className="text-blue-600 font-medium">({category})</span></p>
+                                </div>
+                            );
+                        })()}
+                        
+                        {/* Catégories de niveau (sélectionnables) */}
+                        {rider.categories && rider.categories.length > 0 && (
+                            <div className="mt-2 pt-2 border-t border-gray-200">
+                                <p><strong>Niveaux:</strong></p>
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                    {rider.categories
+                                        .filter(cat => !['U15', 'U17', 'U19', 'U23', 'Senior'].includes(cat))
+                                        .map(cat => (
+                                            <span key={cat} className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                                                {cat}
+                                            </span>
+                                        ))
+                                    }
+                                </div>
+                            </div>
+                        )}
                     </div>
                  </div>
                  <div className="mt-auto p-2 border-t border-gray-200 flex justify-end space-x-1 bg-gray-50">
                     <ActionButton onClick={() => openEditModal(rider)} variant="secondary" size="sm" icon={<PencilIcon className="w-4 h-4"/>} title="Modifier">
                         <span className="sr-only">Modifier</span>
+                    </ActionButton>
+                    <ActionButton onClick={() => openViewModal(rider)} variant="info" size="sm" icon={<EyeIcon className="w-4 h-4"/>} title="Voir">
+                        <span className="sr-only">Voir</span>
                     </ActionButton>
                     <ActionButton onClick={() => handleDeleteRider(rider)} variant="danger" size="sm" icon={<TrashIcon className="w-4 h-4"/>} title="Supprimer">
                         <span className="sr-only">Supprimer</span>
@@ -957,7 +1061,7 @@ export const RosterSection: React.FC<RosterSectionProps> = ({
             onClose={() => setIsDetailModalOpen(false)}
             rider={editingRider}
             onSaveRider={handleSaveRider}
-            isEditMode={isNewRider}
+            isEditMode={!isViewMode && isNewRider}
             raceEvents={raceEvents}
             riderEventSelections={riderEventSelections}
             performanceEntries={performanceEntries}

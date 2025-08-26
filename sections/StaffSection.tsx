@@ -52,6 +52,7 @@ interface StaffSectionProps {
   raceEvents?: RaceEvent[];
   eventStaffAvailabilities?: EventStaffAvailability[];
   eventBudgetItems?: EventBudgetItem[];
+  setEventBudgetItems?: React.Dispatch<React.SetStateAction<EventBudgetItem[]>>;
   team?: Team;
   performanceEntries?: PerformanceEntry[];
   missions?: Mission[];
@@ -161,6 +162,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
   raceEvents,
   eventStaffAvailabilities,
   eventBudgetItems,
+  setEventBudgetItems,
   currentUser,
   team,
   performanceEntries,
@@ -517,7 +519,36 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
       console.log('Nouvelles assignations:', assignments);
       console.log('Synchronisation bidirectionnelle effectuée');
       
-      // 7. SAUVEGARDE IMMÉDIATE FIREBASE (plus de timeout !)
+      // 7. CALCUL AUTOMATIQUE DU BUDGET DES VACATAIRES
+      console.log('💰 Calcul automatique du budget des vacataires...');
+      const vacataireBudgetItems = calculateVacataireBudget(eventId, assignments);
+      
+      if (vacataireBudgetItems.length > 0) {
+        console.log(`💰 ${vacataireBudgetItems.length} éléments de budget vacataire calculés:`, vacataireBudgetItems);
+        
+        // Mettre à jour les éléments de budget existants ou en créer de nouveaux
+        if (eventBudgetItems && setEventBudgetItems) {
+          setEventBudgetItems((prevBudgetItems: EventBudgetItem[]) => {
+            // Supprimer les anciens éléments de budget vacataire pour cet événement
+            const filteredItems = prevBudgetItems.filter(item => 
+              !(item.category === BudgetItemCategory.SALAIRES && 
+                item.description.includes('Vacataire') && 
+                item.eventId === eventId)
+            );
+            
+            // Ajouter les nouveaux éléments de budget vacataire
+            return [...filteredItems, ...vacataireBudgetItems];
+          });
+          
+          console.log('✅ Budget des vacataires mis à jour automatiquement');
+        } else {
+          console.warn('⚠️ Impossible de mettre à jour le budget : setEventBudgetItems non disponible');
+        }
+      } else {
+        console.log('ℹ️ Aucun vacataire assigné, pas de budget à calculer');
+      }
+      
+      // 8. SAUVEGARDE IMMÉDIATE FIREBASE (plus de timeout !)
       console.log('🚀 Démarrage immédiat de la sauvegarde Firebase...');
       
       // Sauvegarde immédiate de l'événement
@@ -958,6 +989,48 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
             </div>
         </div>
     );
+  };
+
+  const calculateVacataireBudget = (eventId: string, assignments: Partial<Record<StaffRoleKey, string[]>>): EventBudgetItem[] => {
+    const budgetItems: EventBudgetItem[] = [];
+    
+    // Récupérer l'événement pour connaître ses dates
+    const event = localRaceEvents.find(e => e.id === eventId);
+    if (!event) return budgetItems;
+    
+    // Calculer la durée de l'événement
+    const startDate = new Date(event.date + 'T00:00:00Z');
+    const endDate = new Date((event.endDate || event.date) + 'T23:59:59Z');
+    const durationDays = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+    
+    // Parcourir toutes les assignations pour identifier les vacataires
+    Object.entries(assignments).forEach(([roleKey, staffIds]) => {
+      if (!Array.isArray(staffIds)) return;
+      
+      staffIds.forEach(staffId => {
+        const staffMember = localStaff.find(s => s.id === staffId);
+        if (!staffMember || staffMember.status !== StaffStatus.VACATAIRE || !staffMember.dailyRate) return;
+        
+        // Calculer le coût total pour ce vacataire
+        const totalCost = staffMember.dailyRate * durationDays;
+        
+        // Créer l'élément de budget
+        const budgetItem: EventBudgetItem = {
+          id: `vacataire_${staffId}_${eventId}_${Date.now()}`,
+          eventId: eventId,
+          category: BudgetItemCategory.SALAIRES,
+          description: `Vacataire ${staffMember.firstName} ${staffMember.lastName} - ${roleKey} (${durationDays} jour${durationDays > 1 ? 's' : ''})`,
+          estimatedCost: totalCost,
+          actualCost: undefined,
+          notes: `Tarif journalier: ${staffMember.dailyRate}€/jour\nRôle: ${roleKey}\nPériode: ${startDate.toLocaleDateString('fr-FR')} au ${endDate.toLocaleDateString('fr-FR')}`,
+        };
+        
+        budgetItems.push(budgetItem);
+        console.log(`💰 Budget vacataire calculé pour ${staffMember.firstName} ${staffMember.lastName}: ${totalCost}€ (${durationDays} jours × ${staffMember.dailyRate}€/jour)`);
+      });
+    });
+    
+    return budgetItems;
   };
 
   return (
