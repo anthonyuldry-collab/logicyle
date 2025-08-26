@@ -25,6 +25,8 @@ import { useTranslations } from '../hooks/useTranslations';
 import { useAppStateSafe } from '../hooks/useAppState';
 import CalendarIcon from '../components/icons/CalendarIcon';
 import TableCellsIcon from '../components/icons/TableCellsIcon';
+import { getAgeCategory } from '../utils/ageUtils';
+import { getRiderCharacteristicSafe } from '../utils/riderUtils';
 
 
 interface RosterSectionProps {
@@ -44,40 +46,7 @@ interface RosterSectionProps {
 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
 
-const getAgeCategory = (birthDate?: string): { category: string; age: number | null } => {
-    if (!birthDate || typeof birthDate !== 'string') {
-        return { category: 'N/A', age: null };
-    }
-    
-    // Robust date parsing to avoid timezone issues.
-    const parts = birthDate.split('-').map(p => parseInt(p, 10));
-    if (parts.length !== 3 || parts.some(isNaN)) {
-        return { category: 'N/A', age: null };
-    }
-    const [year, month, day] = parts;
-    const birth = new Date(Date.UTC(year, month - 1, day));
-    
-    const today = new Date();
-    const utcToday = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()));
-    
-    let age = utcToday.getUTCFullYear() - birth.getUTCFullYear();
-    const m = utcToday.getUTCMonth() - birth.getUTCMonth();
-    if (m < 0 || (m === 0 && utcToday.getUTCDate() < birth.getUTCDate())) {
-        age--;
-    }
-    
-    if (age < 0 || age > 120) { // Sanity check
-        return { category: 'N/A', age: null };
-    }
-
-    let category = 'Senior';
-    if (age <= 14) category = 'U15';
-    else if (age <= 16) category = 'U17';
-    else if (age <= 18) category = 'U19';
-    else if (age <= 22) category = 'U23';
-    
-    return { category, age };
-};
+// Suppression de la fonction locale getAgeCategory - utilisation de l'import
 
 const calculateWkg = (power?: number, weight?: number): string => {
   if (typeof power === 'number' && typeof weight === 'number' && weight > 0) {
@@ -120,6 +89,7 @@ interface SeasonPlanningTabProps {
     riderEventSelections: RiderEventSelection[];
     setRiderEventSelections: React.Dispatch<React.SetStateAction<RiderEventSelection[]>>;
     setRaceEvents: React.Dispatch<React.SetStateAction<RaceEvent[]>>;
+    appState: AppState;
 }
 
 const SeasonPlanningTab: React.FC<SeasonPlanningTabProps> = ({
@@ -128,6 +98,7 @@ const SeasonPlanningTab: React.FC<SeasonPlanningTabProps> = ({
     riderEventSelections,
     setRiderEventSelections,
     setRaceEvents,
+    appState,
 }) => {
     const [viewMode, setViewMode] = useState<'grid' | 'calendar'>('grid');
     const [calendarDate, setCalendarDate] = useState(new Date());
@@ -222,7 +193,6 @@ const SeasonPlanningTab: React.FC<SeasonPlanningTabProps> = ({
                     // Import dynamique pour éviter les problèmes de dépendances circulaires
                     const { saveData } = await import('../services/firebaseService');
                     await saveData(appState.activeTeamId, 'riderEventSelections', selectionData);
-                    console.log('✅ Sélection sauvegardée dans Firebase:', selectionData);
                 }
 
                 // Sauvegarder l'événement mis à jour
@@ -230,11 +200,9 @@ const SeasonPlanningTab: React.FC<SeasonPlanningTabProps> = ({
                 if (updatedEvent) {
                     const { saveData } = await import('../services/firebaseService');
                     await saveData(appState.activeTeamId, 'raceEvents', updatedEvent);
-                    console.log('✅ Événement mis à jour dans Firebase:', updatedEvent.id);
                 }
             }
         } catch (error) {
-            console.error('❌ Erreur lors de la sauvegarde Firebase:', error);
             alert('⚠️ Erreur lors de la sauvegarde. Les changements ne sont que temporaires.');
         }
     };
@@ -687,14 +655,13 @@ export const RosterSection: React.FC<RosterSectionProps> = ({
               await saveData(appState.activeTeamId, 'raceEvents', eventToSave);
           }
           
-          console.log('✅ Grille de sélection sauvegardée dans Firebase');
+          // Grille de sélection sauvegardée
       }
       
       setActiveTab('roster');
       setSelectedEventForGrid(null);
       
     } catch (error) {
-      console.error('❌ Erreur lors de la sauvegarde Firebase:', error);
       alert('⚠️ Erreur lors de la sauvegarde. Les changements ne sont que temporaires.');
     }
   };
@@ -1013,8 +980,8 @@ export const RosterSection: React.FC<RosterSectionProps> = ({
                                     {SPIDER_CHART_CHARACTERISTICS_CONFIG.map(char => (
                                         <td key={char.key} className="px-2 py-1.5">
                                             <div className="flex items-center gap-1.5">
-                                                <div className="w-14 bg-gray-200 rounded-full h-1.5"><div className={`${getScoreColor((rider as any)[char.key] || 0)} h-1.5 rounded-full`} style={{width: `${(rider as any)[char.key] || 0}%`}}></div></div>
-                                                <span className="font-semibold text-xs">{((rider as any)[char.key] || 0).toFixed(0)}</span>
+                                                <div className="w-14 bg-gray-200 rounded-full h-1.5"><div className={`${getScoreColor(getRiderCharacteristicSafe(rider, char.key))} h-1.5 rounded-full`} style={{width: `${getRiderCharacteristicSafe(rider, char.key)}%`}}></div></div>
+                                                <span className="font-semibold text-xs">{getRiderCharacteristicSafe(rider, char.key).toFixed(0)}</span>
                                             </div>
                                         </td>
                                     ))}
@@ -1054,6 +1021,7 @@ export const RosterSection: React.FC<RosterSectionProps> = ({
                 riderEventSelections={riderEventSelections}
                 setRiderEventSelections={setRiderEventSelections}
                 setRaceEvents={setRaceEvents}
+                appState={appState}
             />
         )}
         {activeTab === 'groupMonitoring' && renderGroupMonitoringTab()}
