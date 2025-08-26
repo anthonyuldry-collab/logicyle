@@ -1,10 +1,10 @@
 [build]
   publish = "dist"
-  command = "npm install --legacy-peer-deps && npm run build"
+  command = "chmod +x build.sh && ./build.sh"
 
 [build.environment]
-  NODE_VERSION = "20"
-  NPM_FLAGS = "--legacy-peer-deps"
+  NODE_VERSION = "18.19.0"
+  NPM_FLAGS = "--legacy-peer-deps --no-optional"
 
 [[redirects]]
   from = "/*"

@@ -13,14 +13,16 @@ export default defineConfig(({ mode }) => {
           '@': path.resolve(__dirname, '.'),
         }
       },
-      // Configuration pour Node 20+
+      // Configuration optimisée pour Node 18
       optimizeDeps: {
         include: ['react', 'react-dom', 'frappe-charts'],
-        exclude: []
+        exclude: [],
+        force: true
       },
       build: {
-        target: 'es2022',
+        target: 'es2020',
         minify: 'esbuild',
+        sourcemap: false,
         rollupOptions: {
           external: [],
           output: {
@@ -31,9 +33,18 @@ export default defineConfig(({ mode }) => {
           }
         }
       },
-      // Configuration TypeScript simplifiée
+      // Configuration TypeScript optimisée
       esbuild: {
         jsx: 'automatic'
+      },
+      // Configuration pour éviter les problèmes de build
+      server: {
+        port: 3000,
+        host: true
+      },
+      preview: {
+        port: 4173,
+        host: true
       }
     };
 });
