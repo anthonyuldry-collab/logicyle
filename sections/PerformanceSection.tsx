@@ -640,3 +640,6 @@ export const PerformanceSection: React.FC<{ appState: AppState }> = ({ appState 
   );
 };
 
+// Export par défaut pour résoudre l'erreur d'import dans App.tsx
+export default PerformanceSection;
+
