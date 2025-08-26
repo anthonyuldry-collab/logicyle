@@ -1,4 +1,3 @@
-import path from 'path';
 import { defineConfig, loadEnv } from 'vite';
 
 export default defineConfig(({ mode }) => {
@@ -10,7 +9,7 @@ export default defineConfig(({ mode }) => {
       },
       resolve: {
         alias: {
-          '@': path.resolve(__dirname, '.'),
+          '@': '.',
         }
       },
       // Configuration optimisée pour Node 18 avec gestion Rollup
@@ -30,6 +29,14 @@ export default defineConfig(({ mode }) => {
               vendor: ['react', 'react-dom'],
               charts: ['frappe-charts']
             }
+          },
+          onwarn(warning, warn) {
+            // Ignorer les avertissements sur les dépendances natives
+            if (warning.code === 'UNRESOLVED_IMPORT' && 
+                warning.message.includes('@rollup/rollup-linux-x64-gnu')) {
+              return;
+            }
+            warn(warning);
           }
         }
       },
@@ -47,21 +54,6 @@ export default defineConfig(({ mode }) => {
         host: true
       },
       // Configuration spécifique pour éviter les erreurs Rollup
-      plugins: [],
-      // Forcer l'utilisation d'esbuild au lieu de Rollup si nécessaire
-      build: {
-        ...this.build,
-        rollupOptions: {
-          ...this.build?.rollupOptions,
-          onwarn(warning, warn) {
-            // Ignorer les avertissements sur les dépendances natives
-            if (warning.code === 'UNRESOLVED_IMPORT' && 
-                warning.message.includes('@rollup/rollup-linux-x64-gnu')) {
-              return;
-            }
-            warn(warning);
-          }
-        }
-      }
+      plugins: []
     };
 });
