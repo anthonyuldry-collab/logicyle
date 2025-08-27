@@ -132,7 +132,7 @@ const PowerPerformanceTable: React.FC<{ riders: Rider[] }> = ({ riders }) => {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [genderFilter, setGenderFilter] = useState<'all' | Sex>('all');
   const [ageFilter, setAgeFilter] = useState<'all' | string>('all');
-  const [selectedDurations, setSelectedDurations] = useState<PowerDuration[]>([.1s.]);
+  const [selectedDurations, setSelectedDurations] = useState<PowerDuration[]>(['1s']);
 
   // Filtrage des riders
   const filteredRiders = useMemo(() => {
@@ -406,7 +406,7 @@ export const PerformanceSection: React.FC<{ appState: AppState }> = ({ appState 
   const [selectedRider, setSelectedRider] = useState<Rider | null>(null);
   const [isRiderModalOpen, setIsRiderModalOpen] = useState(false);
   const [displayMode, setDisplayMode] = useState<PowerDisplayMode>('wattsPerKg');
-  const [selectedDurations, setSelectedDurations] = useState<PowerDuration[]>([.1s.]);
+  const [selectedDurations, setSelectedDurations] = useState<PowerDuration[]>(['1s']);
 
   const riders = appState.riders || [];
 
@@ -550,7 +550,7 @@ export const PerformanceSection: React.FC<{ appState: AppState }> = ({ appState 
             <div className="bg-white p-6 rounded-lg shadow border">
               <h4 className="text-lg font-semibold text-gray-900 mb-4">Top Performers par Durée</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {[.1s.].map(duration => {
+                {['1s'].map(duration => {
                   const topRider = riders.reduce((best, rider) => {
                     const value = getRiderPowerValue(rider, duration as PowerDuration, 'wattsPerKg');
                     const bestValue = getRiderPowerValue(best, duration as PowerDuration, 'wattsPerKg');
