@@ -394,10 +394,12 @@ const PowerPerformanceTable: React.FC<{ riders: Rider[] }> = ({ riders }) => {
 
 // Composant principal de la section des performances
 export const PerformanceSection: React.FC<{ appState: AppState }> = ({ appState }) => {
-  const [activeTab, setActiveTab] = useState<PerformancePoleTab>('powerAnalysis');
+  const [activeTab, setActiveTab] = useState<PerformancePoleTab>('global');
   const [activeRiderTab, setActiveRiderTab] = useState<RiderPerformanceTab>('ppr');
   const [selectedRider, setSelectedRider] = useState<Rider | null>(null);
   const [isRiderModalOpen, setIsRiderModalOpen] = useState(false);
+  const [displayMode, setDisplayMode] = useState<PowerDisplayMode>('wattsPerKg');
+  const [selectedDurations, setSelectedDurations] = useState<PowerDuration[]>(['1s', '5s', '30s', '1min', '3min', '5min', '12min', '20min', 'cp']);
 
   const riders = appState.riders || [];
 
@@ -410,9 +412,13 @@ export const PerformanceSection: React.FC<{ appState: AppState }> = ({ appState 
 
   return (
     <SectionWrapper title="Centre Stratégique des Performances">
-      {/* Onglets principaux */}
+      {/* Onglets principaux réorganisés */}
       <div className="mb-6 border-b border-gray-200">
         <nav className="-mb-px flex space-x-1 overflow-x-auto" aria-label="Tabs">
+          <button onClick={() => setActiveTab('global')} className={tabButtonStyle('global')}>
+            <UsersIcon className="w-4 h-4 inline mr-2" />
+            Vue d'Ensemble
+          </button>
           <button onClick={() => setActiveTab('powerAnalysis')} className={tabButtonStyle('powerAnalysis')}>
             <ChartBarIcon className="w-4 h-4 inline mr-2" />
             Analyse des Puissances
@@ -424,10 +430,6 @@ export const PerformanceSection: React.FC<{ appState: AppState }> = ({ appState 
           <button onClick={() => setActiveTab('comparison')} className={tabButtonStyle('comparison')}>
             <ChartBarIcon className="w-4 h-4 inline mr-2" />
             Comparaison
-          </button>
-          <button onClick={() => setActiveTab('global')} className={tabButtonStyle('global')}>
-            <UsersIcon className="w-4 h-4 inline mr-2" />
-            Vue d'Ensemble
           </button>
           <button onClick={() => setActiveTab('nutritionProducts')} className={tabButtonStyle('nutritionProducts')}>
             <TrophyIcon className="w-4 h-4 inline mr-2" />
@@ -442,6 +444,133 @@ export const PerformanceSection: React.FC<{ appState: AppState }> = ({ appState 
 
       {/* Contenu des onglets */}
       <div className="mt-6">
+        {/* Vue d'Ensemble - Remise en premier */}
+        {activeTab === 'global' && (
+          <div className="space-y-6">
+            <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-6 rounded-lg border border-indigo-200">
+              <h3 className="text-lg font-semibold text-indigo-900 mb-2">
+                🌟 Vue d'Ensemble des Performances
+              </h3>
+              <p className="text-indigo-700">
+                Synthèse globale des performances de votre équipe. Analysez les tendances, 
+                identifiez les forces et faiblesses collectives, et optimisez vos stratégies d'entraînement.
+              </p>
+            </div>
+            
+            {/* Statistiques globales */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-white p-4 rounded-lg shadow border">
+                <div className="flex items-center">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <UsersIcon className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-gray-500">Total Athlètes</p>
+                    <p className="text-2xl font-bold text-gray-900">{riders.length}</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-white p-4 rounded-lg shadow border">
+                <div className="flex items-center">
+                  <div className="p-2 bg-pink-100 rounded-lg">
+                    <span className="text-pink-600 font-bold text-lg">F</span>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-gray-500">Femmes</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {riders.filter(r => r.sex === Sex.FEMALE).length}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-white p-4 rounded-lg shadow border">
+                <div className="flex items-center">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <span className="text-blue-600 font-bold text-lg">M</span>
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-gray-500">Hommes</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {riders.filter(r => r.sex === Sex.MALE).length}
+                    </p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="bg-white p-4 rounded-lg shadow border">
+                <div className="flex items-center">
+                  <div className="p-2 bg-green-100 rounded-lg">
+                    <TrendingUpIcon className="w-6 h-6 text-green-600" />
+                  </div>
+                  <div className="ml-3">
+                    <p className="text-sm font-medium text-gray-500">Moyenne CP</p>
+                    <p className="text-2xl font-bold text-gray-900">
+                      {riders.length > 0 
+                        ? (riders.reduce((sum, r) => {
+                            const cp = r.powerProfileFresh?.criticalPower || 0;
+                            return sum + cp;
+                          }, 0) / riders.length).toFixed(0)
+                        : '0'} W
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Répartition par catégorie d'âge */}
+            <div className="bg-white p-6 rounded-lg shadow border">
+              <h4 className="text-lg font-semibold text-gray-900 mb-4">Répartition par Catégorie d'Âge</h4>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                {['U15', 'U17', 'U19', 'U23', 'Senior'].map(category => {
+                  const count = riders.filter(r => {
+                    const { category: riderCategory } = getAgeCategory(r.birthDate);
+                    return riderCategory === category;
+                  }).length;
+                  
+                  return (
+                    <div key={category} className="text-center">
+                      <div className="text-2xl font-bold text-blue-600">{count}</div>
+                      <div className="text-sm text-gray-600">{category}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Top performers par durée */}
+            <div className="bg-white p-6 rounded-lg shadow border">
+              <h4 className="text-lg font-semibold text-gray-900 mb-4">Top Performers par Durée</h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {['1s', '5s', '30s', '1min', '3min', '5min', '12min', '20min', 'cp'].map(duration => {
+                  const topRider = riders.reduce((best, rider) => {
+                    const value = getRiderPowerValue(rider, duration as PowerDuration, 'wattsPerKg');
+                    const bestValue = getRiderPowerValue(best, duration as PowerDuration, 'wattsPerKg');
+                    return value > bestValue ? rider : best;
+                  });
+                  
+                  const topValue = getRiderPowerValue(topRider, duration as PowerDuration, 'wattsPerKg');
+                  
+                  return (
+                    <div key={duration} className="border rounded-lg p-3">
+                      <div className="text-sm font-medium text-gray-600 mb-1">
+                        {POWER_DURATIONS_CONFIG.find(d => d.key === duration)?.label}
+                      </div>
+                      <div className="text-lg font-bold text-gray-900">
+                        {topValue > 0 ? topValue.toFixed(1) : '-'} W/kg
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        {topRider.firstName} {topRider.lastName}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
         {activeTab === 'powerAnalysis' && (
           <div className="space-y-6">
             <div className="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-lg border border-blue-200">
@@ -471,26 +600,81 @@ export const PerformanceSection: React.FC<{ appState: AppState }> = ({ appState 
               </p>
             </div>
             
+            {/* Filtres pour les graphiques */}
+            <div className="bg-white p-4 rounded-lg shadow border">
+              <div className="flex flex-wrap gap-4 items-center">
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm font-medium">Mode d'affichage:</span>
+                  <div className="flex bg-gray-100 rounded-lg p-1">
+                    <button
+                      onClick={() => setDisplayMode('watts')}
+                      className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                        displayMode === 'watts' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      Watts
+                    </button>
+                    <button
+                      onClick={() => setDisplayMode('wattsPerKg')}
+                      className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                        displayMode === 'wattsPerKg' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      W/kg
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <span className="text-sm font-medium">Durées sélectionnées:</span>
+                  <div className="flex flex-wrap gap-1">
+                    {POWER_DURATIONS_CONFIG.map(duration => (
+                      <button
+                        key={duration.key}
+                        onClick={() => {
+                          if (selectedDurations.includes(duration.key)) {
+                            setSelectedDurations(prev => prev.filter(d => d !== duration.key));
+                          } else {
+                            setSelectedDurations(prev => [...prev, duration.key]);
+                          }
+                        }}
+                        className={`px-2 py-1 text-xs rounded-full transition-colors ${
+                          selectedDurations.includes(duration.key)
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                        }`}
+                      >
+                        {duration.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+            
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Graphique de comparaison */}
               <div className="lg:col-span-2">
                 <RiderComparisonChart 
                   riders={riders} 
-                  displayMode="wattsPerKg" 
-                  selectedDurations={['1s', '5s', '30s', '1min', '3min', '5min', '12min', '20min', 'cp']} 
+                  displayMode={displayMode} 
+                  selectedDurations={selectedDurations} 
                 />
               </div>
               
-              {/* Graphiques individuels */}
+              {/* Graphiques individuels avec limite */}
               {riders.slice(0, 4).map(rider => (
-                <div key={rider.id}>
-                  <RiderRadarChart rider={rider} displayMode="wattsPerKg" />
+                <div key={rider.id} className="bg-white p-4 rounded-lg shadow border">
+                  <h4 className="text-sm font-semibold text-gray-900 mb-2 text-center">
+                    {rider.firstName} {rider.lastName}
+                  </h4>
+                  <RiderRadarChart rider={rider} displayMode={displayMode} />
                 </div>
               ))}
               
               {/* Graphique des tendances */}
               <div className="lg:col-span-2">
-                <PerformanceTrendsChart riders={riders} displayMode="wattsPerKg" />
+                <PerformanceTrendsChart riders={riders} displayMode={displayMode} />
               </div>
             </div>
           </div>
@@ -498,48 +682,47 @@ export const PerformanceSection: React.FC<{ appState: AppState }> = ({ appState 
 
         {activeTab === 'comparison' && (
           <div className="space-y-6">
-            <div className="bg-gradient-to-r from-purple-50 to-pink-50 p-6 rounded-lg border border-purple-200">
-              <h3 className="text-lg font-semibold text-purple-900 mb-2">
-                ⚔️ Comparaison Côte à Côte des Performances
+            <div className="bg-gradient-to-r from-orange-50 to-red-50 p-6 rounded-lg border border-orange-200">
+              <h3 className="text-lg font-semibold text-orange-900 mb-2">
+                🔍 Comparaison des Performances
               </h3>
-              <p className="text-purple-700">
-                Comparez directement deux athlètes avec des graphiques radar superposés et des analyses détaillées. 
-                Identifiez les forces et faiblesses de chacun pour optimiser vos stratégies d'équipe.
+              <p className="text-orange-700">
+                Comparez directement les performances de deux athlètes pour identifier leurs forces 
+                et faiblesses respectives et optimiser vos stratégies d'entraînement.
               </p>
             </div>
             
-            <RiderComparisonSelector 
-              riders={riders}
-              onCompare={(rider1, rider2) => {
-                // Ici on pourrait ouvrir une modal ou naviguer vers la comparaison
-                console.log('Comparaison entre:', rider1.firstName, 'et', rider2.firstName);
-              }}
-            />
+            {/* Sélecteur de comparaison */}
+            <div className="bg-white p-6 rounded-lg shadow border">
+              <RiderComparisonSelector 
+                riders={riders} 
+                onCompare={(rider1, rider2) => {
+                  // Logique de comparaison
+                  console.log('Comparaison entre:', rider1.firstName, 'et', rider2.firstName);
+                }} 
+              />
+            </div>
             
-            {/* Exemple de comparaison avec les 2 premiers riders */}
+            {/* Graphique de comparaison radar */}
             {riders.length >= 2 && (
-              <div className="mt-8">
-                <RiderComparisonRadarChart
-                  rider1={riders[0]}
-                  rider2={riders[1]}
-                  displayMode="wattsPerKg"
-                  title={`${riders[0].firstName} ${riders[0].lastName} vs ${riders[1].firstName} ${riders[1].lastName}`}
+              <div className="bg-white p-6 rounded-lg shadow border">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4 text-center">
+                  Comparaison Radar - {riders[0].firstName} vs {riders[1].firstName}
+                </h4>
+                <RiderComparisonRadarChart 
+                  rider1={riders[0]} 
+                  rider2={riders[1]} 
+                  displayMode={displayMode}
+                  title={`${riders[0].firstName} vs ${riders[1].firstName}`}
                 />
               </div>
             )}
           </div>
         )}
 
-        {activeTab === 'global' && (
-          <div className="text-center py-12">
-            <h3 className="text-xl font-semibold text-gray-700 mb-4">Vue d'Ensemble des Performances</h3>
-            <p className="text-gray-500">Fonctionnalité en cours de développement...</p>
-          </div>
-        )}
-
         {activeTab === 'nutritionProducts' && (
           <div className="text-center py-12">
-            <h3 className="text-xl font-semibold text-gray-700 mb-4">Gestion des Produits Nutrition</h3>
+            <h3 className="text-xl font-semibold text-gray-700 mb-4">Produits Nutrition</h3>
             <p className="text-gray-500">Fonctionnalité en cours de développement...</p>
           </div>
         )}
