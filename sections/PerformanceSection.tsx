@@ -165,10 +165,10 @@ const PowerPerformanceTable: React.FC<{ riders: Rider[] }> = ({ riders }) => {
       setSortBy(duration);
       setSortDirection('desc');
     }
-  };
+};
 
   // Rendu du tableau
-  return (
+    return (
     <div className="bg-white rounded-lg shadow-lg overflow-hidden">
       {/* En-tête avec contrôles */}
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-4 text-white">
@@ -225,7 +225,7 @@ const PowerPerformanceTable: React.FC<{ riders: Rider[] }> = ({ riders }) => {
               <option value="U23">U23</option>
               <option value="Senior">Senior</option>
             </select>
-          </div>
+                    </div>
 
           {/* Sélection des durées - Une seule à la fois */}
           <div className="flex items-center space-x-2">
@@ -247,7 +247,7 @@ const PowerPerformanceTable: React.FC<{ riders: Rider[] }> = ({ riders }) => {
                 </button>
               ))}
             </div>
-          </div>
+            </div>
 
           {/* Tri actuel */}
           <div className="text-sm">
@@ -353,7 +353,7 @@ const PowerPerformanceTable: React.FC<{ riders: Rider[] }> = ({ riders }) => {
                         <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${performanceColor}`}>
                           {performanceLabel}
                         </div>
-                      </div>
+                    </div>
                     </td>
                   );
                 })}
@@ -361,8 +361,8 @@ const PowerPerformanceTable: React.FC<{ riders: Rider[] }> = ({ riders }) => {
             ))}
           </tbody>
         </table>
-      </div>
-
+                </div>
+                
       {/* Légende des performances */}
       <div className="bg-gray-50 px-4 py-3 border-t border-gray-200">
         <div className="flex items-center justify-center space-x-6 text-sm">
@@ -382,9 +382,9 @@ const PowerPerformanceTable: React.FC<{ riders: Rider[] }> = ({ riders }) => {
             <div className="w-4 h-4 bg-gray-500 rounded"></div>
             <span>Modéré</span>
           </div>
-        </div>
-      </div>
-    </div>
+                        </div>
+                    </div>
+                </div>
   );
 };
 
@@ -447,7 +447,7 @@ export const PerformanceSection: React.FC<{ appState: AppState }> = ({ appState 
             Planning
           </button>
         </nav>
-      </div>
+            </div>
 
       {/* Contenu des onglets */}
       <div className="mt-6">
@@ -467,51 +467,51 @@ export const PerformanceSection: React.FC<{ appState: AppState }> = ({ appState 
             {/* Statistiques globales */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-white p-4 rounded-lg shadow border">
-                <div className="flex items-center">
+                    <div className="flex items-center">
                   <div className="p-2 bg-blue-100 rounded-lg">
                     <UsersIcon className="w-6 h-6 text-blue-600" />
                   </div>
-                  <div className="ml-3">
+                        <div className="ml-3">
                     <p className="text-sm font-medium text-gray-500">Total Athlètes</p>
                     <p className="text-2xl font-bold text-gray-900">{riders.length}</p>
                   </div>
+                    </div>
                 </div>
-              </div>
-              
+                
               <div className="bg-white p-4 rounded-lg shadow border">
-                <div className="flex items-center">
+                    <div className="flex items-center">
                   <div className="p-2 bg-pink-100 rounded-lg">
                     <span className="text-pink-600 font-bold text-lg">F</span>
                   </div>
-                  <div className="ml-3">
+                        <div className="ml-3">
                     <p className="text-sm font-medium text-gray-500">Femmes</p>
                     <p className="text-2xl font-bold text-gray-900">
                       {riders.filter(r => r.sex === Sex.FEMALE).length}
                     </p>
                   </div>
+                    </div>
                 </div>
-              </div>
-              
+                
               <div className="bg-white p-4 rounded-lg shadow border">
-                <div className="flex items-center">
+                    <div className="flex items-center">
                   <div className="p-2 bg-blue-100 rounded-lg">
                     <span className="text-blue-600 font-bold text-lg">M</span>
                   </div>
-                  <div className="ml-3">
+                        <div className="ml-3">
                     <p className="text-sm font-medium text-gray-500">Hommes</p>
                     <p className="text-2xl font-bold text-gray-900">
                       {riders.filter(r => r.sex === Sex.MALE).length}
                     </p>
                   </div>
+                    </div>
                 </div>
-              </div>
-              
+                
               <div className="bg-white p-4 rounded-lg shadow border">
-                <div className="flex items-center">
+                    <div className="flex items-center">
                   <div className="p-2 bg-green-100 rounded-lg">
                     <TrendingUpIcon className="w-6 h-6 text-green-600" />
                   </div>
-                  <div className="ml-3">
+                        <div className="ml-3">
                     <p className="text-sm font-medium text-gray-500">Moyenne CP</p>
                     <p className="text-2xl font-bold text-gray-900">
                       {riders.length > 0 
@@ -524,7 +524,7 @@ export const PerformanceSection: React.FC<{ appState: AppState }> = ({ appState 
                   </div>
                 </div>
               </div>
-            </div>
+                        </div>
 
             {/* Répartition par catégorie d'âge */}
             <div className="bg-white p-6 rounded-lg shadow border">
@@ -543,7 +543,7 @@ export const PerformanceSection: React.FC<{ appState: AppState }> = ({ appState 
                     </div>
                   );
                 })}
-              </div>
+                </div>
             </div>
 
             {/* Top performers par durée */}
@@ -558,8 +558,8 @@ export const PerformanceSection: React.FC<{ appState: AppState }> = ({ appState 
                   });
                   
                   const topValue = getRiderPowerValue(topRider, duration as PowerDuration, 'wattsPerKg');
-                  
-                  return (
+
+                                return (
                     <div key={duration} className="border rounded-lg p-3">
                       <div className="text-sm font-medium text-gray-600 mb-1">
                         {POWER_DURATIONS_CONFIG.find(d => d.key === duration)?.label}
@@ -571,9 +571,9 @@ export const PerformanceSection: React.FC<{ appState: AppState }> = ({ appState 
                         {topRider.firstName} {topRider.lastName}
                       </div>
                     </div>
-                  );
-                })}
-              </div>
+                                );
+                            })}
+                </div>
             </div>
           </div>
         )}
@@ -626,10 +626,10 @@ export const PerformanceSection: React.FC<{ appState: AppState }> = ({ appState 
                         W/kg
                       </button>
                     </div>
-                  </div>
+                        </div>
                 </div>
-              </div>
-              
+            </div>
+
               {/* Graphique principal uniquement */}
               <div className="bg-gray-50 p-4 rounded-lg">
                 <h4 className="text-lg font-bold text-black mb-4 text-center">
@@ -657,24 +657,24 @@ export const PerformanceSection: React.FC<{ appState: AppState }> = ({ appState 
               
               {/* Sélecteur simple et fonctionnel */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
+                    <div>
                   <label className="block text-sm font-medium text-black mb-2">Athlète 1</label>
-                  <select 
+                        <select 
                     className="w-full p-2 border border-gray-300 rounded-md text-black"
-                    onChange={(e) => {
-                      const rider = riders.find(r => r.id === e.target.value);
+                            onChange={(e) => {
+                                const rider = riders.find(r => r.id === e.target.value);
                       if (rider) console.log('Athlète 1 sélectionné:', rider.firstName);
-                    }}
-                  >
+                            }}
+                        >
                     <option value="">Sélectionner un athlète</option>
-                    {riders.map(rider => (
-                      <option key={rider.id} value={rider.id}>
-                        {rider.firstName} {rider.lastName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                
+                            {riders.map(rider => (
+                                <option key={rider.id} value={rider.id}>
+                                    {rider.firstName} {rider.lastName}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                    
                 <div>
                   <label className="block text-sm font-medium text-black mb-2">Athlète 2</label>
                   <select 
@@ -692,10 +692,10 @@ export const PerformanceSection: React.FC<{ appState: AppState }> = ({ appState 
                     ))}
                   </select>
                 </div>
-              </div>
-              
+                </div>
+                
               {/* Tableau de comparaison simple */}
-              <div className="mt-6">
+                    <div className="mt-6">
                 <h4 className="text-lg font-bold text-black mb-4">Comparaison des Puissances (W/kg)</h4>
                 <div className="overflow-x-auto">
                   <table className="min-w-full border border-gray-300">
@@ -726,29 +726,29 @@ export const PerformanceSection: React.FC<{ appState: AppState }> = ({ appState 
                       ))}
                     </tbody>
                   </table>
-                </div>
+                                    </div>
                 <p className="text-sm text-gray-600 mt-2">
                   Sélectionnez deux athlètes pour voir la comparaison détaillée.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
-
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        
         {activeTab === 'nutritionProducts' && (
           <div className="text-center py-12">
             <h3 className="text-xl font-semibold text-gray-700 mb-4">Produits Nutrition</h3>
             <p className="text-gray-500">Fonctionnalité en cours de développement...</p>
-          </div>
-        )}
-
+                            </div>
+                        )}
+                        
         {activeTab === 'planning' && (
           <div className="text-center py-12">
             <h3 className="text-xl font-semibold text-gray-700 mb-4">Planning des Performances</h3>
             <p className="text-gray-500">Fonctionnalité en cours de développement...</p>
-          </div>
-        )}
-      </div>
+                    </div>
+                )}
+            </div>
 
       {/* Modal de détail du rider */}
       {isRiderModalOpen && selectedRider && (
@@ -763,16 +763,16 @@ export const PerformanceSection: React.FC<{ appState: AppState }> = ({ appState 
                     {selectedRider.firstName.charAt(0)}{selectedRider.lastName.charAt(0)}
                   </span>
                 </div>
-              )}
+            )}
               <div>
                 <h3 className="text-lg font-semibold">{selectedRider.firstName} {selectedRider.lastName}</h3>
                 <p className="text-gray-600">{selectedRider.qualitativeProfile || 'Profil N/A'}</p>
-              </div>
+                </div>
             </div>
             
             {/* Onglets du rider */}
-            <div className="border-b border-gray-200">
-              <nav className="-mb-px flex space-x-8">
+                <div className="border-b border-gray-200">
+                    <nav className="-mb-px flex space-x-8">
                 <button
                   onClick={() => setActiveRiderTab('ppr')}
                   className={`py-2 px-1 border-b-2 font-medium text-sm ${
@@ -793,17 +793,17 @@ export const PerformanceSection: React.FC<{ appState: AppState }> = ({ appState 
                 >
                   Projets
                 </button>
-                <button
+                            <button
                   onClick={() => setActiveRiderTab('results')}
-                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                                className={`py-2 px-1 border-b-2 font-medium text-sm ${
                     activeRiderTab === 'results'
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
+                                        ? 'border-blue-500 text-blue-600'
+                                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                                }`}
+                            >
                   Résultats
-                </button>
-              </nav>
+                            </button>
+                    </nav>
             </div>
 
             {/* Contenu des onglets du rider */}
@@ -834,8 +834,8 @@ export const PerformanceSection: React.FC<{ appState: AppState }> = ({ appState 
           </div>
         </Modal>
       )}
-    </SectionWrapper>
-  );
+        </SectionWrapper>
+    );
 };
 
 // Export par défaut pour résoudre l'erreur d'import dans App.tsx

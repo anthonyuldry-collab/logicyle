@@ -5,7 +5,8 @@ import {
   TrashIcon, 
   EyeIcon,
   PlusCircleIcon,
-  MagnifyingGlassIcon
+  MagnifyingGlassIcon,
+  UserGroupIcon
 } from '@heroicons/react/24/outline';
 import SectionWrapper from '../components/SectionWrapper';
 import ActionButton from '../components/ActionButton';
@@ -557,8 +558,8 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
   const renderQualityTab = () => {
     // Algorithme de profilage Coggan Expert - Note générale = moyenne simple de toutes les données
     const calculateCogganProfileScore = (rider: Rider) => {
-      const powerProfile = (rider as any).powerProfile || {};
-      const weight = (rider as any).weight || 70; // Poids par défaut si non défini
+      const powerProfile = (rider as any).powerProfileFresh || {};
+      const weight = (rider as any).weightKg || 70; // Poids par défaut si non défini
       
       // Calcul des puissances relatives (W/kg) pour chaque durée
       const power1s = (powerProfile.power1s || 0) / weight;
@@ -607,8 +608,20 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
         Object.values(scores).reduce((sum, score) => sum + score, 0) / Object.values(scores).length
       );
       
+      // Calcul des catégories spécifiques
+      const sprintScore = Math.round((scores.power1s + scores.power5s) / 2); // 1s + 5s
+      const montagneScore = Math.round((scores.power5min + scores.power12min + scores.power20min) / 3); // 5min + 12min + 20min
+      const puncheurScore = Math.round((scores.power30s + scores.power1min + scores.power3min) / 3); // 30s + 1min + 3min
+      const rouleurScore = Math.round((scores.power12min + scores.power20min + scores.criticalPower) / 3); // 12min + 20min + CP
+      const resistanceScore = Math.round((scores.power20min + scores.criticalPower) / 2); // Résistance à la fatigue
+      
       return {
         generalScore,
+        sprintScore,
+        montagneScore,
+        puncheurScore,
+        rouleurScore,
+        resistanceScore,
         scores,
         powerProfile: {
           power1s, power5s, power30s, power1min, power3min, 
@@ -665,40 +678,36 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
           </div>
         </div>
 
-        {/* Tableau de pilotage complet avec toutes les notes */}
-        <div className="bg-white rounded-lg shadow-lg border">
-          <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
-            <h3 className="text-xl font-bold text-gray-900">
-              Tableau de Pilotage - Profilage Coggan Expert
+        {/* Tableau de pilotage style Pro Cycling Manager */}
+        <div className="bg-gray-900 rounded-lg shadow-lg border border-gray-700">
+          <div className="px-6 py-4 border-b border-gray-700 bg-gradient-to-r from-gray-800 to-gray-900">
+            <h3 className="text-xl font-bold text-white">
+              Qualité d'Effectif - Profilage Coggan Expert
             </h3>
-            <p className="text-sm text-gray-600 mt-1">Note générale = moyenne simple de toutes les données de puissance (1s, 5s, 30s, 1min, 3min, 5min, 12min, 20min, CP)</p>
-            <p className="text-xs text-gray-500 mt-1">100/100 = Athlète ultime qui ne peut jamais être battu en conditions de fatigue</p>
+            <p className="text-sm text-gray-300 mt-1">Note générale = moyenne simple de toutes les données de puissance • 100/100 = Athlète ultime</p>
           </div>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+            <table className="min-w-full divide-y divide-gray-700">
+              <thead className="bg-gray-800">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Coureur</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Note Générale</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">1s</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">5s</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">30s</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">1min</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">3min</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">5min</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">12min</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">20min</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CP</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Coureur</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Âge</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">MOY</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">SPR</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">MON</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">PUN</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">ROU</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">RES</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {riders.map((rider, index) => {
+              <tbody className="bg-gray-900 divide-y divide-gray-700">
+                {riders.map((rider) => {
                   const { category, age } = getAgeCategory(rider.birthDate);
                   const cogganProfile = calculateCogganProfileScore(rider);
                   
                   return (
-                    <tr key={rider.id} className="hover:bg-gray-50">
+                    <tr key={rider.id} className="hover:bg-gray-800">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
                           {rider.photoUrl ? (
@@ -707,71 +716,79 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                             <UserCircleIcon className="w-10 h-10 text-gray-400 mr-4"/>
                           )}
                           <div>
-                            <div className="text-sm font-medium text-gray-900">{rider.firstName} {rider.lastName}</div>
-                            <div className="text-sm text-gray-500">{age !== null ? `${age} ans` : 'Âge inconnu'} • {category}</div>
+                            <div className="text-sm font-medium text-white">{rider.firstName} {rider.lastName}</div>
+                            <div className="text-sm text-gray-400">{category}</div>
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="w-20 bg-gray-200 rounded-full h-3 mr-3">
-                            <div 
-                              className={`h-3 rounded-full ${
-                                cogganProfile.generalScore >= 90 ? 'bg-green-500' :
-                                cogganProfile.generalScore >= 80 ? 'bg-blue-500' :
-                                cogganProfile.generalScore >= 70 ? 'bg-yellow-500' :
-                                cogganProfile.generalScore >= 60 ? 'bg-orange-500' :
-                                'bg-red-500'
-                              }`}
-                              style={{ width: `${cogganProfile.generalScore}%` }}
-                            ></div>
-                          </div>
-                          <span className={`text-sm font-bold ${
-                            cogganProfile.generalScore >= 90 ? 'text-green-600' :
-                            cogganProfile.generalScore >= 80 ? 'text-blue-600' :
-                            cogganProfile.generalScore >= 70 ? 'text-yellow-600' :
-                            cogganProfile.generalScore >= 60 ? 'text-orange-600' :
-                            'text-red-600'
-                          }`}>
-                            {cogganProfile.generalScore}/100
-                          </span>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">
+                        {age !== null ? `${age} ans` : 'Âge inconnu'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <div className={`text-lg font-bold ${
+                          cogganProfile.generalScore >= 90 ? 'text-green-400' :
+                          cogganProfile.generalScore >= 80 ? 'text-blue-400' :
+                          cogganProfile.generalScore >= 70 ? 'text-yellow-400' :
+                          cogganProfile.generalScore >= 60 ? 'text-orange-400' :
+                          'text-red-400'
+                        }`}>
+                          {cogganProfile.generalScore}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="text-sm font-medium text-gray-900">{cogganProfile.scores.power1s}</div>
-                        <div className="text-xs text-gray-500">{cogganProfile.powerProfile.power1s.toFixed(1)} W/kg</div>
+                        <div className={`text-lg font-bold ${
+                          cogganProfile.sprintScore >= 90 ? 'text-green-400' :
+                          cogganProfile.sprintScore >= 80 ? 'text-blue-400' :
+                          cogganProfile.sprintScore >= 70 ? 'text-yellow-400' :
+                          cogganProfile.sprintScore >= 60 ? 'text-orange-400' :
+                          'text-red-400'
+                        }`}>
+                          {cogganProfile.sprintScore}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="text-sm font-medium text-gray-900">{cogganProfile.scores.power5s}</div>
-                        <div className="text-xs text-gray-500">{cogganProfile.powerProfile.power5s.toFixed(1)} W/kg</div>
+                        <div className={`text-lg font-bold ${
+                          cogganProfile.montagneScore >= 90 ? 'text-green-400' :
+                          cogganProfile.montagneScore >= 80 ? 'text-blue-400' :
+                          cogganProfile.montagneScore >= 70 ? 'text-yellow-400' :
+                          cogganProfile.montagneScore >= 60 ? 'text-orange-400' :
+                          'text-red-400'
+                        }`}>
+                          {cogganProfile.montagneScore}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="text-sm font-medium text-gray-900">{cogganProfile.scores.power30s}</div>
-                        <div className="text-xs text-gray-500">{cogganProfile.powerProfile.power30s.toFixed(1)} W/kg</div>
+                        <div className={`text-lg font-bold ${
+                          cogganProfile.puncheurScore >= 90 ? 'text-green-400' :
+                          cogganProfile.puncheurScore >= 80 ? 'text-blue-400' :
+                          cogganProfile.puncheurScore >= 70 ? 'text-yellow-400' :
+                          cogganProfile.puncheurScore >= 60 ? 'text-orange-400' :
+                          'text-red-400'
+                        }`}>
+                          {cogganProfile.puncheurScore}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="text-sm font-medium text-gray-900">{cogganProfile.scores.power1min}</div>
-                        <div className="text-xs text-gray-500">{cogganProfile.powerProfile.power1min.toFixed(1)} W/kg</div>
+                        <div className={`text-lg font-bold ${
+                          cogganProfile.rouleurScore >= 90 ? 'text-green-400' :
+                          cogganProfile.rouleurScore >= 80 ? 'text-blue-400' :
+                          cogganProfile.rouleurScore >= 70 ? 'text-yellow-400' :
+                          cogganProfile.rouleurScore >= 60 ? 'text-orange-400' :
+                          'text-red-400'
+                        }`}>
+                          {cogganProfile.rouleurScore}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="text-sm font-medium text-gray-900">{cogganProfile.scores.power3min}</div>
-                        <div className="text-xs text-gray-500">{cogganProfile.powerProfile.power3min.toFixed(1)} W/kg</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="text-sm font-medium text-gray-900">{cogganProfile.scores.power5min}</div>
-                        <div className="text-xs text-gray-500">{cogganProfile.powerProfile.power5min.toFixed(1)} W/kg</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="text-sm font-medium text-gray-900">{cogganProfile.scores.power12min}</div>
-                        <div className="text-xs text-gray-500">{cogganProfile.powerProfile.power12min.toFixed(1)} W/kg</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="text-sm font-medium text-gray-900">{cogganProfile.scores.power20min}</div>
-                        <div className="text-xs text-gray-500">{cogganProfile.powerProfile.power20min.toFixed(1)} W/kg</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className="text-sm font-medium text-gray-900">{cogganProfile.scores.criticalPower}</div>
-                        <div className="text-xs text-gray-500">{cogganProfile.powerProfile.criticalPower.toFixed(1)} W/kg</div>
+                        <div className={`text-lg font-bold ${
+                          cogganProfile.resistanceScore >= 90 ? 'text-green-400' :
+                          cogganProfile.resistanceScore >= 80 ? 'text-blue-400' :
+                          cogganProfile.resistanceScore >= 70 ? 'text-yellow-400' :
+                          cogganProfile.resistanceScore >= 60 ? 'text-orange-400' :
+                          'text-red-400'
+                        }`}>
+                          {cogganProfile.resistanceScore}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         <div className="flex space-x-2">
@@ -803,23 +820,86 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
           </div>
         </div>
 
-        {/* Légende et explications */}
-        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-          <h4 className="text-sm font-semibold text-blue-800 mb-2">Algorithme de Profilage Coggan - Expert Entraîneur</h4>
-          <div className="text-xs text-blue-700 space-y-1">
-            <p><strong>Score 100/100 :</strong> Athlète ultime qui ne peut jamais être battu en conditions de fatigue</p>
-            <p><strong>Note Générale :</strong> Moyenne simple de toutes les données de puissance (1s, 5s, 30s, 1min, 3min, 5min, 12min, 20min, CP)</p>
-            <p><strong>Métriques :</strong> Scores individuels par durée avec valeurs W/kg</p>
+        {/* Légende des catégories */}
+        <div className="bg-gray-800 p-4 rounded-lg border border-gray-600">
+          <h4 className="text-sm font-semibold text-white mb-3">Légende des Catégories</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-gray-300">
+            <div>
+              <p><strong className="text-green-400">MOY :</strong> Note générale (moyenne de toutes les puissances)</p>
+              <p><strong className="text-green-400">SPR :</strong> Sprint (1s + 5s) - Puissance anaérobie</p>
+              <p><strong className="text-green-400">MON :</strong> Montagne (5min + 12min + 20min) - Endurance</p>
+            </div>
+            <div>
+              <p><strong className="text-green-400">PUN :</strong> Puncheur (30s + 1min + 3min) - Puissance critique</p>
+              <p><strong className="text-green-400">ROU :</strong> Rouleur (12min + 20min + CP) - FTP</p>
+              <p><strong className="text-green-400">RES :</strong> Résistance (20min + CP) - Fatigue</p>
+            </div>
           </div>
         </div>
       </div>
     );
   };
 
+  // Fonction de fusion des profils par email
+  const mergeDuplicateProfiles = () => {
+    const emailGroups = new Map<string, Rider[]>();
+    
+    // Grouper les coureurs par email
+    riders.forEach(rider => {
+      if (rider.email) {
+        if (!emailGroups.has(rider.email)) {
+          emailGroups.set(rider.email, []);
+        }
+        emailGroups.get(rider.email)!.push(rider);
+      }
+    });
+    
+    // Trouver les groupes avec plusieurs profils
+    const duplicates = Array.from(emailGroups.entries())
+      .filter(([email, profiles]) => profiles.length > 1)
+      .map(([email, profiles]) => ({ email, profiles }));
+    
+    if (duplicates.length === 0) {
+      alert("Aucun profil en double trouvé !");
+      return;
+    }
+    
+    console.log("Profils en double trouvés:", duplicates);
+    
+    // Pour chaque groupe de doublons, garder le profil le plus complet
+    duplicates.forEach(({ email, profiles }) => {
+      // Trier par "complétude" (nombre de propriétés non vides)
+      const sortedProfiles = profiles.sort((a, b) => {
+        const aCompleteness = Object.values(a).filter(v => v !== undefined && v !== null && v !== '').length;
+        const bCompleteness = Object.values(b).filter(v => v !== undefined && v !== null && v !== '').length;
+        return bCompleteness - aCompleteness; // Plus complet en premier
+      });
+      
+      const primaryProfile = sortedProfiles[0];
+      const duplicateProfiles = sortedProfiles.slice(1);
+      
+      console.log(`Fusion du profil principal ${primaryProfile.firstName} ${primaryProfile.lastName} avec:`, duplicateProfiles.map(p => `${p.firstName} ${p.lastName}`));
+      
+      // Ici vous pourriez implémenter la logique de fusion dans Firebase
+      // Pour l'instant, on affiche juste les informations
+    });
+    
+    alert(`${duplicates.length} groupe(s) de profils en double trouvé(s). Vérifiez la console pour les détails.`);
+  };
+
   return (
     <SectionWrapper 
       title="Annuaire de l'Equipe"
-      actionButton={<ActionButton onClick={() => {}} icon={<PlusCircleIcon className="w-5 h-5"/>}>Ajouter Coureur</ActionButton>}
+      actionButton={
+        <div className="flex space-x-2">
+          <ActionButton onClick={mergeDuplicateProfiles} variant="secondary" icon={<UserGroupIcon className="w-5 h-5"/>}>
+            Fusionner Doublons
+          </ActionButton>
+          <ActionButton onClick={() => {}} icon={<PlusCircleIcon className="w-5 h-5"/>}>
+            Ajouter Coureur
+          </ActionButton>
+        </div>
+      }
     >
       <div className="mb-2 border-b border-gray-200">
         <nav className="-mb-px flex space-x-1 overflow-x-auto" aria-label="Tabs">
@@ -861,28 +941,21 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
        activeTab === 'quality' ? renderQualityTab() : 
        renderRosterTab()}
 
+      {/* Modal unique pour vue et édition */}
       {selectedRider && (
         <RiderDetailModal
           rider={selectedRider}
-          isOpen={isViewModalOpen}
-          onClose={() => setIsViewModalOpen(false)}
-          onEdit={() => setIsViewModalOpen(false)}
+          isOpen={isViewModalOpen || isEditModalOpen}
+          onClose={() => {
+            setIsViewModalOpen(false);
+            setIsEditModalOpen(false);
+          }}
+          onEdit={() => {
+            setIsViewModalOpen(false);
+            setIsEditModalOpen(true);
+          }}
           onDelete={() => {
             setIsViewModalOpen(false);
-            handleDeleteRider(selectedRider);
-          }}
-          isAdmin={true}
-        />
-      )}
-
-      {/* Modal d'édition */}
-      {selectedRider && (
-        <RiderDetailModal
-          rider={selectedRider}
-          isOpen={isEditModalOpen}
-          onClose={() => setIsEditModalOpen(false)}
-          onEdit={() => setIsEditModalOpen(false)}
-          onDelete={() => {
             setIsEditModalOpen(false);
             handleDeleteRider(selectedRider);
           }}

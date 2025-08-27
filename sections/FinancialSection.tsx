@@ -291,7 +291,7 @@ export const FinancialSection: React.FC<FinancialSectionProps> = ({
                         </div>
                         
                         {incomeItems.length === 0 ? (
-                            <div className="text-center p-8 bg-gray-50 rounded-lg border">
+            <div className="text-center p-8 bg-gray-50 rounded-lg border">
                                 <p className="text-gray-500">Aucun revenu enregistré pour le moment.</p>
                             </div>
                         ) : (
@@ -430,8 +430,8 @@ export const FinancialSection: React.FC<FinancialSectionProps> = ({
                             <ActionButton icon={<PlusCircleIcon className="w-5 h-5" />}>
                                 Nouveau sponsor
                             </ActionButton>
-                        </div>
                     </div>
+                </div>
                 )}
             </div>
 
