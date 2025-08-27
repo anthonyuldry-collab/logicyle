@@ -7,10 +7,10 @@ import {
   PlusCircleIcon,
   MagnifyingGlassIcon
 } from '@heroicons/react/24/outline';
-import { SectionWrapper } from '../components/SectionWrapper';
-import { ActionButton } from '../components/ActionButton';
+import SectionWrapper from '../components/SectionWrapper';
+import ActionButton from '../components/ActionButton';
 import { RiderDetailModal } from '../components/RiderDetailModal';
-import { ConfirmationModal } from '../components/ConfirmationModal';
+import ConfirmationModal from '../components/ConfirmationModal';
 import { Rider, RaceEvent, RiderEventSelection } from '../types';
 import { getAgeCategory } from '../utils/ageUtils';
 
