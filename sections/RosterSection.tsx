@@ -617,32 +617,6 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
       };
     };
 
-    // Tri des coureurs
-    const sortedRiders = [...riders].sort((a, b) => {
-      const profileA = calculateCogganProfileScore(a);
-      const profileB = calculateCogganProfileScore(b);
-      
-      let valueA: number;
-      let valueB: number;
-      
-      if (qualitySortField === 'generalScore') {
-        valueA = profileA.generalScore;
-        valueB = profileB.generalScore;
-      } else if (qualitySortField.startsWith('power')) {
-        valueA = profileA.scores[qualitySortField as keyof typeof profileA.scores] || 0;
-        valueB = profileB.scores[qualitySortField as keyof typeof profileB.scores] || 0;
-      } else {
-        valueA = 0;
-        valueB = 0;
-      }
-      
-      if (qualitySortDirection === 'asc') {
-        return valueA - valueB;
-      } else {
-        return valueB - valueA;
-      }
-    });
-
     return (
       <div className="space-y-6">
         {/* Métriques globales */}
@@ -705,121 +679,21 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
               <thead className="bg-gray-50">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Coureur</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <button 
-                      onClick={() => handleQualitySort('generalScore')}
-                      className="flex items-center space-x-1 hover:text-gray-700"
-                    >
-                      <span>Note Générale</span>
-                      {qualitySortField === 'generalScore' && (
-                        <span>{qualitySortDirection === 'asc' ? '↑' : '↓'}</span>
-                      )}
-                    </button>
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <button 
-                      onClick={() => handleQualitySort('power1s')}
-                      className="flex items-center space-x-1 hover:text-gray-700"
-                    >
-                      <span>1s</span>
-                      {qualitySortField === 'power1s' && (
-                        <span>{qualitySortDirection === 'asc' ? '↑' : '↓'}</span>
-                      )}
-                    </button>
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <button 
-                      onClick={() => handleQualitySort('power5s')}
-                      className="flex items-center space-x-1 hover:text-gray-700"
-                    >
-                      <span>5s</span>
-                      {qualitySortField === 'power5s' && (
-                        <span>{qualitySortDirection === 'asc' ? '↑' : '↓'}</span>
-                      )}
-                    </button>
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <button 
-                      onClick={() => handleQualitySort('power30s')}
-                      className="flex items-center space-x-1 hover:text-gray-700"
-                    >
-                      <span>30s</span>
-                      {qualitySortField === 'power30s' && (
-                        <span>{qualitySortDirection === 'asc' ? '↑' : '↓'}</span>
-                      )}
-                    </button>
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <button 
-                      onClick={() => handleQualitySort('power1min')}
-                      className="flex items-center space-x-1 hover:text-gray-700"
-                    >
-                      <span>1min</span>
-                      {qualitySortField === 'power1min' && (
-                        <span>{qualitySortDirection === 'asc' ? '↑' : '↓'}</span>
-                      )}
-                    </button>
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <button 
-                      onClick={() => handleQualitySort('power3min')}
-                      className="flex items-center space-x-1 hover:text-gray-700"
-                    >
-                      <span>3min</span>
-                      {qualitySortField === 'power3min' && (
-                        <span>{qualitySortDirection === 'asc' ? '↑' : '↓'}</span>
-                      )}
-                    </button>
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <button 
-                      onClick={() => handleQualitySort('power5min')}
-                      className="flex items-center space-x-1 hover:text-gray-700"
-                    >
-                      <span>5min</span>
-                      {qualitySortField === 'power5min' && (
-                        <span>{qualitySortDirection === 'asc' ? '↑' : '↓'}</span>
-                      )}
-                    </button>
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <button 
-                      onClick={() => handleQualitySort('power12min')}
-                      className="flex items-center space-x-1 hover:text-gray-700"
-                    >
-                      <span>12min</span>
-                      {qualitySortField === 'power12min' && (
-                        <span>{qualitySortDirection === 'asc' ? '↑' : '↓'}</span>
-                      )}
-                    </button>
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <button 
-                      onClick={() => handleQualitySort('power20min')}
-                      className="flex items-center space-x-1 hover:text-gray-700"
-                    >
-                      <span>20min</span>
-                      {qualitySortField === 'power20min' && (
-                        <span>{qualitySortDirection === 'asc' ? '↑' : '↓'}</span>
-                      )}
-                    </button>
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <button 
-                      onClick={() => handleQualitySort('criticalPower')}
-                      className="flex items-center space-x-1 hover:text-gray-700"
-                    >
-                      <span>CP</span>
-                      {qualitySortField === 'criticalPower' && (
-                        <span>{qualitySortDirection === 'asc' ? '↑' : '↓'}</span>
-                      )}
-                    </button>
-                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Note Générale</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">1s</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">5s</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">30s</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">1min</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">3min</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">5min</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">12min</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">20min</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">CP</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {sortedRiders.map((rider, index) => {
+                {riders.map((rider, index) => {
                   const { category, age } = getAgeCategory(rider.birthDate);
                   const cogganProfile = calculateCogganProfileScore(rider);
                   
@@ -935,7 +809,7 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
           <div className="text-xs text-blue-700 space-y-1">
             <p><strong>Score 100/100 :</strong> Athlète ultime qui ne peut jamais être battu en conditions de fatigue</p>
             <p><strong>Note Générale :</strong> Moyenne simple de toutes les données de puissance (1s, 5s, 30s, 1min, 3min, 5min, 12min, 20min, CP)</p>
-            <p><strong>Tri :</strong> Cliquez sur les en-têtes pour trier par note générale ou par durée spécifique (croissant/décroissant)</p>
+            <p><strong>Métriques :</strong> Scores individuels par durée avec valeurs W/kg</p>
           </div>
         </div>
       </div>
