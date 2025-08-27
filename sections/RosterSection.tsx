@@ -601,81 +601,82 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
     </div>
   );
 
+  // Algorithme de profilage Coggan Expert - Note générale = moyenne simple de toutes les données
+  const calculateCogganProfileScore = (rider: Rider) => {
+    const powerProfile = (rider as any).powerProfileFresh || {};
+    const weight = (rider as any).weightKg || 70; // Poids par défaut si non défini
+    
+    // Calcul des puissances relatives (W/kg) pour chaque durée
+    const power1s = (powerProfile.power1s || 0) / weight;
+    const power5s = (powerProfile.power5s || 0) / weight;
+    const power30s = (powerProfile.power30s || 0) / weight;
+    const power1min = (powerProfile.power1min || 0) / weight;
+    const power3min = (powerProfile.power3min || 0) / weight;
+    const power5min = (powerProfile.power5min || 0) / weight;
+    const power12min = (powerProfile.power12min || 0) / weight;
+    const power20min = (powerProfile.power20min || 0) / weight;
+    const criticalPower = (powerProfile.criticalPower || 0) / weight;
+    
+    // Références Coggan pour un athlète "ultime" (100/100)
+    const cogganUltimate = {
+      power1s: 25.0,    // 25 W/kg - Sprint ultime
+      power5s: 18.0,    // 18 W/kg - Anaérobie ultime
+      power30s: 12.0,   // 12 W/kg - Puissance critique ultime
+      power1min: 8.5,   // 8.5 W/kg - Endurance anaérobie ultime
+      power3min: 7.0,   // 7.0 W/kg - Seuil anaérobie ultime
+      power5min: 6.5,   // 6.5 W/kg - Seuil fonctionnel ultime
+      power12min: 5.8,  // 5.8 W/kg - FTP ultime
+      power20min: 5.5,  // 5.5 W/kg - Endurance critique ultime
+      criticalPower: 5.5 // 5.5 W/kg - CP ultime
+    };
+    
+    // Calcul des scores par durée (0-100)
+    const getDurationScore = (actual: number, ultimate: number) => {
+      if (actual >= ultimate) return 100;
+      return Math.max(0, Math.round((actual / ultimate) * 100));
+    };
+    
+    const scores = {
+      power1s: getDurationScore(power1s, cogganUltimate.power1s),
+      power5s: getDurationScore(power5s, cogganUltimate.power5s),
+      power30s: getDurationScore(power30s, cogganUltimate.power30s),
+      power1min: getDurationScore(power1min, cogganUltimate.power1min),
+      power3min: getDurationScore(power3min, cogganUltimate.power3min),
+      power5min: getDurationScore(power5min, cogganUltimate.power5min),
+      power12min: getDurationScore(power12min, cogganUltimate.power12min),
+      power20min: getDurationScore(power20min, cogganUltimate.power20min),
+      criticalPower: getDurationScore(criticalPower, cogganUltimate.criticalPower)
+    };
+    
+    // Note générale = moyenne simple de toutes les données de puissance
+    const generalScore = Math.round(
+      Object.values(scores).reduce((sum, score) => sum + score, 0) / Object.values(scores).length
+    );
+    
+    // Calcul des catégories spécifiques
+    const sprintScore = Math.round((scores.power1s + scores.power5s) / 2); // 1s + 5s
+    const montagneScore = Math.round((scores.power5min + scores.power12min + scores.power20min) / 3); // 5min + 12min + 20min
+    const puncheurScore = Math.round((scores.power30s + scores.power1min + scores.power3min) / 3); // 30s + 1min + 3min
+    const rouleurScore = Math.round((scores.power12min + scores.power20min + scores.criticalPower) / 3); // 12min + 20min + CP
+    const resistanceScore = Math.round((scores.power20min + scores.criticalPower) / 2); // Résistance à la fatigue
+    
+    return {
+      generalScore,
+      sprintScore,
+      montagneScore,
+      puncheurScore,
+      rouleurScore,
+      resistanceScore,
+      scores,
+      powerProfile: {
+        power1s, power5s, power30s, power1min, power3min, 
+        power5min, power12min, power20min, criticalPower
+      }
+    };
+  };
+
   // Rendu de l'onglet Qualité d'Effectif
   const renderQualityTab = () => {
-    // Algorithme de profilage Coggan Expert - Note générale = moyenne simple de toutes les données
-    const calculateCogganProfileScore = (rider: Rider) => {
-      const powerProfile = (rider as any).powerProfileFresh || {};
-      const weight = (rider as any).weightKg || 70; // Poids par défaut si non défini
-      
-      // Calcul des puissances relatives (W/kg) pour chaque durée
-      const power1s = (powerProfile.power1s || 0) / weight;
-      const power5s = (powerProfile.power5s || 0) / weight;
-      const power30s = (powerProfile.power30s || 0) / weight;
-      const power1min = (powerProfile.power1min || 0) / weight;
-      const power3min = (powerProfile.power3min || 0) / weight;
-      const power5min = (powerProfile.power5min || 0) / weight;
-      const power12min = (powerProfile.power12min || 0) / weight;
-      const power20min = (powerProfile.power20min || 0) / weight;
-      const criticalPower = (powerProfile.criticalPower || 0) / weight;
-      
-      // Références Coggan pour un athlète "ultime" (100/100)
-      const cogganUltimate = {
-        power1s: 25.0,    // 25 W/kg - Sprint ultime
-        power5s: 18.0,    // 18 W/kg - Anaérobie ultime
-        power30s: 12.0,   // 12 W/kg - Puissance critique ultime
-        power1min: 8.5,   // 8.5 W/kg - Endurance anaérobie ultime
-        power3min: 7.0,   // 7.0 W/kg - Seuil anaérobie ultime
-        power5min: 6.5,   // 6.5 W/kg - Seuil fonctionnel ultime
-        power12min: 5.8,  // 5.8 W/kg - FTP ultime
-        power20min: 5.5,  // 5.5 W/kg - Endurance critique ultime
-        criticalPower: 5.5 // 5.5 W/kg - CP ultime
-      };
-      
-      // Calcul des scores par durée (0-100)
-      const getDurationScore = (actual: number, ultimate: number) => {
-        if (actual >= ultimate) return 100;
-        return Math.max(0, Math.round((actual / ultimate) * 100));
-      };
-      
-      const scores = {
-        power1s: getDurationScore(power1s, cogganUltimate.power1s),
-        power5s: getDurationScore(power5s, cogganUltimate.power5s),
-        power30s: getDurationScore(power30s, cogganUltimate.power30s),
-        power1min: getDurationScore(power1min, cogganUltimate.power1min),
-        power3min: getDurationScore(power3min, cogganUltimate.power3min),
-        power5min: getDurationScore(power5min, cogganUltimate.power5min),
-        power12min: getDurationScore(power12min, cogganUltimate.power12min),
-        power20min: getDurationScore(power20min, cogganUltimate.power20min),
-        criticalPower: getDurationScore(criticalPower, cogganUltimate.criticalPower)
-      };
-      
-      // Note générale = moyenne simple de toutes les données de puissance
-      const generalScore = Math.round(
-        Object.values(scores).reduce((sum, score) => sum + score, 0) / Object.values(scores).length
-      );
-      
-      // Calcul des catégories spécifiques
-      const sprintScore = Math.round((scores.power1s + scores.power5s) / 2); // 1s + 5s
-      const montagneScore = Math.round((scores.power5min + scores.power12min + scores.power20min) / 3); // 5min + 12min + 20min
-      const puncheurScore = Math.round((scores.power30s + scores.power1min + scores.power3min) / 3); // 30s + 1min + 3min
-      const rouleurScore = Math.round((scores.power12min + scores.power20min + scores.criticalPower) / 3); // 12min + 20min + CP
-      const resistanceScore = Math.round((scores.power20min + scores.criticalPower) / 2); // Résistance à la fatigue
-      
-      return {
-        generalScore,
-        sprintScore,
-        montagneScore,
-        puncheurScore,
-        rouleurScore,
-        resistanceScore,
-        scores,
-        powerProfile: {
-          power1s, power5s, power30s, power1min, power3min, 
-          power5min, power12min, power20min, criticalPower
-        }
-      };
-    };
 
     return (
       <div className="space-y-6">
