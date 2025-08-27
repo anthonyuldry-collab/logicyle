@@ -382,12 +382,12 @@ export default function RosterSection({
                         <div className="text-sm text-gray-500">{age !== null ? `${age} ans` : 'Age inconnu'}</div>
                       </div>
                     </div>
-                  </div></td>
+                  </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                       {category}
                     </span>
-                  </div></td>
+                  </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       raceDays === 0 ? 'bg-gray-100 text-gray-600' :
@@ -397,7 +397,7 @@ export default function RosterSection({
                     }`}>
                       {raceDays} jour(s)
                     </span>
-                  </div></td>
+                  </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <div className="space-y-1">
                       {events.slice(0, 2).map(event => (
@@ -409,7 +409,7 @@ export default function RosterSection({
                         <p className="text-xs text-blue-600">+{events.length - 2} autres</p>
                       )}
                     </div>
-                  </div></td>
+                  </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       forme === 'Excellente' ? 'text-green-600 bg-green-100' :
@@ -420,12 +420,12 @@ export default function RosterSection({
                     }`}>
                       {forme}
                     </span>
-                  </div></td>
+                  </td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-1"><ActionButton onClick={() => openViewModal(rider)} variant="info" size="sm" icon={<EyeIcon className="w-4 h-4"/>} title="Voir">
                       <span className="sr-only">Voir</span>
                     </ActionButton>
-                  </div></td>
+                  </td>
                 </tr>
               );
             })}
@@ -581,37 +581,37 @@ export default function RosterSection({
                         <div className="text-sm text-gray-500">{age !== null ? `${age} ans` : 'Age inconnu'}</div>
                       </div>
                     </div>
-                  </div></td>
+                  </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                       {category}
                     </span>
-                  </div></td>
+                  </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getFormeColor(forme)}`}>
                       {forme}
                     </span>
-                  </div></td>
+                  </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getMoralColor(moral)}`}>
                       {moral}
                     </span>
-                  </div></td>
+                  </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getSanteColor(sante)}`}>
                       {sante}
                     </span>
-                  </div></td>
+                  </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
                       {niveau}
                     </span>
-                  </div></td>
+                  </td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-1"><ActionButton onClick={() => openViewModal(rider)} variant="info" size="sm" icon={<EyeIcon className="w-4 h-4"/>} title="Voir">
                       <span className="sr-only">Voir</span>
                     </ActionButton>
-                  </div></td>
+                  </td>
                 </tr>
               );
             })}
