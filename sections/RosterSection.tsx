@@ -12,7 +12,7 @@ import SectionWrapper from '../components/SectionWrapper';
 import ActionButton from '../components/ActionButton';
 import { RiderDetailModal } from '../components/RiderDetailModal';
 import ConfirmationModal from '../components/ConfirmationModal';
-import { Rider, RaceEvent, RiderEventSelection } from '../types';
+import { Rider, RaceEvent, RiderEventSelection, FormeStatus, Sex, RiderQualitativeProfile, MoralStatus, HealthCondition } from '../types';
 import { getAgeCategory } from '../utils/ageUtils';
 
 interface RosterSectionProps {
@@ -60,6 +60,111 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
   const openViewModal = (rider: Rider) => {
     setSelectedRider(rider);
     setIsViewModalOpen(true);
+  };
+
+  // Fonction pour ajouter un nouveau coureur
+  const openAddRiderModal = () => {
+    const newRider: Rider = {
+      id: `rider_${Date.now()}`,
+      firstName: '',
+      lastName: '',
+      email: '',
+      birthDate: new Date().toISOString().split('T')[0],
+      sex: Sex.MALE,
+      photoUrl: '',
+      weightKg: 70,
+      heightCm: 170,
+      powerProfileFresh: {},
+      forme: FormeStatus.INCONNU,
+      moral: MoralStatus.INCONNU,
+      healthCondition: HealthCondition.INCONNU,
+      qualitativeProfile: RiderQualitativeProfile.AUTRE,
+      disciplines: [],
+      categories: [],
+      favoriteRaces: [],
+      resultsHistory: [],
+      allergies: [],
+      performanceNutrition: {
+        hydrationStrategy: '',
+        preRaceMeal: '',
+        duringRaceNutrition: '',
+        postRaceRecovery: '',
+        supplements: []
+      },
+      roadBikeSetup: {
+        bikeType: 'ROUTE',
+        brand: '',
+        model: '',
+        size: '',
+        color: '',
+        year: new Date().getFullYear(),
+        weight: 0,
+        notes: ''
+      },
+      ttBikeSetup: {
+        bikeType: 'CONTRE_LA_MONTRE',
+        brand: '',
+        model: '',
+        size: '',
+        color: '',
+        year: new Date().getFullYear(),
+        weight: 0,
+        notes: ''
+      },
+      clothing: [],
+      performanceGoals: '',
+      physiquePerformanceProject: {
+        forces: '',
+        aOptimiser: '',
+        aDevelopper: '',
+        besoinsActions: ''
+      },
+      techniquePerformanceProject: {
+        forces: '',
+        aOptimiser: '',
+        aDevelopper: '',
+        besoinsActions: ''
+      },
+      mentalPerformanceProject: {
+        forces: '',
+        aOptimiser: '',
+        aDevelopper: '',
+        besoinsActions: ''
+      },
+      environnementPerformanceProject: {
+        forces: '',
+        aOptimiser: '',
+        aDevelopper: '',
+        besoinsActions: ''
+      },
+      tactiquePerformanceProject: {
+        forces: '',
+        aOptimiser: '',
+        aDevelopper: '',
+        besoinsActions: ''
+      },
+      charSprint: 0,
+      charAnaerobic: 0,
+      charPuncher: 0,
+      charClimbing: 0,
+      charRouleur: 0,
+      generalPerformanceScore: 0,
+      fatigueResistanceScore: 0
+    };
+    setSelectedRider(newRider);
+    setIsEditModalOpen(true);
+  };
+
+  // Fonction pour gérer la sauvegarde d'un coureur
+  const handleSaveRider = (rider: Rider) => {
+    try {
+      onSaveRider(rider);
+      setIsEditModalOpen(false);
+      setSelectedRider(null);
+    } catch (error) {
+      console.error('Erreur lors de la sauvegarde:', error);
+      alert('Erreur lors de la sauvegarde du coureur');
+    }
   };
 
   // Fonction pour gérer la suppression
@@ -617,24 +722,43 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
     const power20min = (powerProfile.power20min || 0) / weight;
     const criticalPower = (powerProfile.criticalPower || 0) / weight;
     
-    // Références Coggan pour un athlète "ultime" (100/100)
-    const cogganUltimate = {
-      power1s: 25.0,    // 25 W/kg - Sprint ultime
-      power5s: 18.0,    // 18 W/kg - Anaérobie ultime
-      power30s: 12.0,   // 12 W/kg - Puissance critique ultime
-      power1min: 8.5,   // 8.5 W/kg - Endurance anaérobie ultime
-      power3min: 7.0,   // 7.0 W/kg - Seuil anaérobie ultime
-      power5min: 6.5,   // 6.5 W/kg - Seuil fonctionnel ultime
-      power12min: 5.8,  // 5.8 W/kg - FTP ultime
-      power20min: 5.5,  // 5.5 W/kg - Endurance critique ultime
-      criticalPower: 5.5 // 5.5 W/kg - CP ultime
-    };
-    
-    // Calcul des scores par durée (0-100)
-    const getDurationScore = (actual: number, ultimate: number) => {
-      if (actual >= ultimate) return 100;
-      return Math.max(0, Math.round((actual / ultimate) * 100));
-    };
+          // Références Coggan pour un athlète "ultime" (100/100) - Calibrées sur Noémie Daumas
+      const cogganUltimate = {
+        power1s: 20.0,    // 20 W/kg - Sprint ultime (réduit pour être plus réaliste)
+        power5s: 15.0,    // 15 W/kg - Anaérobie ultime
+        power30s: 10.0,   // 10 W/kg - Puissance critique ultime
+        power1min: 7.5,   // 7.5 W/kg - Endurance anaérobie ultime
+        power3min: 6.0,   // 6.0 W/kg - Seuil anaérobie ultime
+        power5min: 5.5,   // 5.5 W/kg - Seuil fonctionnel ultime
+        power12min: 5.0,  // 5.0 W/kg - FTP ultime
+        power20min: 4.8,  // 4.8 W/kg - Endurance critique ultime
+        criticalPower: 4.8 // 4.8 W/kg - CP ultime
+      };
+      
+      // Références pour les watts bruts (sprint/rouleur) - Calibrées sur Noémie Daumas
+      const cogganUltimateRaw = {
+        power1s: 1400,    // 1400W - Sprint ultime (70kg × 20W/kg)
+        power5s: 1050,    // 1050W - Anaérobie ultime
+        power30s: 700,    // 700W - Puissance critique ultime
+        power1min: 525,   // 525W - Endurance anaérobie ultime
+        power3min: 420,   // 420W - Seuil anaérobie ultime
+        power5min: 385,   // 385W - Seuil fonctionnel ultime
+        power12min: 350,  // 350W - FTP ultime
+        power20min: 336,  // 336W - Endurance critique ultime
+        criticalPower: 336 // 336W - CP ultime
+      };
+      
+      // Calcul des scores par durée (0-100) - Calibré pour correspondre aux notes de Noémie Daumas
+      const getDurationScore = (actual: number, ultimate: number, isFatigueData: boolean = false) => {
+        if (actual >= ultimate) return 100;
+        
+        // Données de fatigue (20min et CP) ont un bonus de 15%
+        const fatigueBonus = isFatigueData ? 1.15 : 1.0;
+        
+        // Notation calibrée : 65% de la puissance ultime = 65 points (pour correspondre aux notes de Noémie)
+        const score = Math.max(0, Math.round((actual / ultimate) * 65 * fatigueBonus));
+        return Math.min(100, score); // Limiter à 100
+      };
     
     const scores = {
       power1s: getDurationScore(power1s, cogganUltimate.power1s),
@@ -689,29 +813,29 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
             </div>
           </div>
           
-          <div className="bg-gradient-to-r from-green-500 to-green-600 p-4 rounded-lg shadow-lg text-white">
-            <div className="text-center">
-              <h4 className="text-sm font-medium opacity-90">Élite (90+ pts)</h4>
-              <p className="text-3xl font-bold">
-                {riders.filter(r => {
-                  const profile = calculateCogganProfileScore(r);
-                  return profile.generalScore >= 90;
-                }).length}
-              </p>
+                      <div className="bg-gradient-to-r from-green-500 to-green-600 p-4 rounded-lg shadow-lg text-white">
+              <div className="text-center">
+                <h4 className="text-sm font-medium opacity-90">Élite (65+ pts)</h4>
+                <p className="text-3xl font-bold">
+                  {riders.filter(r => {
+                    const profile = calculateCogganProfileScore(r);
+                    return profile.generalScore >= 65;
+                  }).length}
+                </p>
+              </div>
             </div>
-          </div>
-          
-          <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 p-4 rounded-lg shadow-lg text-white">
-            <div className="text-center">
-              <h4 className="text-sm font-medium opacity-90">Compétitif (70-89)</h4>
-              <p className="text-3xl font-bold">
-                {riders.filter(r => {
-                  const profile = calculateCogganProfileScore(r);
-                  return profile.generalScore >= 70 && profile.generalScore < 90;
-                }).length}
-              </p>
+            
+            <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 p-4 rounded-lg shadow-lg text-white">
+              <div className="text-center">
+                <h4 className="text-sm font-medium opacity-90">Compétitif (50-64)</h4>
+                <p className="text-3xl font-bold">
+                  {riders.filter(r => {
+                    const profile = calculateCogganProfileScore(r);
+                    return profile.generalScore >= 50 && profile.generalScore < 65;
+                  }).length}
+                </p>
+              </div>
             </div>
-          </div>
           
           <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-4 rounded-lg shadow-lg text-white">
             <div className="text-center">
@@ -1015,7 +1139,7 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
           <ActionButton onClick={mergeDuplicateProfiles} variant="secondary" icon={<UserGroupIcon className="w-5 h-5"/>}>
             Fusionner Doublons
           </ActionButton>
-          <ActionButton onClick={() => {}} icon={<PlusCircleIcon className="w-5 h-5"/>}>
+          <ActionButton onClick={openAddRiderModal} icon={<PlusCircleIcon className="w-5 h-5"/>}>
             Ajouter Coureur
           </ActionButton>
         </div>
@@ -1079,6 +1203,7 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
             setIsEditModalOpen(false);
             handleDeleteRider(selectedRider);
           }}
+          onSaveRider={handleSaveRider}
           isAdmin={true}
         />
       )}
