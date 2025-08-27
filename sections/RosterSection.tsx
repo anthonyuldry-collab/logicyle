@@ -540,115 +540,407 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
   );
 
   // Rendu de l'onglet Qualité d'Effectif
-  const renderQualityTab = () => (
-    <div className="space-y-6">
-      {/* Statistiques globales */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
-          <h4 className="text-sm font-medium text-gray-500">Total Coureurs</h4>
-          <p className="text-2xl font-bold text-gray-900">{riders.length}</p>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
-          <h4 className="text-sm font-medium text-gray-500">Hommes</h4>
-          <p className="text-2xl font-bold text-blue-600">{riders.filter(r => r.gender === 'male').length}</p>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
-          <h4 className="text-sm font-medium text-gray-500">Femmes</h4>
-          <p className="text-2xl font-bold text-pink-600">{riders.filter(r => r.gender === 'female').length}</p>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow-sm border">
-          <h4 className="text-sm font-medium text-gray-500">Moyenne d'Age</h4>
-          <p className="text-2xl font-bold text-green-600">
-            {Math.round(riders.reduce((sum, r) => {
-              const { age } = getAgeCategory(r.birthDate);
-              return sum + (age || 0);
-            }, 0) / riders.filter(r => getAgeCategory(r.birthDate).age !== null).length)}
-          </p>
-        </div>
-      </div>
+  const renderQualityTab = () => {
+    // Algorithme de profilage Coggan Expert - Note générale = moyenne simple de toutes les données
+    const calculateCogganProfileScore = (rider: Rider) => {
+      const powerProfile = (rider as any).powerProfile || {};
+      const weight = (rider as any).weight || 70; // Poids par défaut si non défini
+      
+      // Calcul des puissances relatives (W/kg) pour chaque durée
+      const power1s = (powerProfile.power1s || 0) / weight;
+      const power5s = (powerProfile.power5s || 0) / weight;
+      const power30s = (powerProfile.power30s || 0) / weight;
+      const power1min = (powerProfile.power1min || 0) / weight;
+      const power3min = (powerProfile.power3min || 0) / weight;
+      const power5min = (powerProfile.power5min || 0) / weight;
+      const power12min = (powerProfile.power12min || 0) / weight;
+      const power20min = (powerProfile.power20min || 0) / weight;
+      const criticalPower = (powerProfile.criticalPower || 0) / weight;
+      
+      // Références Coggan pour un athlète "ultime" (100/100)
+      const cogganUltimate = {
+        power1s: 25.0,    // 25 W/kg - Sprint ultime
+        power5s: 18.0,    // 18 W/kg - Anaérobie ultime
+        power30s: 12.0,   // 12 W/kg - Puissance critique ultime
+        power1min: 8.5,   // 8.5 W/kg - Endurance anaérobie ultime
+        power3min: 7.0,   // 7.0 W/kg - Seuil anaérobie ultime
+        power5min: 6.5,   // 6.5 W/kg - Seuil fonctionnel ultime
+        power12min: 5.8,  // 5.8 W/kg - FTP ultime
+        power20min: 5.5,  // 5.5 W/kg - Endurance critique ultime
+        criticalPower: 5.5 // 5.5 W/kg - CP ultime
+      };
+      
+      // Calcul des scores par durée (0-100)
+      const getDurationScore = (actual: number, ultimate: number) => {
+        if (actual >= ultimate) return 100;
+        return Math.max(0, Math.round((actual / ultimate) * 100));
+      };
+      
+      const scores = {
+        power1s: getDurationScore(power1s, cogganUltimate.power1s),
+        power5s: getDurationScore(power5s, cogganUltimate.power5s),
+        power30s: getDurationScore(power30s, cogganUltimate.power30s),
+        power1min: getDurationScore(power1min, cogganUltimate.power1min),
+        power3min: getDurationScore(power3min, cogganUltimate.power3min),
+        power5min: getDurationScore(power5min, cogganUltimate.power5min),
+        power12min: getDurationScore(power12min, cogganUltimate.power12min),
+        power20min: getDurationScore(power20min, cogganUltimate.power20min),
+        criticalPower: getDurationScore(criticalPower, cogganUltimate.criticalPower)
+      };
+      
+      // Note générale = moyenne simple de toutes les données de puissance
+      const generalScore = Math.round(
+        Object.values(scores).reduce((sum, score) => sum + score, 0) / Object.values(scores).length
+      );
+      
+      return {
+        generalScore,
+        scores,
+        powerProfile: {
+          power1s, power5s, power30s, power1min, power3min, 
+          power5min, power12min, power20min, criticalPower
+        }
+      };
+    };
 
-      {/* Tableau détaillé de la qualité */}
-      <div className="bg-white rounded-lg shadow-sm border">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">Qualite Detaillee par Coureur</h3>
+    // État pour le tri
+    const [sortField, setSortField] = useState<string>('generalScore');
+    const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+    // Fonction de tri
+    const handleSort = (field: string) => {
+      if (sortField === field) {
+        setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+      } else {
+        setSortField(field);
+        setSortDirection('desc');
+      }
+    };
+
+    // Tri des coureurs
+    const sortedRiders = [...riders].sort((a, b) => {
+      const profileA = calculateCogganProfileScore(a);
+      const profileB = calculateCogganProfileScore(b);
+      
+      let valueA: number;
+      let valueB: number;
+      
+      if (sortField === 'generalScore') {
+        valueA = profileA.generalScore;
+        valueB = profileB.generalScore;
+      } else if (sortField.startsWith('power')) {
+        valueA = profileA.scores[sortField as keyof typeof profileA.scores] || 0;
+        valueB = profileB.scores[sortField as keyof typeof profileB.scores] || 0;
+      } else {
+        valueA = 0;
+        valueB = 0;
+      }
+      
+      if (sortDirection === 'asc') {
+        return valueA - valueB;
+      } else {
+        return valueB - valueA;
+      }
+    });
+
+    return (
+      <div className="space-y-6">
+        {/* Métriques globales */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-4 rounded-lg shadow-lg text-white">
+            <div className="text-center">
+              <h4 className="text-sm font-medium opacity-90">Total Effectif</h4>
+              <p className="text-3xl font-bold">{riders.length}</p>
+            </div>
+          </div>
+          
+          <div className="bg-gradient-to-r from-green-500 to-green-600 p-4 rounded-lg shadow-lg text-white">
+            <div className="text-center">
+              <h4 className="text-sm font-medium opacity-90">Élite (90+ pts)</h4>
+              <p className="text-3xl font-bold">
+                {riders.filter(r => {
+                  const profile = calculateCogganProfileScore(r);
+                  return profile.generalScore >= 90;
+                }).length}
+              </p>
+            </div>
+          </div>
+          
+          <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 p-4 rounded-lg shadow-lg text-white">
+            <div className="text-center">
+              <h4 className="text-sm font-medium opacity-90">Compétitif (70-89)</h4>
+              <p className="text-3xl font-bold">
+                {riders.filter(r => {
+                  const profile = calculateCogganProfileScore(r);
+                  return profile.generalScore >= 70 && profile.generalScore < 90;
+                }).length}
+              </p>
+            </div>
+          </div>
+          
+          <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-4 rounded-lg shadow-lg text-white">
+            <div className="text-center">
+              <h4 className="text-sm font-medium opacity-90">Moyenne Score</h4>
+              <p className="text-3xl font-bold">
+                {Math.round(riders.reduce((sum, r) => {
+                  const profile = calculateCogganProfileScore(r);
+                  return sum + profile.generalScore;
+                }, 0) / riders.length)}
+              </p>
+            </div>
+          </div>
         </div>
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Coureur</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categorie</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Forme</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {riders.map((rider) => {
-                const { category, age } = getAgeCategory(rider.birthDate);
-                const forme = (rider as any).forme || 'Non defini';
-                
-                return (
-                  <tr key={rider.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center">
-                        {rider.photoUrl ? (
-                          <img src={rider.photoUrl} alt={rider.firstName} className="w-10 h-10 rounded-full mr-4"/>
-                        ) : (
-                          <UserCircleIcon className="w-10 h-10 text-gray-400 mr-4"/>
-                        )}
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">{rider.firstName} {rider.lastName}</div>
-                          <div className="text-sm text-gray-500">{age !== null ? `${age} ans` : 'Age inconnu'}</div>
+
+        {/* Tableau de pilotage complet avec toutes les notes */}
+        <div className="bg-white rounded-lg shadow-lg border">
+          <div className="px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
+            <h3 className="text-xl font-bold text-gray-900">
+              Tableau de Pilotage - Profilage Coggan Expert
+            </h3>
+            <p className="text-sm text-gray-600 mt-1">Note générale = moyenne simple de toutes les données de puissance (1s, 5s, 30s, 1min, 3min, 5min, 12min, 20min, CP)</p>
+            <p className="text-xs text-gray-500 mt-1">100/100 = Athlète ultime qui ne peut jamais être battu en conditions de fatigue</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Coureur</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <button 
+                      onClick={() => handleSort('generalScore')}
+                      className="flex items-center space-x-1 hover:text-gray-700"
+                    >
+                      <span>Note Générale</span>
+                      {sortField === 'generalScore' && (
+                        <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </button>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <button 
+                      onClick={() => handleSort('power1s')}
+                      className="flex items-center space-x-1 hover:text-gray-700"
+                    >
+                      <span>1s</span>
+                      {sortField === 'power1s' && (
+                        <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </button>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <button 
+                      onClick={() => handleSort('power5s')}
+                      className="flex items-center space-x-1 hover:text-gray-700"
+                    >
+                      <span>5s</span>
+                      {sortField === 'power5s' && (
+                        <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </button>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <button 
+                      onClick={() => handleSort('power30s')}
+                      className="flex items-center space-x-1 hover:text-gray-700"
+                    >
+                      <span>30s</span>
+                      {sortField === 'power30s' && (
+                        <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </button>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <button 
+                      onClick={() => handleSort('power1min')}
+                      className="flex items-center space-x-1 hover:text-gray-700"
+                    >
+                      <span>1min</span>
+                      {sortField === 'power1min' && (
+                        <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </button>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <button 
+                      onClick={() => handleSort('power3min')}
+                      className="flex items-center space-x-1 hover:text-gray-700"
+                    >
+                      <span>3min</span>
+                      {sortField === 'power3min' && (
+                        <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </button>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <button 
+                      onClick={() => handleSort('power5min')}
+                      className="flex items-center space-x-1 hover:text-gray-700"
+                    >
+                      <span>5min</span>
+                      {sortField === 'power5min' && (
+                        <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </button>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <button 
+                      onClick={() => handleSort('power12min')}
+                      className="flex items-center space-x-1 hover:text-gray-700"
+                    >
+                      <span>12min</span>
+                      {sortField === 'power12min' && (
+                        <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </button>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <button 
+                      onClick={() => handleSort('power20min')}
+                      className="flex items-center space-x-1 hover:text-gray-700"
+                    >
+                      <span>20min</span>
+                      {sortField === 'power20min' && (
+                        <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </button>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <button 
+                      onClick={() => handleSort('criticalPower')}
+                      className="flex items-center space-x-1 hover:text-gray-700"
+                    >
+                      <span>CP</span>
+                      {sortField === 'criticalPower' && (
+                        <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </button>
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {sortedRiders.map((rider, index) => {
+                  const { category, age } = getAgeCategory(rider.birthDate);
+                  const cogganProfile = calculateCogganProfileScore(rider);
+                  
+                  return (
+                    <tr key={rider.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          {rider.photoUrl ? (
+                            <img src={rider.photoUrl} alt={rider.firstName} className="w-10 h-10 rounded-full mr-4"/>
+                          ) : (
+                            <UserCircleIcon className="w-10 h-10 text-gray-400 mr-4"/>
+                          )}
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">{rider.firstName} {rider.lastName}</div>
+                            <div className="text-sm text-gray-500">{age !== null ? `${age} ans` : 'Âge inconnu'} • {category}</div>
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {category}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        forme === 'Excellente' ? 'text-green-600 bg-green-100' :
-                        forme === 'Bonne' ? 'text-green-700 bg-green-50' :
-                        forme === 'Moyenne' ? 'text-yellow-600 bg-yellow-100' :
-                        forme === 'Faible' ? 'text-red-600 bg-red-100' :
-                        'text-gray-600 bg-gray-100'
-                      }`}>
-                        {forme}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                      <div className="flex space-x-2">
-                        <ActionButton 
-                          onClick={() => openViewModal(rider)} 
-                          variant="info" 
-                          size="sm" 
-                          icon={<EyeIcon className="w-4 h-4"/>} 
-                          title="Voir"
-                        >
-                          <span className="sr-only">Voir</span>
-                        </ActionButton>
-                        <ActionButton 
-                          onClick={() => openEditModal(rider)} 
-                          variant="warning" 
-                          size="sm" 
-                          icon={<PencilIcon className="w-4 h-4"/>} 
-                          title="Modifier"
-                        >
-                          <span className="sr-only">Modifier</span>
-                        </ActionButton>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="w-20 bg-gray-200 rounded-full h-3 mr-3">
+                            <div 
+                              className={`h-3 rounded-full ${
+                                cogganProfile.generalScore >= 90 ? 'bg-green-500' :
+                                cogganProfile.generalScore >= 80 ? 'bg-blue-500' :
+                                cogganProfile.generalScore >= 70 ? 'bg-yellow-500' :
+                                cogganProfile.generalScore >= 60 ? 'bg-orange-500' :
+                                'bg-red-500'
+                              }`}
+                              style={{ width: `${cogganProfile.generalScore}%` }}
+                            ></div>
+                          </div>
+                          <span className={`text-sm font-bold ${
+                            cogganProfile.generalScore >= 90 ? 'text-green-600' :
+                            cogganProfile.generalScore >= 80 ? 'text-blue-600' :
+                            cogganProfile.generalScore >= 70 ? 'text-yellow-600' :
+                            cogganProfile.generalScore >= 60 ? 'text-orange-600' :
+                            'text-red-600'
+                          }`}>
+                            {cogganProfile.generalScore}/100
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <div className="text-sm font-medium text-gray-900">{cogganProfile.scores.power1s}</div>
+                        <div className="text-xs text-gray-500">{cogganProfile.powerProfile.power1s.toFixed(1)} W/kg</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <div className="text-sm font-medium text-gray-900">{cogganProfile.scores.power5s}</div>
+                        <div className="text-xs text-gray-500">{cogganProfile.powerProfile.power5s.toFixed(1)} W/kg</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <div className="text-sm font-medium text-gray-900">{cogganProfile.scores.power30s}</div>
+                        <div className="text-xs text-gray-500">{cogganProfile.powerProfile.power30s.toFixed(1)} W/kg</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <div className="text-sm font-medium text-gray-900">{cogganProfile.scores.power1min}</div>
+                        <div className="text-xs text-gray-500">{cogganProfile.powerProfile.power1min.toFixed(1)} W/kg</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <div className="text-sm font-medium text-gray-900">{cogganProfile.scores.power3min}</div>
+                        <div className="text-xs text-gray-500">{cogganProfile.powerProfile.power3min.toFixed(1)} W/kg</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <div className="text-sm font-medium text-gray-900">{cogganProfile.scores.power5min}</div>
+                        <div className="text-xs text-gray-500">{cogganProfile.powerProfile.power5min.toFixed(1)} W/kg</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <div className="text-sm font-medium text-gray-900">{cogganProfile.scores.power12min}</div>
+                        <div className="text-xs text-gray-500">{cogganProfile.powerProfile.power12min.toFixed(1)} W/kg</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <div className="text-sm font-medium text-gray-900">{cogganProfile.scores.power20min}</div>
+                        <div className="text-xs text-gray-500">{cogganProfile.powerProfile.power20min.toFixed(1)} W/kg</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <div className="text-sm font-medium text-gray-900">{cogganProfile.scores.criticalPower}</div>
+                        <div className="text-xs text-gray-500">{cogganProfile.powerProfile.criticalPower.toFixed(1)} W/kg</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <div className="flex space-x-2">
+                          <ActionButton 
+                            onClick={() => openViewModal(rider)} 
+                            variant="info" 
+                            size="sm" 
+                            icon={<EyeIcon className="w-4 h-4"/>} 
+                            title="Voir"
+                          >
+                            <span className="sr-only">Voir</span>
+                          </ActionButton>
+                          <ActionButton 
+                            onClick={() => openEditModal(rider)} 
+                            variant="warning" 
+                            size="sm" 
+                            icon={<PencilIcon className="w-4 h-4"/>} 
+                            title="Modifier"
+                          >
+                            <span className="sr-only">Modifier</span>
+                          </ActionButton>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Légende et explications */}
+        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+          <h4 className="text-sm font-semibold text-blue-800 mb-2">Algorithme de Profilage Coggan - Expert Entraîneur</h4>
+          <div className="text-xs text-blue-700 space-y-1">
+            <p><strong>Score 100/100 :</strong> Athlète ultime qui ne peut jamais être battu en conditions de fatigue</p>
+            <p><strong>Note Générale :</strong> Moyenne simple de toutes les données de puissance (1s, 5s, 30s, 1min, 3min, 5min, 12min, 20min, CP)</p>
+            <p><strong>Tri :</strong> Cliquez sur les en-têtes pour trier par note générale ou par durée spécifique (croissant/décroissant)</p>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <SectionWrapper 
