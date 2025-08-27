@@ -56,18 +56,12 @@ export default function RosterSection({
   const [planningSortDirection, setPlanningSortDirection] = useState<'asc' | 'desc'>('asc');
   const [selectedRider, setSelectedRider] = useState<Rider | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [riderToDelete, setRiderToDelete] = useState<Rider | null>(null);
 
   const openViewModal = (rider: Rider) => {
     setSelectedRider(rider);
     setIsViewModalOpen(true);
-  };
-
-  const openEditModal = (rider: Rider) => {
-    setSelectedRider(rider);
-    setIsEditModalOpen(true);
   };
 
   const handleDeleteRider = (rider: Rider) => {
@@ -305,11 +299,8 @@ export default function RosterSection({
               </div>
             </div>
             <div className="mt-auto p-2 border-t border-gray-200 flex justify-end space-x-1 bg-gray-50">
-              <div className="flex space-x-1"><ActionButton onClick={() => openViewModal(rider)} variant="info" size="sm" icon={<EyeIcon className="w-4 h-4"/>} title="Voir">
+              <ActionButton onClick={() => openViewModal(rider)} variant="info" size="sm" icon={<EyeIcon className="w-4 h-4"/>} title="Voir">
                 <span className="sr-only">Voir</span>
-              </ActionButton>
-              <ActionButton onClick={() => openEditModal(rider)} variant="warning" size="sm" icon={<PencilIcon className="w-4 h-4"/>} title="Modifier">
-                <span className="sr-only">Modifier</span>
               </ActionButton>
               <ActionButton onClick={() => handleDeleteRider(rider)} variant="danger" size="sm" icon={<TrashIcon className="w-4 h-4"/>} title="Supprimer">
                 <span className="sr-only">Supprimer</span>
@@ -382,12 +373,12 @@ export default function RosterSection({
                         <div className="text-sm text-gray-500">{age !== null ? `${age} ans` : 'Age inconnu'}</div>
                       </div>
                     </div>
-                  </div></td>
+                  </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                       {category}
                     </span>
-                  </div></td>
+                  </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       raceDays === 0 ? 'bg-gray-100 text-gray-600' :
@@ -397,7 +388,7 @@ export default function RosterSection({
                     }`}>
                       {raceDays} jour(s)
                     </span>
-                  </div></td>
+                  </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <div className="space-y-1">
                       {events.slice(0, 2).map(event => (
@@ -409,7 +400,7 @@ export default function RosterSection({
                         <p className="text-xs text-blue-600">+{events.length - 2} autres</p>
                       )}
                     </div>
-                  </div></td>
+                  </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       forme === 'Excellente' ? 'text-green-600 bg-green-100' :
@@ -420,12 +411,12 @@ export default function RosterSection({
                     }`}>
                       {forme}
                     </span>
-                  </div></td>
+                  </td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
-                    <div className="flex space-x-1"><ActionButton onClick={() => openViewModal(rider)} variant="info" size="sm" icon={<EyeIcon className="w-4 h-4"/>} title="Voir">
+                    <ActionButton onClick={() => openViewModal(rider)} variant="info" size="sm" icon={<EyeIcon className="w-4 h-4"/>} title="Voir">
                       <span className="sr-only">Voir</span>
                     </ActionButton>
-                  </div></td>
+                  </td>
                 </tr>
               );
             })}
@@ -488,139 +479,6 @@ export default function RosterSection({
     </div>
   );
 
-  const renderQualityTab = () => (
-    <div className="bg-white p-3 rounded-lg shadow-md">
-      <h3 className="text-lg font-semibold mb-4">Qualite de l'Effectif</h3>
-      
-      {/* Statistiques globales */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-          <h4 className="text-sm font-semibold text-blue-800 mb-2">Total Coureurs</h4>
-          <p className="text-2xl font-bold text-blue-600">{riders.length}</p>
-        </div>
-        
-        <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-          <h4 className="text-sm font-semibold text-green-800 mb-2">En Forme</h4>
-          <p className="text-2xl font-bold text-green-600">
-            {riders.filter(r => (r as any).forme === 'Bonne' || (r as any).forme === 'Excellente').length}
-          </p>
-        </div>
-        
-        <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-          <h4 className="text-sm font-semibold text-yellow-800 mb-2">Moral Eleve</h4>
-          <p className="text-2xl font-bold text-yellow-600">
-            {riders.filter(r => (r as any).moral === 'Bon' || (r as any).moral === 'Excellent').length}
-          </p>
-        </div>
-        
-        <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
-          <h4 className="text-sm font-semibold text-purple-800 mb-2">Sante Optimale</h4>
-          <p className="text-2xl font-bold text-purple-600">
-            {riders.filter(r => (r as any).healthCondition === 'Bon' || (r as any).healthCondition === 'Excellent').length}
-          </p>
-        </div>
-      </div>
-
-      {/* Tableau de qualité */}
-      <div className="overflow-x-auto">
-        <table className="min-w-full bg-white border border-gray-200 rounded-lg">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Coureur</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Categorie</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Forme</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Moral</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Sante</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Niveau</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {sortedRidersForAdmin.map(rider => {
-              const { category, age } = getAgeCategory(rider.birthDate);
-              const forme = (rider as any).forme || 'Non defini';
-              const moral = (rider as any).moral || 'Non defini';
-              const sante = (rider as any).healthCondition || 'Non defini';
-              const niveau = (rider as any).qualitativeProfile || 'Non defini';
-              
-              const getFormeColor = (forme: string) => {
-                if (forme === 'Excellente') return 'text-green-600 bg-green-100';
-                if (forme === 'Bonne') return 'text-green-700 bg-green-50';
-                if (forme === 'Moyenne') return 'text-yellow-600 bg-yellow-100';
-                if (forme === 'Faible') return 'text-red-600 bg-red-100';
-                return 'text-gray-600 bg-gray-100';
-              };
-              
-              const getMoralColor = (moral: string) => {
-                if (moral === 'Excellent') return 'text-green-600 bg-green-100';
-                if (moral === 'Bon') return 'text-green-700 bg-green-50';
-                if (moral === 'Moyen') return 'text-yellow-600 bg-yellow-100';
-                if (moral === 'Faible') return 'text-red-600 bg-red-100';
-                return 'text-gray-600 bg-gray-100';
-              };
-              
-              const getSanteColor = (sante: string) => {
-                if (sante === 'Excellent') return 'text-green-600 bg-green-100';
-                if (sante === 'Bon') return 'text-green-700 bg-green-50';
-                if (sante === 'Moyen') return 'text-yellow-600 bg-yellow-100';
-                if (sante === 'Faible') return 'text-red-600 bg-red-100';
-                return 'text-gray-600 bg-gray-100';
-              };
-              
-              return (
-                <tr key={rider.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="flex items-center">
-                      {rider.photoUrl ? (
-                        <img src={rider.photoUrl} alt={rider.firstName} className="w-8 h-8 rounded-full mr-3"/>
-                      ) : (
-                        <UserCircleIcon className="w-8 h-8 text-gray-400 mr-3"/>
-                      )}
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">{rider.firstName} {rider.lastName}</div>
-                        <div className="text-sm text-gray-500">{age !== null ? `${age} ans` : 'Age inconnu'}</div>
-                      </div>
-                    </div>
-                  </div></td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      {category}
-                    </span>
-                  </div></td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getFormeColor(forme)}`}>
-                      {forme}
-                    </span>
-                  </div></td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getMoralColor(moral)}`}>
-                      {moral}
-                    </span>
-                  </div></td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getSanteColor(sante)}`}>
-                      {sante}
-                    </span>
-                  </div></td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                      {niveau}
-                    </span>
-                  </div></td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
-                    <div className="flex space-x-1"><ActionButton onClick={() => openViewModal(rider)} variant="info" size="sm" icon={<EyeIcon className="w-4 h-4"/>} title="Voir">
-                      <span className="sr-only">Voir</span>
-                    </ActionButton>
-                  </div></td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-
   return (
     <SectionWrapper 
       title="Annuaire de l'Equipe"
@@ -674,21 +532,6 @@ export default function RosterSection({
           onEdit={() => setIsViewModalOpen(false)}
           onDelete={() => {
             setIsViewModalOpen(false);
-            handleDeleteRider(selectedRider);
-          }}
-          isAdmin={true}
-        />
-      )}
-
-      {/* Modal d'édition */}
-      {selectedRider && (
-        <RiderDetailModal
-          rider={selectedRider}
-          isOpen={isEditModalOpen}
-          onClose={() => setIsEditModalOpen(false)}
-          onEdit={() => setIsEditModalOpen(false)}
-          onDelete={() => {
-            setIsEditModalOpen(false);
             handleDeleteRider(selectedRider);
           }}
           isAdmin={true}

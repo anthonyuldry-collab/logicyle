@@ -132,7 +132,7 @@ const PowerPerformanceTable: React.FC<{ riders: Rider[] }> = ({ riders }) => {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [genderFilter, setGenderFilter] = useState<'all' | Sex>('all');
   const [ageFilter, setAgeFilter] = useState<'all' | string>('all');
-  const [selectedDurations, setSelectedDurations] = useState<PowerDuration[]>(['1s', '5s', '30s', '1min', '3min', '5min', '12min', '20min', 'cp']);
+  const [selectedDurations, setSelectedDurations] = useState<PowerDuration[]>([.1s.]);
 
   // Filtrage des riders
   const filteredRiders = useMemo(() => {
@@ -227,24 +227,20 @@ const PowerPerformanceTable: React.FC<{ riders: Rider[] }> = ({ riders }) => {
             </select>
           </div>
 
-          {/* Sélection des durées */}
+          {/* Sélection des durées - Une seule à la fois */}
           <div className="flex items-center space-x-2">
-            <span className="text-sm font-medium">Durées:</span>
-            <div className="flex flex-wrap gap-1">
+            <span className="text-sm font-medium text-black">Durée:</span>
+            <div className="flex overflow-x-auto gap-1 max-w-xs">
               {POWER_DURATIONS_CONFIG.map(duration => (
                 <button
                   key={duration.key}
                   onClick={() => {
-                    if (selectedDurations.includes(duration.key)) {
-                      setSelectedDurations(prev => prev.filter(d => d !== duration.key));
-                    } else {
-                      setSelectedDurations(prev => [...prev, duration.key]);
-                    }
+                    setSelectedDurations([duration.key]);
                   }}
-                  className={`px-2 py-1 text-xs rounded-full transition-colors ${
+                  className={`px-3 py-2 text-sm rounded-lg transition-colors whitespace-nowrap ${
                     selectedDurations.includes(duration.key)
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                      ? 'bg-blue-500 text-white font-semibold'
+                      : 'bg-gray-200 text-black hover:bg-gray-300'
                   }`}
                 >
                   {duration.label}
@@ -410,7 +406,7 @@ export const PerformanceSection: React.FC<{ appState: AppState }> = ({ appState 
   const [selectedRider, setSelectedRider] = useState<Rider | null>(null);
   const [isRiderModalOpen, setIsRiderModalOpen] = useState(false);
   const [displayMode, setDisplayMode] = useState<PowerDisplayMode>('wattsPerKg');
-  const [selectedDurations, setSelectedDurations] = useState<PowerDuration[]>(['1s', '5s', '30s', '1min', '3min', '5min', '12min', '20min', 'cp']);
+  const [selectedDurations, setSelectedDurations] = useState<PowerDuration[]>([.1s.]);
 
   const riders = appState.riders || [];
 
@@ -554,7 +550,7 @@ export const PerformanceSection: React.FC<{ appState: AppState }> = ({ appState 
             <div className="bg-white p-6 rounded-lg shadow border">
               <h4 className="text-lg font-semibold text-gray-900 mb-4">Top Performers par Durée</h4>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {['1s', '5s', '30s', '1min', '3min', '5min', '12min', '20min', 'cp'].map(duration => {
+                {[.1s.].map(duration => {
                   const topRider = riders.reduce((best, rider) => {
                     const value = getRiderPowerValue(rider, duration as PowerDuration, 'wattsPerKg');
                     const bestValue = getRiderPowerValue(best, duration as PowerDuration, 'wattsPerKg');
@@ -605,9 +601,7 @@ export const PerformanceSection: React.FC<{ appState: AppState }> = ({ appState 
               <h3 className="text-xl font-bold text-black mb-4">
                 📊 Analyse Graphique des Performances
               </h3>
-              <p className="text-black mb-6">
-                Visualisez les performances de votre équipe avec des graphiques clairs et lisibles.
-              </p>
+
               
               {/* Contrôles simples */}
               <div className="mb-6">
@@ -644,7 +638,7 @@ export const PerformanceSection: React.FC<{ appState: AppState }> = ({ appState 
                 <RiderComparisonChart 
                   riders={riders} 
                   displayMode={displayMode} 
-                  selectedDurations={['1s', '5s', '30s', '1min', '3min', '5min', '12min', '20min', 'cp']} 
+                  selectedDurations={selectedDurations} 
                 />
               </div>
             </div>
