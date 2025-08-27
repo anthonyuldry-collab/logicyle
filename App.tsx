@@ -79,7 +79,7 @@ import { PerformanceProjectSection } from "./sections/PerformanceProjectSection"
 import PerformanceSection from "./sections/PerformanceSection";
 import PermissionsSection from "./sections/PermissionsSection";
 import RiderEquipmentSection from "./sections/RiderEquipmentSection";
-import { RosterSection } from "./sections/RosterSection";
+import RosterSection from "./sections/RosterSection";
 import ScoutingSection from "./sections/ScoutingSection";
 import SettingsSection from "./sections/SettingsSection";
 import SignupView, { SignupData } from "./sections/SignupView";
