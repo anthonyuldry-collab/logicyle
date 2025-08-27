@@ -27,6 +27,19 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
 
   const { riders, raceEvents, riderEventSelections } = appState;
   
+  // Vérifications de sécurité pour éviter les erreurs undefined
+  if (!riders || !Array.isArray(riders)) {
+    return <div>Erreur: Données des athlètes non disponibles</div>;
+  }
+  
+  if (!raceEvents || !Array.isArray(raceEvents)) {
+    return <div>Erreur: Données des événements non disponibles</div>;
+  }
+  
+  if (!riderEventSelections || !Array.isArray(riderEventSelections)) {
+    return <div>Erreur: Données des sélections non disponibles</div>;
+  }
+  
   // États pour la gestion des onglets
   const [activeTab, setActiveTab] = useState<'roster' | 'seasonPlanning' | 'quality'>('roster');
   
@@ -722,41 +735,41 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
     const power20min = (powerProfile.power20min || 0) / weight;
     const criticalPower = (powerProfile.criticalPower || 0) / weight;
     
-          // Références Coggan pour un athlète "ultime" (100/100) - Calibrées sur Noémie Daumas
+          // Références Coggan pour un athlète "ultime" (100/100) - Calibrées sur l'échelle Elite/Hero
       const cogganUltimate = {
-        power1s: 20.0,    // 20 W/kg - Sprint ultime (réduit pour être plus réaliste)
-        power5s: 15.0,    // 15 W/kg - Anaérobie ultime
-        power30s: 10.0,   // 10 W/kg - Puissance critique ultime
-        power1min: 7.5,   // 7.5 W/kg - Endurance anaérobie ultime
-        power3min: 6.0,   // 6.0 W/kg - Seuil anaérobie ultime
-        power5min: 5.5,   // 5.5 W/kg - Seuil fonctionnel ultime
-        power12min: 5.0,  // 5.0 W/kg - FTP ultime
-        power20min: 4.8,  // 4.8 W/kg - Endurance critique ultime
-        criticalPower: 4.8 // 4.8 W/kg - CP ultime
+        power1s: 19.42,   // 19.42 W/kg - Sprint ultime (Elite/Hero)
+        power5s: 19.42,   // 19.42 W/kg - Anaérobie ultime (Elite/Hero)
+        power30s: 13.69,  // 13.69 W/kg - Puissance critique ultime (Pro)
+        power1min: 8.92,  // 8.92 W/kg - Endurance anaérobie ultime (Elite/Hero)
+        power3min: 7.0,   // 7.0 W/kg - Seuil anaérobie ultime
+        power5min: 6.35,  // 6.35 W/kg - Seuil fonctionnel ultime (Elite/Hero)
+        power12min: 5.88, // 5.88 W/kg - FTP ultime (Elite/Hero)
+        power20min: 5.88, // 5.88 W/kg - Endurance critique ultime (Elite/Hero)
+        criticalPower: 5.35 // 5.35 W/kg - CP ultime (Elite/Hero)
       };
       
-      // Références pour les watts bruts (sprint/rouleur) - Calibrées sur Noémie Daumas
+      // Références pour les watts bruts (sprint/rouleur) - Calibrées sur l'échelle Elite/Hero
       const cogganUltimateRaw = {
-        power1s: 1400,    // 1400W - Sprint ultime (70kg × 20W/kg)
-        power5s: 1050,    // 1050W - Anaérobie ultime
-        power30s: 700,    // 700W - Puissance critique ultime
-        power1min: 525,   // 525W - Endurance anaérobie ultime
-        power3min: 420,   // 420W - Seuil anaérobie ultime
-        power5min: 385,   // 385W - Seuil fonctionnel ultime
-        power12min: 350,  // 350W - FTP ultime
-        power20min: 336,  // 336W - Endurance critique ultime
-        criticalPower: 336 // 336W - CP ultime
+        power1s: 1359,    // 1359W - Sprint ultime (70kg × 19.42W/kg)
+        power5s: 1359,    // 1359W - Anaérobie ultime
+        power30s: 958,    // 958W - Puissance critique ultime
+        power1min: 624,   // 624W - Endurance anaérobie ultime
+        power3min: 490,   // 490W - Seuil anaérobie ultime
+        power5min: 445,   // 445W - Seuil fonctionnel ultime
+        power12min: 412,  // 412W - FTP ultime
+        power20min: 412,  // 412W - Endurance critique ultime
+        criticalPower: 375 // 375W - CP ultime
       };
       
-      // Calcul des scores par durée (0-100) - Calibré pour correspondre aux notes de Noémie Daumas
+      // Calcul des scores par durée (0-100) - Calibré pour correspondre à l'échelle Elite/Hero
       const getDurationScore = (actual: number, ultimate: number, isFatigueData: boolean = false) => {
         if (actual >= ultimate) return 100;
         
-        // Données de fatigue (20min et CP) ont un bonus de 15%
-        const fatigueBonus = isFatigueData ? 1.15 : 1.0;
+        // Données de fatigue (20min et CP) ont un bonus de 10%
+        const fatigueBonus = isFatigueData ? 1.1 : 1.0;
         
-        // Notation calibrée : 65% de la puissance ultime = 65 points (pour correspondre aux notes de Noémie)
-        const score = Math.max(0, Math.round((actual / ultimate) * 65 * fatigueBonus));
+        // Notation calibrée : 70% de la puissance ultime = 70 points (pour correspondre à l'échelle Elite/Hero)
+        const score = Math.max(0, Math.round((actual / ultimate) * 70 * fatigueBonus));
         return Math.min(100, score); // Limiter à 100
       };
     
@@ -815,11 +828,11 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
           
                       <div className="bg-gradient-to-r from-green-500 to-green-600 p-4 rounded-lg shadow-lg text-white">
               <div className="text-center">
-                <h4 className="text-sm font-medium opacity-90">Élite (65+ pts)</h4>
+                <h4 className="text-sm font-medium opacity-90">Elite/Hero (70+ pts)</h4>
                 <p className="text-3xl font-bold">
                   {riders.filter(r => {
                     const profile = calculateCogganProfileScore(r);
-                    return profile.generalScore >= 65;
+                    return profile.generalScore >= 70;
                   }).length}
                 </p>
               </div>
@@ -827,11 +840,11 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
             
             <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 p-4 rounded-lg shadow-lg text-white">
               <div className="text-center">
-                <h4 className="text-sm font-medium opacity-90">Compétitif (50-64)</h4>
+                <h4 className="text-sm font-medium opacity-90">Pro (50-69)</h4>
                 <p className="text-3xl font-bold">
                   {riders.filter(r => {
                     const profile = calculateCogganProfileScore(r);
-                    return profile.generalScore >= 50 && profile.generalScore < 65;
+                    return profile.generalScore >= 50 && profile.generalScore < 70;
                   }).length}
                 </p>
               </div>
@@ -970,10 +983,10 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <div className={`text-lg font-bold ${
-                          cogganProfile.generalScore >= 90 ? 'text-green-400' :
-                          cogganProfile.generalScore >= 80 ? 'text-blue-400' :
-                          cogganProfile.generalScore >= 70 ? 'text-yellow-400' :
-                          cogganProfile.generalScore >= 60 ? 'text-orange-400' :
+                          cogganProfile.generalScore >= 70 ? 'text-green-400' :
+                          cogganProfile.generalScore >= 50 ? 'text-blue-400' :
+                          cogganProfile.generalScore >= 30 ? 'text-yellow-400' :
+                          cogganProfile.generalScore >= 20 ? 'text-orange-400' :
                           'text-red-400'
                         }`}>
                           {cogganProfile.generalScore}
