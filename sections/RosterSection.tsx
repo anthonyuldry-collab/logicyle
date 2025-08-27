@@ -205,6 +205,53 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
     }
   };
 
+  // Fonction pour obtenir les coureurs triés selon la qualité
+  const getSortedRidersForQuality = () => {
+    return [...riders].sort((a, b) => {
+      const profileA = calculateCogganProfileScore(a);
+      const profileB = calculateCogganProfileScore(b);
+      
+      let valueA: number;
+      let valueB: number;
+      
+      switch (qualitySortField) {
+        case 'generalScore':
+          valueA = profileA.generalScore;
+          valueB = profileB.generalScore;
+          break;
+        case 'sprintScore':
+          valueA = profileA.sprintScore;
+          valueB = profileB.sprintScore;
+          break;
+        case 'montagneScore':
+          valueA = profileA.montagneScore;
+          valueB = profileB.montagneScore;
+          break;
+        case 'puncheurScore':
+          valueA = profileA.puncheurScore;
+          valueB = profileB.puncheurScore;
+          break;
+        case 'rouleurScore':
+          valueA = profileA.rouleurScore;
+          valueB = profileB.rouleurScore;
+          break;
+        case 'resistanceScore':
+          valueA = profileA.resistanceScore;
+          valueB = profileB.resistanceScore;
+          break;
+        default:
+          valueA = profileA.generalScore;
+          valueB = profileB.generalScore;
+      }
+      
+      if (qualitySortDirection === 'asc') {
+        return valueA - valueB;
+      } else {
+        return valueB - valueA;
+      }
+    });
+  };
+
   // Rendu de l'onglet Effectif
   const renderRosterTab = () => (
     <div className="space-y-4">
@@ -680,29 +727,101 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
 
         {/* Tableau de pilotage style Pro Cycling Manager */}
         <div className="bg-gray-900 rounded-lg shadow-lg border border-gray-700">
-          <div className="px-6 py-4 border-b border-gray-700 bg-gradient-to-r from-gray-800 to-gray-900">
-            <h3 className="text-xl font-bold text-white">
-              Qualité d'Effectif - Profilage Coggan Expert
-            </h3>
-            <p className="text-sm text-gray-300 mt-1">Note générale = moyenne simple de toutes les données de puissance • 100/100 = Athlète ultime</p>
-          </div>
+                      <div className="px-6 py-4 border-b border-gray-700 bg-gradient-to-r from-gray-800 to-gray-900">
+              <h3 className="text-xl font-bold text-white">
+                Qualité d'Effectif
+              </h3>
+              <p className="text-sm text-gray-300 mt-1">Note générale = moyenne simple de toutes les données de puissance</p>
+            </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-700">
               <thead className="bg-gray-800">
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Coureur</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Âge</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">MOY</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">SPR</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">MON</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">PUN</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">ROU</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">RES</th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    <button 
+                      onClick={() => handleQualitySort('generalScore')}
+                      className="flex items-center justify-center w-full hover:text-white transition-colors"
+                    >
+                      MOY
+                      {qualitySortField === 'generalScore' && (
+                        <span className="ml-1 text-blue-400">
+                          {qualitySortDirection === 'asc' ? '↑' : '↓'}
+                        </span>
+                      )}
+                    </button>
+                  </th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    <button 
+                      onClick={() => handleQualitySort('sprintScore')}
+                      className="flex items-center justify-center w-full hover:text-white transition-colors"
+                    >
+                      SPR
+                      {qualitySortField === 'sprintScore' && (
+                        <span className="ml-1 text-blue-400">
+                          {qualitySortDirection === 'asc' ? '↑' : '↓'}
+                        </span>
+                      )}
+                    </button>
+                  </th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    <button 
+                      onClick={() => handleQualitySort('montagneScore')}
+                      className="flex items-center justify-center w-full hover:text-white transition-colors"
+                    >
+                      MON
+                      {qualitySortField === 'montagneScore' && (
+                        <span className="ml-1 text-blue-400">
+                          {qualitySortDirection === 'asc' ? '↑' : '↓'}
+                        </span>
+                      )}
+                    </button>
+                  </th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    <button 
+                      onClick={() => handleQualitySort('puncheurScore')}
+                      className="flex items-center justify-center w-full hover:text-white transition-colors"
+                    >
+                      PUN
+                      {qualitySortField === 'puncheurScore' && (
+                        <span className="ml-1 text-blue-400">
+                          {qualitySortDirection === 'asc' ? '↑' : '↓'}
+                        </span>
+                      )}
+                    </button>
+                  </th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    <button 
+                      onClick={() => handleQualitySort('rouleurScore')}
+                      className="flex items-center justify-center w-full hover:text-white transition-colors"
+                    >
+                      ROU
+                      {qualitySortField === 'rouleurScore' && (
+                        <span className="ml-1 text-blue-400">
+                          {qualitySortDirection === 'asc' ? '↑' : '↓'}
+                        </span>
+                      )}
+                    </button>
+                  </th>
+                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-300 uppercase tracking-wider">
+                    <button 
+                      onClick={() => handleQualitySort('resistanceScore')}
+                      className="flex items-center justify-center w-full hover:text-white transition-colors"
+                    >
+                      RES
+                      {qualitySortField === 'resistanceScore' && (
+                        <span className="ml-1 text-blue-400">
+                          {qualitySortDirection === 'asc' ? '↑' : '↓'}
+                        </span>
+                      )}
+                    </button>
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-300 uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody className="bg-gray-900 divide-y divide-gray-700">
-                {riders.map((rider) => {
+                {getSortedRidersForQuality().map((rider) => {
                   const { category, age } = getAgeCategory(rider.birthDate);
                   const cogganProfile = calculateCogganProfileScore(rider);
                   
