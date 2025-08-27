@@ -724,6 +724,17 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
     const powerProfile = (rider as any).powerProfileFresh || {};
     const weight = (rider as any).weightKg || 70; // Poids par défaut si non défini
     
+    // Récupération des notes du profil de performance (PPR) si disponibles
+    const pprNotes = {
+      sprint: (rider as any).charSprint || 0,
+      anaerobic: (rider as any).charAnaerobic || 0,
+      puncher: (rider as any).charPuncher || 0,
+      climbing: (rider as any).charClimbing || 0,
+      rouleur: (rider as any).charRouleur || 0,
+      general: (rider as any).generalPerformanceScore || 0,
+      fatigue: (rider as any).fatigueResistanceScore || 0
+    };
+    
     // Calcul des puissances relatives (W/kg) pour chaque durée
     const power1s = (powerProfile.power1s || 0) / weight;
     const power5s = (powerProfile.power5s || 0) / weight;
@@ -735,45 +746,46 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
     const power20min = (powerProfile.power20min || 0) / weight;
     const criticalPower = (powerProfile.criticalPower || 0) / weight;
     
-          // Références Coggan pour un athlète "ultime" (100/100) - Calibrées sur l'échelle Elite/Hero
-      const cogganUltimate = {
-        power1s: 19.42,   // 19.42 W/kg - Sprint ultime (Elite/Hero)
-        power5s: 19.42,   // 19.42 W/kg - Anaérobie ultime (Elite/Hero)
-        power30s: 13.69,  // 13.69 W/kg - Puissance critique ultime (Pro)
-        power1min: 8.92,  // 8.92 W/kg - Endurance anaérobie ultime (Elite/Hero)
-        power3min: 7.0,   // 7.0 W/kg - Seuil anaérobie ultime
-        power5min: 6.35,  // 6.35 W/kg - Seuil fonctionnel ultime (Elite/Hero)
-        power12min: 5.88, // 5.88 W/kg - FTP ultime (Elite/Hero)
-        power20min: 5.88, // 5.88 W/kg - Endurance critique ultime (Elite/Hero)
-        criticalPower: 5.35 // 5.35 W/kg - CP ultime (Elite/Hero)
-      };
-      
-      // Références pour les watts bruts (sprint/rouleur) - Calibrées sur l'échelle Elite/Hero
-      const cogganUltimateRaw = {
-        power1s: 1359,    // 1359W - Sprint ultime (70kg × 19.42W/kg)
-        power5s: 1359,    // 1359W - Anaérobie ultime
-        power30s: 958,    // 958W - Puissance critique ultime
-        power1min: 624,   // 624W - Endurance anaérobie ultime
-        power3min: 490,   // 490W - Seuil anaérobie ultime
-        power5min: 445,   // 445W - Seuil fonctionnel ultime
-        power12min: 412,  // 412W - FTP ultime
-        power20min: 412,  // 412W - Endurance critique ultime
-        criticalPower: 375 // 375W - CP ultime
-      };
-      
-      // Calcul des scores par durée (0-100) - Calibré pour correspondre à l'échelle Elite/Hero
-      const getDurationScore = (actual: number, ultimate: number, isFatigueData: boolean = false) => {
-        if (actual >= ultimate) return 100;
-        
-        // Données de fatigue (20min et CP) ont un bonus de 10%
-        const fatigueBonus = isFatigueData ? 1.1 : 1.0;
-        
-        // Notation calibrée : 70% de la puissance ultime = 70 points (pour correspondre à l'échelle Elite/Hero)
-        const score = Math.max(0, Math.round((actual / ultimate) * 70 * fatigueBonus));
-        return Math.min(100, score); // Limiter à 100
-      };
+    // Références Coggan pour un athlète "ultime" (100/100) - Calibrées sur l'échelle Elite/Hero
+    const cogganUltimate = {
+      power1s: 19.42,   // 19.42 W/kg - Sprint ultime (Elite/Hero)
+      power5s: 19.42,   // 19.42 W/kg - Anaérobie ultime (Elite/Hero)
+      power30s: 13.69,  // 13.69 W/kg - Puissance critique ultime (Pro)
+      power1min: 8.92,  // 8.92 W/kg - Endurance anaérobie ultime (Elite/Hero)
+      power3min: 7.0,   // 7.0 W/kg - Seuil anaérobie ultime
+      power5min: 6.35,  // 6.35 W/kg - Seuil fonctionnel ultime (Elite/Hero)
+      power12min: 5.88, // 5.88 W/kg - FTP ultime (Elite/Hero)
+      power20min: 5.88, // 5.88 W/kg - Endurance critique ultime (Elite/Hero)
+      criticalPower: 5.35 // 5.35 W/kg - CP ultime (Elite/Hero)
+    };
     
-    const scores = {
+    // Références pour les watts bruts (sprint/rouleur) - Calibrées sur l'échelle Elite/Hero
+    const cogganUltimateRaw = {
+      power1s: 1359,    // 1359W - Sprint ultime (70kg × 19.42W/kg)
+      power5s: 1359,    // 1359W - Anaérobie ultime
+      power30s: 958,    // 958W - Puissance critique ultime
+      power1min: 624,   // 624W - Endurance anaérobie ultime
+      power3min: 490,   // 490W - Seuil anaérobie ultime
+      power5min: 445,   // 445W - Seuil fonctionnel ultime
+      power12min: 412,  // 412W - FTP ultime
+      power20min: 412,  // 412W - Endurance critique ultime
+      criticalPower: 375 // 375W - CP ultime
+    };
+    
+    // Calcul des scores par durée (0-100) - Calibré pour correspondre à l'échelle Elite/Hero
+    const getDurationScore = (actual: number, ultimate: number, isFatigueData: boolean = false) => {
+      if (actual >= ultimate) return 100;
+      
+      // Données de fatigue (20min et CP) ont un bonus de 10%
+      const fatigueBonus = isFatigueData ? 1.1 : 1.0;
+      
+      // Notation calibrée : 70% de la puissance ultime = 70 points (pour correspondre à l'échelle Elite/Hero)
+      const score = Math.max(0, Math.round((actual / ultimate) * 70 * fatigueBonus));
+      return Math.min(100, score); // Limiter à 100
+    };
+    
+    // Calcul des scores automatiques basés sur les données de puissance
+    const automaticScores = {
       power1s: getDurationScore(power1s, cogganUltimate.power1s),
       power5s: getDurationScore(power5s, cogganUltimate.power5s),
       power30s: getDurationScore(power30s, cogganUltimate.power30s),
@@ -785,17 +797,37 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
       criticalPower: getDurationScore(criticalPower, cogganUltimate.criticalPower)
     };
     
-    // Note générale = moyenne simple de toutes les données de puissance
-    const generalScore = Math.round(
-      Object.values(scores).reduce((sum, score) => sum + score, 0) / Object.values(scores).length
+    // Fonction pour utiliser les notes PPR si disponibles, sinon les scores automatiques
+    const getScore = (pprScore: number, automaticScore: number) => {
+      // Si une note PPR existe, l'utiliser directement
+      if (pprScore > 0) return pprScore;
+      
+      // Sinon utiliser le score automatique
+      return automaticScore;
+    };
+    
+    // Calcul des scores : PPR prioritaire, sinon automatique
+    const sprintScore = getScore(pprNotes.sprint, 
+      Math.round((automaticScores.power1s + automaticScores.power5s) / 2));
+    
+    const montagneScore = getScore(pprNotes.climbing, 
+      Math.round((automaticScores.power5min + automaticScores.power12min + automaticScores.power20min) / 3));
+    
+    const puncheurScore = getScore(pprNotes.puncher, 
+      Math.round((automaticScores.power30s + automaticScores.power1min + automaticScores.power3min) / 3));
+    
+    const rouleurScore = getScore(pprNotes.rouleur, 
+      Math.round((automaticScores.power12min + automaticScores.power20min + automaticScores.criticalPower) / 3));
+    
+    const resistanceScore = getScore(pprNotes.fatigue, 
+      Math.round((automaticScores.power20min + automaticScores.criticalPower) / 2));
+    
+    // Note générale : PPR si disponible, sinon moyenne automatique
+    const automaticGeneralScore = Math.round(
+      Object.values(automaticScores).reduce((sum, score) => sum + score, 0) / Object.values(automaticScores).length
     );
     
-    // Calcul des catégories spécifiques
-    const sprintScore = Math.round((scores.power1s + scores.power5s) / 2); // 1s + 5s
-    const montagneScore = Math.round((scores.power5min + scores.power12min + scores.power20min) / 3); // 5min + 12min + 20min
-    const puncheurScore = Math.round((scores.power30s + scores.power1min + scores.power3min) / 3); // 30s + 1min + 3min
-    const rouleurScore = Math.round((scores.power12min + scores.power20min + scores.criticalPower) / 3); // 12min + 20min + CP
-    const resistanceScore = Math.round((scores.power20min + scores.criticalPower) / 2); // Résistance à la fatigue
+    const generalScore = getScore(pprNotes.general, automaticGeneralScore);
     
     return {
       generalScore,
@@ -804,11 +836,13 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
       puncheurScore,
       rouleurScore,
       resistanceScore,
-      scores,
+      automaticScores, // Scores calculés automatiquement
+      pprNotes,        // Notes du profil de performance
       powerProfile: {
         power1s, power5s, power30s, power1min, power3min, 
         power5min, power12min, power20min, criticalPower
-      }
+      },
+      isHybrid: pprNotes.general > 0 // Indicateur si le profil utilise des notes PPR
     };
   };
 
@@ -982,69 +1016,112 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                         {age !== null ? `${age} ans` : 'Âge inconnu'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className={`text-lg font-bold ${
-                          cogganProfile.generalScore >= 70 ? 'text-green-400' :
-                          cogganProfile.generalScore >= 50 ? 'text-blue-400' :
-                          cogganProfile.generalScore >= 30 ? 'text-yellow-400' :
-                          cogganProfile.generalScore >= 20 ? 'text-orange-400' :
-                          'text-red-400'
-                        }`}>
-                          {cogganProfile.generalScore}
+                        <div className="space-y-1">
+                          <div className={`text-lg font-bold ${
+                            cogganProfile.generalScore >= 70 ? 'text-green-400' :
+                            cogganProfile.generalScore >= 50 ? 'text-blue-400' :
+                            cogganProfile.generalScore >= 30 ? 'text-yellow-400' :
+                            cogganProfile.generalScore >= 20 ? 'text-orange-400' :
+                            'text-red-400'
+                          }`}>
+                            {cogganProfile.generalScore}
+                          </div>
+                          {cogganProfile.pprNotes.general > 0 && (
+                            <div className="text-xs text-purple-400 flex items-center justify-center">
+                              <span className="w-2 h-2 bg-purple-400 rounded-full mr-1"></span>
+                              PPR
+                            </div>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className={`text-lg font-bold ${
-                          cogganProfile.sprintScore >= 90 ? 'text-green-400' :
-                          cogganProfile.sprintScore >= 80 ? 'text-blue-400' :
-                          cogganProfile.sprintScore >= 70 ? 'text-yellow-400' :
-                          cogganProfile.sprintScore >= 60 ? 'text-orange-400' :
-                          'text-red-400'
-                        }`}>
-                          {cogganProfile.sprintScore}
+                        <div className="space-y-1">
+                          <div className={`text-lg font-bold ${
+                            cogganProfile.sprintScore >= 70 ? 'text-green-400' :
+                            cogganProfile.sprintScore >= 50 ? 'text-blue-400' :
+                            cogganProfile.sprintScore >= 30 ? 'text-yellow-400' :
+                            cogganProfile.sprintScore >= 20 ? 'text-orange-400' :
+                            'text-red-400'
+                          }`}>
+                            {cogganProfile.sprintScore}
+                          </div>
+                          {cogganProfile.pprNotes.sprint > 0 && (
+                            <div className="text-xs text-purple-400">
+                              PPR: {cogganProfile.pprNotes.sprint}
+                            </div>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className={`text-lg font-bold ${
-                          cogganProfile.montagneScore >= 90 ? 'text-green-400' :
-                          cogganProfile.montagneScore >= 80 ? 'text-blue-400' :
-                          cogganProfile.montagneScore >= 70 ? 'text-yellow-400' :
-                          cogganProfile.montagneScore >= 60 ? 'text-orange-400' :
-                          'text-red-400'
-                        }`}>
-                          {cogganProfile.montagneScore}
+                        <div className="space-y-1">
+                          <div className={`text-lg font-bold ${
+                            cogganProfile.montagneScore >= 70 ? 'text-green-400' :
+                            cogganProfile.montagneScore >= 50 ? 'text-blue-400' :
+                            cogganProfile.montagneScore >= 30 ? 'text-yellow-400' :
+                            cogganProfile.montagneScore >= 20 ? 'text-orange-400' :
+                            'text-red-400'
+                          }`}>
+                            {cogganProfile.montagneScore}
+                          </div>
+                          {cogganProfile.pprNotes.climbing > 0 && (
+                            <div className="text-xs text-purple-400">
+                              PPR: {cogganProfile.pprNotes.climbing}
+                            </div>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className={`text-lg font-bold ${
-                          cogganProfile.puncheurScore >= 90 ? 'text-green-400' :
-                          cogganProfile.puncheurScore >= 80 ? 'text-blue-400' :
-                          cogganProfile.puncheurScore >= 70 ? 'text-yellow-400' :
-                          cogganProfile.puncheurScore >= 60 ? 'text-orange-400' :
-                          'text-red-400'
-                        }`}>
-                          {cogganProfile.puncheurScore}
+                        <div className="space-y-1">
+                          <div className={`text-lg font-bold ${
+                            cogganProfile.puncheurScore >= 70 ? 'text-green-400' :
+                            cogganProfile.puncheurScore >= 50 ? 'text-blue-400' :
+                            cogganProfile.puncheurScore >= 30 ? 'text-yellow-400' :
+                            cogganProfile.puncheurScore >= 20 ? 'text-orange-400' :
+                            'text-red-400'
+                          }`}>
+                            {cogganProfile.puncheurScore}
+                          </div>
+                          {cogganProfile.pprNotes.puncher > 0 && (
+                            <div className="text-xs text-purple-400">
+                              PPR: {cogganProfile.pprNotes.puncher}
+                            </div>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className={`text-lg font-bold ${
-                          cogganProfile.rouleurScore >= 90 ? 'text-green-400' :
-                          cogganProfile.rouleurScore >= 80 ? 'text-blue-400' :
-                          cogganProfile.rouleurScore >= 70 ? 'text-yellow-400' :
-                          cogganProfile.rouleurScore >= 60 ? 'text-orange-400' :
-                          'text-red-400'
-                        }`}>
-                          {cogganProfile.rouleurScore}
+                        <div className="space-y-1">
+                          <div className={`text-lg font-bold ${
+                            cogganProfile.rouleurScore >= 70 ? 'text-green-400' :
+                            cogganProfile.rouleurScore >= 50 ? 'text-blue-400' :
+                            cogganProfile.rouleurScore >= 30 ? 'text-yellow-400' :
+                            cogganProfile.rouleurScore >= 20 ? 'text-orange-400' :
+                            'text-red-400'
+                          }`}>
+                            {cogganProfile.rouleurScore}
+                          </div>
+                          {cogganProfile.pprNotes.rouleur > 0 && (
+                            <div className="text-xs text-purple-400">
+                              PPR: {cogganProfile.pprNotes.rouleur}
+                            </div>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <div className={`text-lg font-bold ${
-                          cogganProfile.resistanceScore >= 90 ? 'text-green-400' :
-                          cogganProfile.resistanceScore >= 80 ? 'text-blue-400' :
-                          cogganProfile.resistanceScore >= 70 ? 'text-yellow-400' :
-                          cogganProfile.resistanceScore >= 60 ? 'text-orange-400' :
-                          'text-red-400'
-                        }`}>
-                          {cogganProfile.resistanceScore}
+                        <div className="space-y-1">
+                          <div className={`text-lg font-bold ${
+                            cogganProfile.resistanceScore >= 70 ? 'text-green-400' :
+                            cogganProfile.resistanceScore >= 50 ? 'text-blue-400' :
+                            cogganProfile.resistanceScore >= 30 ? 'text-yellow-400' :
+                            cogganProfile.resistanceScore >= 20 ? 'text-orange-400' :
+                            'text-red-400'
+                          }`}>
+                            {cogganProfile.resistanceScore}
+                          </div>
+                          {cogganProfile.pprNotes.fatigue > 0 && (
+                            <div className="text-xs text-purple-400">
+                              PPR: {cogganProfile.pprNotes.fatigue}
+                            </div>
+                          )}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
