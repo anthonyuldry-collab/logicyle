@@ -1,4 +1,5 @@
 import { defineConfig, loadEnv } from 'vite';
+import react from '@vitejs/plugin-react';
 
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, '.', '');
@@ -16,7 +17,7 @@ export default defineConfig(({ mode }) => {
         },
         
         optimizeDeps: {
-            include: ['react', 'react-dom', 'frappe-charts'],
+            include: ['react', 'react-dom', 'frappe-charts', 'chart.js', 'react-chartjs-2'],
             exclude: ['@rollup/rollup-linux-x64-gnu'],
             force: true
         },
@@ -30,7 +31,7 @@ export default defineConfig(({ mode }) => {
                 output: {
                     manualChunks: {
                         vendor: ['react', 'react-dom'],
-                        charts: ['frappe-charts']
+                        charts: ['frappe-charts', 'chart.js', 'react-chartjs-2']
                     }
                 },
                 onwarn(warning, warn) {
@@ -58,6 +59,6 @@ export default defineConfig(({ mode }) => {
             host: true
         },
         
-        plugins: []
+        plugins: [react()]
     };
 });
