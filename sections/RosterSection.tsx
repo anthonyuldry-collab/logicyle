@@ -47,6 +47,13 @@ export default function RosterSection({
   const [activeTab, setActiveTab] = useState<'roster' | 'seasonPlanning'>('roster');
   const [searchTerm, setSearchTerm] = useState('');
   const [genderFilter, setGenderFilter] = useState<'all' | Sex>('all');
+  const [ageCategoryFilter, setAgeCategoryFilter] = useState<string>('all');
+  const [minAgeFilter, setMinAgeFilter] = useState<number>(0);
+  const [maxAgeFilter, setMaxAgeFilter] = useState<number>(100);
+  const [rosterSortBy, setRosterSortBy] = useState<'name' | 'age' | 'category'>('name');
+  const [rosterSortDirection, setRosterSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [planningSortBy, setPlanningSortBy] = useState<'name' | 'raceDays'>('name');
+  const [planningSortDirection, setPlanningSortDirection] = useState<'asc' | 'desc'>('asc');
   const [selectedRider, setSelectedRider] = useState<Rider | null>(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -62,18 +69,120 @@ export default function RosterSection({
     setIsDeleteModalOpen(true);
   };
 
+  // Fonction de tri pour l'effectif
+  const handleRosterSort = (sortBy: 'name' | 'age' | 'category') => {
+    if (rosterSortBy === sortBy) {
+      setRosterSortDirection(rosterSortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setRosterSortBy(sortBy);
+      setRosterSortDirection('asc');
+    }
+  };
+
+  // Fonction de tri pour le planning
+  const handlePlanningSort = (sortBy: 'name' | 'raceDays') => {
+    if (planningSortBy === sortBy) {
+      setPlanningSortDirection(planningSortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setPlanningSortBy(sortBy);
+      setPlanningSortDirection('asc');
+    }
+  };
+
+  // Filtrage et tri des coureurs pour l'effectif
   const filteredRiders = riders.filter(rider => {
     if (searchTerm) {
       const fullName = `${rider.firstName} ${rider.lastName}`.toLowerCase();
       if (!fullName.includes(searchTerm.toLowerCase())) return false;
     }
     if (genderFilter !== 'all' && rider.sex !== genderFilter) return false;
+    
+    const { age } = getAgeCategory(rider.birthDate);
+    if (age !== null) {
+      if (age < minAgeFilter || age > maxAgeFilter) return false;
+    }
+    
+    if (ageCategoryFilter !== 'all') {
+      const { category } = getAgeCategory(rider.birthDate);
+      if (category !== ageCategoryFilter) return false;
+    }
+    
+    
+    
     return true;
+  });
+
+  // Tri des coureurs filtrés
+  const sortedRidersForAdmin = [...filteredRiders].sort((a, b) => {
+    let aValue: any, bValue: any;
+    
+    switch (rosterSortBy) {
+      case 'name':
+        aValue = `${a.firstName} ${a.lastName}`.toLowerCase();
+        bValue = `${b.firstName} ${b.lastName}`.toLowerCase();
+        break;
+      case 'age':
+        const aAge = getAgeCategory(a.birthDate).age || 0;
+        const bAge = getAgeCategory(b.birthDate).age || 0;
+        aValue = aAge;
+        bValue = bAge;
+        break;
+      case 'category':
+        aValue = getAgeCategory(a.birthDate).category;
+        bValue = getAgeCategory(b.birthDate).category;
+        break;
+
+      default:
+        return 0;
+    }
+    
+    if (rosterSortDirection === 'asc') {
+      return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+    } else {
+      return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+    }
+  });
+
+  // Calcul des jours de course par coureur pour le planning
+  const raceDaysByRider = riders.map(rider => {
+    const riderEvents = raceEvents.filter(event => 
+      event.selectedRiderIds?.includes(rider.id)
+    );
+    return {
+      rider,
+      raceDays: riderEvents.length,
+      events: riderEvents
+    };
+  });
+
+  // Tri des coureurs pour le planning
+  const sortedRidersForPlanning = [...raceDaysByRider].sort((a, b) => {
+    let aValue: any, bValue: any;
+    
+    switch (planningSortBy) {
+      case 'name':
+        aValue = `${a.rider.firstName} ${a.rider.lastName}`.toLowerCase();
+        bValue = `${b.rider.firstName} ${b.rider.lastName}`.toLowerCase();
+        break;
+      case 'raceDays':
+        aValue = a.raceDays;
+        bValue = b.raceDays;
+        break;
+      default:
+        return 0;
+    }
+    
+    if (planningSortDirection === 'asc') {
+      return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+    } else {
+      return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+    }
   });
 
   const renderRosterTab = () => (
     <div className="bg-white p-3 rounded-lg shadow-md">
-      <div className="mb-3 grid grid-cols-1 md:grid-cols-2 gap-3">
+      {/* Filtres et recherche */}
+      <div className="mb-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
         <div>
           <label htmlFor="rosterSearch" className="block text-xs font-medium text-gray-700 mb-0.5">Rechercher</label>
           <div className="relative">
@@ -95,6 +204,7 @@ export default function RosterSection({
             />
           </div>
         </div>
+        
         <div>
           <label htmlFor="rosterGenderFilter" className="block text-xs font-medium text-gray-700 mb-0.5">Sexe</label>
           <select
@@ -108,10 +218,62 @@ export default function RosterSection({
             <option value={Sex.FEMALE}>Femme</option>
           </select>
         </div>
+
+        <div>
+          <label htmlFor="ageCategoryFilter" className="block text-xs font-medium text-gray-700 mb-0.5">Categorie</label>
+          <select
+            id="ageCategoryFilter"
+            value={ageCategoryFilter}
+            onChange={(e) => setAgeCategoryFilter(e.target.value)}
+            className="block w-full pl-3 pr-10 py-1.5 text-xs border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
+          >
+            <option value="all">Toutes</option>
+            <option value="U17">U17</option>
+            <option value="U19">U19</option>
+            <option value="U23">U23</option>
+            <option value="Elite">Elite</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Contrôles de tri */}
+      <div className="mb-4 flex flex-wrap gap-2">
+        <span className="text-xs font-medium text-gray-700 mr-2">Trier par:</span>
+        <button
+          onClick={() => handleRosterSort('name')}
+          className={`px-3 py-1 text-xs rounded-md transition-colors ${
+            rosterSortBy === 'name' 
+              ? 'bg-blue-100 text-blue-700 border border-blue-300' 
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          Nom {rosterSortBy === 'name' && (rosterSortDirection === 'asc' ? '↑' : '↓')}
+        </button>
+        <button
+          onClick={() => handleRosterSort('age')}
+          className={`px-3 py-1 text-xs rounded-md transition-colors ${
+            rosterSortBy === 'age' 
+              ? 'bg-blue-100 text-blue-700 border border-blue-300' 
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          Age {rosterSortBy === 'age' && (rosterSortDirection === 'asc' ? '↑' : '↓')}
+        </button>
+        <button
+          onClick={() => handleRosterSort('category')}
+          className={`px-3 py-1 text-xs rounded-md transition-colors ${
+            rosterSortBy === 'category' 
+              ? 'bg-blue-100 text-blue-700 border border-blue-300' 
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          Categorie {rosterSortBy === 'category' && (rosterSortDirection === 'asc' ? '↑' : '↓')}
+        </button>
+
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {filteredRiders.map(rider => (
+        {sortedRidersForAdmin.map(rider => (
           <div key={rider.id} className="bg-gray-50 rounded-lg shadow-md overflow-hidden flex flex-col border border-gray-200 hover:shadow-lg transition-shadow">
             <div className="p-3">
               <div className="flex items-center space-x-3">
@@ -153,7 +315,143 @@ export default function RosterSection({
   const renderSeasonPlanningTab = () => (
     <div className="bg-white p-3 rounded-lg shadow-md">
       <h3 className="text-lg font-semibold mb-4">Planning Previsionnel de la Saison</h3>
-      <p className="text-gray-600">Fonctionnalite en cours de developpement...</p>
+      
+      {/* Contrôles de tri pour le planning */}
+      <div className="mb-4 flex flex-wrap gap-2">
+        <span className="text-xs font-medium text-gray-700 mr-2">Trier par:</span>
+        <button
+          onClick={() => handlePlanningSort('name')}
+          className={`px-3 py-1 text-xs rounded-md transition-colors ${
+            planningSortBy === 'name' 
+              ? 'bg-blue-100 text-blue-700 border border-blue-300' 
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          Nom {planningSortBy === 'name' && (planningSortDirection === 'asc' ? '↑' : '↓')}
+        </button>
+        <button
+          onClick={() => handlePlanningSort('raceDays')}
+          className={`px-3 py-1 text-xs rounded-md transition-colors ${
+            planningSortBy === 'raceDays' 
+              ? 'bg-blue-100 text-blue-700 border border-blue-300' 
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          Jours de Course {planningSortBy === 'raceDays' && (planningSortDirection === 'asc' ? '↑' : '↓')}
+        </button>
+      </div>
+
+      {/* Grille du planning */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {sortedRidersForPlanning.map(({ rider, raceDays, events }) => (
+          <div key={rider.id} className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg shadow-md overflow-hidden flex flex-col border border-blue-200 hover:shadow-lg transition-shadow">
+            <div className="p-3">
+              <div className="flex items-center space-x-3">
+                {rider.photoUrl ? (
+                  <img src={rider.photoUrl} alt={rider.firstName} className="w-12 h-12 rounded-full object-cover"/>
+                ) : (
+                  <UserCircleIcon className="w-12 h-12 text-blue-400"/>
+                )}
+                <div>
+                  <h3 className="text-md font-semibold text-gray-800">{rider.firstName} {rider.lastName}</h3>
+                  <p className="text-xs text-blue-600 font-medium">{raceDays} jour(s) de course</p>
+                </div>
+              </div>
+              
+              <div className="mt-3 text-xs text-gray-600 space-y-1">
+                <p><strong>Forme:</strong> {(rider as any).forme || '?'}</p>
+                <p><strong>Moral:</strong> {(rider as any).moral || '?'}</p>
+                <p><strong>Sante:</strong> {(rider as any).healthCondition || '-'}</p>
+                
+                {(() => {
+                  const { category, age } = getAgeCategory(rider.birthDate);
+                  return (
+                    <div className="mt-2 pt-2 border-t border-blue-200">
+                      <p><strong>Age:</strong> {age !== null ? `${age} ans` : '?'} <span className="text-blue-600 font-medium">({category})</span></p>
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Liste des événements */}
+              {events.length > 0 && (
+                <div className="mt-3 pt-2 border-t border-blue-200">
+                  <p className="text-xs font-medium text-blue-700 mb-2">Evenements:</p>
+                  <div className="space-y-1">
+                    {events.slice(0, 3).map(event => (
+                      <div key={event.id} className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                        {event.name}
+                      </div>
+                    ))}
+                    {events.length > 3 && (
+                      <p className="text-xs text-blue-600">+{events.length - 3} autres</p>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div className="mt-auto p-2 border-t border-blue-200 flex justify-end space-x-1 bg-blue-50">
+              <ActionButton onClick={() => openViewModal(rider)} variant="info" size="sm" icon={<EyeIcon className="w-4 h-4"/>} title="Voir">
+                <span className="sr-only">Voir</span>
+              </ActionButton>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Statistiques du planning */}
+      <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+          <h4 className="text-sm font-semibold text-blue-800 mb-2">Repartition des Charges</h4>
+          <div className="space-y-2">
+            <div className="flex justify-between text-xs">
+              <span>0-2 courses:</span>
+              <span className="font-medium">{sortedRidersForPlanning.filter(r => r.raceDays <= 2).length} coureurs</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span>3-5 courses:</span>
+              <span className="font-medium">{sortedRidersForPlanning.filter(r => r.raceDays >= 3 && r.raceDays <= 5).length} coureurs</span>
+            </div>
+            <div className="flex justify-between text-xs">
+              <span>6+ courses:</span>
+              <span className="font-medium">{sortedRidersForPlanning.filter(r => r.raceDays >= 6).length} coureurs</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-green-50 p-4 rounded-lg border border-green-200">
+          <h4 className="text-sm font-semibold text-green-800 mb-2">Coureurs les Plus Actifs</h4>
+          <div className="space-y-1">
+            {sortedRidersForPlanning
+              .filter(r => r.raceDays > 0)
+              .slice(0, 3)
+              .map(({ rider, raceDays }) => (
+                <div key={rider.id} className="flex justify-between text-xs">
+                  <span>{rider.firstName} {rider.lastName}</span>
+                  <span className="font-medium text-green-600">{raceDays} courses</span>
+                </div>
+              ))}
+          </div>
+        </div>
+
+        <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
+          <h4 className="text-sm font-semibold text-orange-800 mb-2">Coureurs Disponibles</h4>
+          <div className="space-y-1">
+            {sortedRidersForPlanning
+              .filter(r => r.raceDays === 0)
+              .slice(0, 3)
+              .map(({ rider }) => (
+                <div key={rider.id} className="text-xs text-orange-600">
+                  {rider.firstName} {rider.lastName}
+                </div>
+              ))}
+            {sortedRidersForPlanning.filter(r => r.raceDays === 0).length > 3 && (
+              <p className="text-xs text-orange-500">+{sortedRidersForPlanning.filter(r => r.raceDays === 0).length - 3} autres</p>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 
