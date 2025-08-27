@@ -120,7 +120,7 @@ export default function RosterSection({
                   const { category, age } = getAgeCategory(rider.birthDate);
                   return (
                     <div className="mt-2 pt-2 border-t border-gray-200">
-                                             <p><strong>Age:</strong> {age !== null ? `${age} ans` : '?'} <span className="text-blue-600 font-medium">({category})</span></p>
+                      <p><strong>Âge:</strong> {age !== null ? `${age} ans` : '?'} <span className="text-blue-600 font-medium">({category})</span></p>
                     </div>
                   );
                 })()}
