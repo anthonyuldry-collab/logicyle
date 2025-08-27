@@ -287,7 +287,7 @@ const SeasonPlanningTab: React.FC<SeasonPlanningTabProps> = ({
             </div>
             
             <div className="overflow-x-auto border rounded-lg" style={{ maxHeight: '60vh' }}>
-            <table className="min-w-full border-collapse">
+                <table className="min-w-full border-collapse">
                 <thead className="bg-gray-100 z-10" style={{ position: 'sticky', top: 0 }}>
                     <tr>
                         <th className="p-1.5 border text-xs font-semibold text-gray-600 w-40 z-20" style={{ position: 'sticky', left: 0, backgroundColor: 'inherit' }}>Coureur</th>
@@ -327,6 +327,7 @@ const SeasonPlanningTab: React.FC<SeasonPlanningTabProps> = ({
                     ))}
                 </tbody>
             </table>
+        </div>
         </div>
     );
 
