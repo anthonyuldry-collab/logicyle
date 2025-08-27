@@ -208,11 +208,33 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
 
   // Calcul des coureurs triés et filtrés pour l'effectif
   const sortedRidersForAdmin = useMemo(() => {
+    // Debug: Afficher tous les coureurs et leurs données
+    console.log('=== DEBUG EFFECTIF ===');
+    console.log('Total coureurs:', riders.length);
+    console.log('Filtres actifs:', { searchTerm, genderFilter, ageCategoryFilter, minAgeFilter, maxAgeFilter });
+    
+    riders.forEach((rider, index) => {
+      const { age, category } = getAgeCategory(rider.birthDate);
+      console.log(`Coureur ${index + 1}:`, {
+        id: rider.id,
+        nom: `${rider.firstName} ${rider.lastName}`,
+        email: rider.email,
+        sex: rider.sex,
+        age,
+        category,
+        matchesSearch: rider.firstName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                      rider.lastName.toLowerCase().includes(searchTerm.toLowerCase()),
+        matchesGender: genderFilter === 'all' || rider.sex === genderFilter,
+        matchesAge: age !== null && age >= minAgeFilter && age <= maxAgeFilter,
+        matchesCategory: ageCategoryFilter === 'all' || (age !== null && category === ageCategoryFilter)
+      });
+    });
+    
     let filtered = riders.filter(rider => {
       const matchesSearch = rider.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                            rider.lastName.toLowerCase().includes(searchTerm.toLowerCase());
       
-      const matchesGender = genderFilter === 'all' || rider.gender === genderFilter;
+      const matchesGender = genderFilter === 'all' || rider.sex === genderFilter;
       
       const { age } = getAgeCategory(rider.birthDate);
       const matchesAge = age !== null && age >= minAgeFilter && age <= maxAgeFilter;
@@ -222,6 +244,9 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
       
       return matchesSearch && matchesGender && matchesAge && matchesCategory;
     });
+    
+    console.log('Coureurs filtrés:', filtered.length);
+    console.log('=== FIN DEBUG ===');
 
     // Tri
     filtered.sort((a, b) => {
@@ -443,6 +468,176 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
             }`}
           >
             Nom {rosterSortBy === 'name' && (rosterSortDirection === 'asc' ? '↑' : '↓')}
+          </button>
+          
+          {/* Bouton de débogage */}
+          <button
+            onClick={() => {
+              console.log('=== DIAGNOSTIC COMPLET EFFECTIF ===');
+              console.log('appState:', appState);
+              console.log('riders:', riders);
+              console.log('Total coureurs:', riders.length);
+              
+              // Recherche spécifique du coureur mmisyurina@gmail.com
+              const coureurRecherche = riders.find(rider => rider.email === 'mmisyurina@gmail.com');
+              if (coureurRecherche) {
+                console.log('🎯 COUREUR TROUVÉ:', coureurRecherche);
+                const { age, category } = getAgeCategory(coureurRecherche.birthDate);
+                console.log('📊 ANALYSE DU COUREUR:', {
+                  id: coureurRecherche.id,
+                  nom: `${coureurRecherche.firstName} ${coureurRecherche.lastName}`,
+                  email: coureurRecherche.email,
+                  sex: coureurRecherche.sex,
+                  birthDate: coureurRecherche.birthDate,
+                  age,
+                  category,
+                  // Vérification des propriétés critiques
+                  hasFirstName: !!coureurRecherche.firstName,
+                  hasLastName: !!coureurRecherche.lastName,
+                  hasEmail: !!coureurRecherche.email,
+                  hasBirthDate: !!coureurRecherche.birthDate,
+                  hasSex: !!coureurRecherche.sex,
+                  // Vérification des filtres
+                  matchesSearch: coureurRecherche.firstName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                                coureurRecherche.lastName.toLowerCase().includes(searchTerm.toLowerCase()),
+                  matchesGender: genderFilter === 'all' || coureurRecherche.sex === genderFilter,
+                  matchesAge: age !== null && age >= minAgeFilter && age <= maxAgeFilter,
+                  matchesCategory: ageCategoryFilter === 'all' || (age !== null && category === ageCategoryFilter),
+                  // Vérification des valeurs par défaut
+                  isDefaultValues: {
+                    firstName: coureurRecherche.firstName === '',
+                    lastName: coureurRecherche.lastName === '',
+                    email: coureurRecherche.email === '',
+                    birthDate: coureurRecherche.birthDate === new Date().toISOString().split('T')[0],
+                    sex: coureurRecherche.sex === Sex.MALE
+                  }
+                });
+                
+                // Diagnostic spécifique des filtres pour ce coureur
+                console.log('🔍 DIAGNOSTIC DES FILTRES POUR mmisyurina@gmail.com:');
+                console.log('Filtre recherche:', {
+                  searchTerm,
+                  firstName: coureurRecherche.firstName,
+                  lastName: coureurRecherche.lastName,
+                  matchesSearch: coureurRecherche.firstName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                                coureurRecherche.lastName.toLowerCase().includes(searchTerm.toLowerCase())
+                });
+                console.log('Filtre genre:', {
+                  genderFilter,
+                  riderSex: coureurRecherche.sex,
+                  matchesGender: genderFilter === 'all' || coureurRecherche.sex === genderFilter
+                });
+                console.log('Filtre âge:', {
+                  minAgeFilter,
+                  maxAgeFilter,
+                  riderAge: age,
+                  matchesAge: age !== null && age >= minAgeFilter && age <= maxAgeFilter
+                });
+                console.log('Filtre catégorie:', {
+                  ageCategoryFilter,
+                  riderCategory: category,
+                  matchesCategory: ageCategoryFilter === 'all' || (age !== null && category === ageCategoryFilter)
+                });
+                
+                // Résumé final
+                const isVisible = (coureurRecherche.firstName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                                  coureurRecherche.lastName.toLowerCase().includes(searchTerm.toLowerCase())) &&
+                                 (genderFilter === 'all' || coureurRecherche.sex === genderFilter) &&
+                                 (age !== null && age >= minAgeFilter && age <= maxAgeFilter) &&
+                                 (ageCategoryFilter === 'all' || (age !== null && category === ageCategoryFilter));
+                
+                console.log('🎯 VISIBILITÉ FINALE:', isVisible ? '✅ VISIBLE' : '❌ MASQUÉ');
+                if (!isVisible) {
+                  console.log('🚨 RAISONS DU MASQUAGE:');
+                  if (!(coureurRecherche.firstName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                        coureurRecherche.lastName.toLowerCase().includes(searchTerm.toLowerCase()))) {
+                    console.log('- ❌ Ne correspond pas à la recherche:', searchTerm);
+                  }
+                  if (!(genderFilter === 'all' || coureurRecherche.sex === genderFilter)) {
+                    console.log('- ❌ Ne correspond pas au filtre genre:', genderFilter);
+                  }
+                  if (!(age !== null && age >= minAgeFilter && age <= maxAgeFilter)) {
+                    console.log('- ❌ Âge hors limites:', age, 'vs', minAgeFilter, '-', maxAgeFilter);
+                  }
+                  if (!(ageCategoryFilter === 'all' || (age !== null && category === ageCategoryFilter))) {
+                    console.log('- ❌ Catégorie ne correspond pas:', category, 'vs', ageCategoryFilter);
+                  }
+                }
+              } else {
+                console.log('❌ COUREUR mmisyurina@gmail.com NON TROUVÉ dans riders');
+                console.log('🚨 PROBLÈME: Le coureur n\'existe pas dans la liste riders');
+              }
+              
+              // Diagnostic détaillé de chaque coureur
+              riders.forEach((rider, index) => {
+                const { age, category } = getAgeCategory(rider.birthDate);
+                const diagnostic = {
+                  index: index + 1,
+                  id: rider.id,
+                  nom: `${rider.firstName} ${rider.lastName}`,
+                  email: rider.email,
+                  sex: rider.sex,
+                  birthDate: rider.birthDate,
+                  age,
+                  category,
+                  // Vérification des propriétés critiques
+                  hasFirstName: !!rider.firstName,
+                  hasLastName: !!rider.lastName,
+                  hasEmail: !!rider.email,
+                  hasBirthDate: !!rider.birthDate,
+                  hasSex: !!rider.sex,
+                  // Vérification des filtres
+                  matchesSearch: rider.firstName.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                                rider.lastName.toLowerCase().includes(searchTerm.toLowerCase()),
+                  matchesGender: genderFilter === 'all' || rider.sex === genderFilter,
+                  matchesAge: age !== null && age >= minAgeFilter && age <= maxAgeFilter,
+                  matchesCategory: ageCategoryFilter === 'all' || (age !== null && category === ageCategoryFilter),
+                  // Vérification des valeurs par défaut
+                  isDefaultValues: {
+                    firstName: rider.firstName === '',
+                    lastName: rider.lastName === '',
+                    email: rider.email === '',
+                    birthDate: rider.birthDate === new Date().toISOString().split('T')[0],
+                    sex: rider.sex === Sex.MALE
+                  }
+                };
+                console.log(`Coureur ${index + 1}:`, diagnostic);
+                
+                // Alerte si coureur potentiellement problématique
+                if (!rider.firstName || !rider.lastName || !rider.email) {
+                  console.warn(`⚠️ Coureur ${index + 1} a des données manquantes:`, {
+                    firstName: rider.firstName,
+                    lastName: rider.lastName,
+                    email: rider.email
+                  });
+                }
+              });
+              
+              // Diagnostic des filtres
+              console.log('=== DIAGNOSTIC DES FILTRES ===');
+              console.log('Filtres actifs:', {
+                searchTerm,
+                genderFilter,
+                ageCategoryFilter,
+                minAgeFilter,
+                maxAgeFilter
+              });
+              console.log('Valeurs par défaut des filtres:', {
+                minAgeFilter: 0,
+                maxAgeFilter: 100,
+                ageCategoryFilter: 'all',
+                genderFilter: 'all'
+              });
+              
+              // Diagnostic des catégories d'âge
+              console.log('=== CATÉGORIES D\'ÂGE SUPPORTÉES ===');
+              console.log('U15: ≤14 ans, U17: ≤16 ans, U19: ≤18 ans, U23: ≤22 ans, Senior: >22 ans');
+              
+              console.log('=== FIN DIAGNOSTIC ===');
+            }}
+            className="px-3 py-1 text-sm rounded-md bg-yellow-100 text-yellow-700 border border-yellow-300 hover:bg-yellow-200"
+          >
+            🔍 Diagnostic Complet
           </button>
           <button
             onClick={() => handleRosterSort('age')}
