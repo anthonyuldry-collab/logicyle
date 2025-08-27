@@ -422,9 +422,14 @@ export default function RosterSection({
                     </span>
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
-                    <div className="flex space-x-1"><ActionButton onClick={() => openViewModal(rider)} variant="info" size="sm" icon={<EyeIcon className="w-4 h-4"/>} title="Voir">
-                      <span className="sr-only">Voir</span>
-                    </ActionButton>
+                    <div className="flex space-x-1">
+                      <ActionButton onClick={() => openViewModal(rider)} variant="info" size="sm" icon={<EyeIcon className="w-4 h-4"/>} title="Voir">
+                        <span className="sr-only">Voir</span>
+                      </ActionButton>
+                      <ActionButton onClick={() => openEditModal(rider)} variant="warning" size="sm" icon={<PencilIcon className="w-4 h-4"/>} title="Modifier">
+                        <span className="sr-only">Modifier</span>
+                      </ActionButton>
+                    </div>
                   </td>
                 </tr>
               );
