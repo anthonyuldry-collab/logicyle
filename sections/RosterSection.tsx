@@ -208,7 +208,33 @@ const SeasonPlanningTab: React.FC<SeasonPlanningTabProps> = ({
     };
 
     const renderGridView = () => (
-        <div className="overflow-x-auto border rounded-lg" style={{ maxHeight: '60vh' }}>
+        <div>
+            {/* Contrôles de tri pour le planning */}
+            <div className="mb-3 flex flex-wrap items-center gap-3 p-2 bg-gray-50 rounded-lg border">
+                <span className="text-xs font-medium text-gray-700">Trier par:</span>
+                <button
+                    onClick={() => handlePlanningSort('name')}
+                    className={`px-2 py-1 text-xs rounded transition-colors ${
+                        planningSortBy === 'name' 
+                            ? 'bg-blue-500 text-white' 
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                >
+                    Nom {planningSortBy === 'name' && (planningSortDirection === 'asc' ? '↑' : '↓')}
+                </button>
+                <button
+                    onClick={() => handlePlanningSort('raceDays')}
+                    className={`px-2 py-1 text-xs rounded transition-colors ${
+                        planningSortBy === 'raceDays' 
+                            ? 'bg-blue-500 text-white' 
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                >
+                    Jours de Course {planningSortBy === 'raceDays' && (planningSortDirection === 'asc' ? '↑' : '↓')}
+                </button>
+            </div>
+            
+            <div className="overflow-x-auto border rounded-lg" style={{ maxHeight: '60vh' }}>
             <table className="min-w-full border-collapse">
                 <thead className="bg-gray-100 z-10" style={{ position: 'sticky', top: 0 }}>
                     <tr>
@@ -224,7 +250,7 @@ const SeasonPlanningTab: React.FC<SeasonPlanningTabProps> = ({
                     </tr>
                 </thead>
                 <tbody>
-                    {riders && riders.map(rider => (
+                    {sortedRidersForPlanning && sortedRidersForPlanning.map(rider => (
                         <tr key={rider.id} className="hover:bg-gray-50">
                             <td className="p-1.5 border text-sm font-medium text-gray-800 w-40 z-10" style={{ position: 'sticky', left: 0, backgroundColor: 'inherit' }}>{rider.firstName} {rider.lastName}</td>
                             <td className="p-1.5 border font-bold text-center text-base text-gray-800 w-20 z-10" style={{ position: 'sticky', left: '10rem', backgroundColor: 'inherit' }}>{raceDaysByRider[rider.id] || 0}</td>
@@ -460,6 +486,133 @@ export const RosterSection: React.FC<RosterSectionProps> = ({
       })
       .sort((a,b) => a.lastName.localeCompare(b.lastName));
   }, [riders, searchTerm, genderFilter, ageCategoryFilter, levelFilter, minAgeFilter, maxAgeFilter]);
+  
+  // États de tri pour l'effectif
+  const [rosterSortBy, setRosterSortBy] = useState<'name' | 'age' | 'level' | 'raceDays'>('name');
+  const [rosterSortDirection, setRosterSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  // États de tri pour le planning de saison
+  const [planningSortBy, setPlanningSortBy] = useState<'name' | 'raceDays'>('name');
+  const [planningSortDirection, setPlanningSortDirection] = useState<'asc' | 'desc'>('asc');
+
+  // Fonction de tri pour l'effectif
+  const sortedRidersForAdmin = useMemo(() => {
+    if (!filteredRidersForAdmin) return [];
+    
+    return [...filteredRidersForAdmin].sort((a, b) => {
+      let aValue: string | number;
+      let bValue: string | number;
+      
+      switch (rosterSortBy) {
+        case 'name':
+          aValue = `${a.firstName} ${a.lastName}`.toLowerCase();
+          bValue = `${b.firstName} ${b.lastName}`.toLowerCase();
+          break;
+        case 'age':
+          const aAge = getAgeCategory(a.birthDate).age || 0;
+          const bAge = getAgeCategory(b.birthDate).age || 0;
+          aValue = aAge;
+          bValue = bAge;
+          break;
+        case 'level':
+          aValue = a.qualitativeProfile || '';
+          bValue = b.qualitativeProfile || '';
+          break;
+        case 'raceDays':
+          // Calculer les jours de course pour chaque rider
+          const aRaceDays = riderEventSelections
+            .filter(s => s.riderId === a.id && s.status === RiderEventStatus.TITULAIRE)
+            .reduce((total, selection) => {
+              const event = raceEvents.find(e => e.id === selection.eventId);
+              return total + (event ? getEventDuration(event) : 0);
+            }, 0);
+          const bRaceDays = riderEventSelections
+            .filter(s => s.riderId === b.id && s.status === RiderEventStatus.TITULAIRE)
+            .reduce((total, selection) => {
+              const event = raceEvents.find(e => e.id === selection.eventId);
+              return total + (event ? getEventDuration(event) : 0);
+            }, 0);
+          aValue = aRaceDays;
+          bValue = bRaceDays;
+          break;
+        default:
+          aValue = a.firstName;
+          bValue = b.firstName;
+      }
+      
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        if (rosterSortDirection === 'asc') {
+          return aValue.localeCompare(bValue);
+        } else {
+          return bValue.localeCompare(aValue);
+        }
+      } else {
+        if (rosterSortDirection === 'asc') {
+          return (aValue as number) - (bValue as number);
+        } else {
+          return (bValue as number) - (aValue as number);
+        }
+      }
+    });
+  }, [filteredRidersForAdmin, rosterSortBy, rosterSortDirection, riderEventSelections, raceEvents]);
+
+  // Fonction de tri pour le planning de saison
+  const sortedRidersForPlanning = useMemo(() => {
+    if (!riders) return [];
+    
+    return [...riders].sort((a, b) => {
+      let aValue: string | number;
+      let bValue: string | number;
+      
+      switch (planningSortBy) {
+        case 'name':
+          aValue = `${a.firstName} ${a.lastName}`.toLowerCase();
+          bValue = `${b.firstName} ${b.lastName}`.toLowerCase();
+          break;
+        case 'raceDays':
+          aValue = raceDaysByRider[a.id] || 0;
+          bValue = raceDaysByRider[b.id] || 0;
+          break;
+        default:
+          aValue = a.firstName;
+          bValue = b.firstName;
+      }
+      
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        if (planningSortDirection === 'asc') {
+          return aValue.localeCompare(bValue);
+        } else {
+          return bValue.localeCompare(bValue);
+        }
+      } else {
+        if (planningSortDirection === 'asc') {
+          return (aValue as number) - (bValue as number);
+        } else {
+          return (bValue as number) - (aValue as number);
+        }
+      }
+    });
+  }, [riders, planningSortBy, planningSortDirection, raceDaysByRider]);
+
+  // Fonction de gestion du tri pour l'effectif
+  const handleRosterSort = (sortBy: 'name' | 'age' | 'level' | 'raceDays') => {
+    if (rosterSortBy === sortBy) {
+      setRosterSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setRosterSortBy(sortBy);
+      setRosterSortDirection('asc');
+    }
+  };
+
+  // Fonction de gestion du tri pour le planning
+  const handlePlanningSort = (sortBy: 'name' | 'raceDays') => {
+    if (planningSortBy === sortBy) {
+      setPlanningSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setPlanningSortBy(sortBy);
+      setPlanningSortDirection('asc');
+    }
+  };
   
   // --- Start of Group Monitoring Logic ---
   const requestMonitoringSort = (key: string) => {
@@ -777,8 +930,53 @@ export const RosterSection: React.FC<RosterSectionProps> = ({
         </div>
     </div>
 
+      {/* Contrôles de tri pour l'effectif */}
+      <div className="mb-3 flex flex-wrap items-center gap-3 p-2 bg-gray-50 rounded-lg border">
+        <span className="text-xs font-medium text-gray-700">Trier par:</span>
+        <button
+          onClick={() => handleRosterSort('name')}
+          className={`px-2 py-1 text-xs rounded transition-colors ${
+            rosterSortBy === 'name' 
+              ? 'bg-blue-500 text-white' 
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+          }`}
+        >
+          Nom {rosterSortBy === 'name' && (rosterSortDirection === 'asc' ? '↑' : '↓')}
+        </button>
+        <button
+          onClick={() => handleRosterSort('age')}
+          className={`px-2 py-1 text-xs rounded transition-colors ${
+            rosterSortBy === 'age' 
+              ? 'bg-blue-500 text-white' 
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+          }`}
+        >
+          Âge {rosterSortBy === 'age' && (rosterSortDirection === 'asc' ? '↑' : '↓')}
+        </button>
+        <button
+          onClick={() => handleRosterSort('level')}
+          className={`px-2 py-1 text-xs rounded transition-colors ${
+            rosterSortBy === 'level' 
+              ? 'bg-blue-500 text-white' 
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+          }`}
+        >
+          Niveau {rosterSortBy === 'level' && (rosterSortDirection === 'asc' ? '↑' : '↓')}
+        </button>
+        <button
+          onClick={() => handleRosterSort('raceDays')}
+          className={`px-2 py-1 text-xs rounded transition-colors ${
+            rosterSortBy === 'raceDays' 
+              ? 'bg-blue-500 text-white' 
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+          }`}
+        >
+          Jours de Course {rosterSortBy === 'raceDays' && (rosterSortDirection === 'asc' ? '↑' : '↓')}
+        </button>
+      </div>
+
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {filteredRidersForAdmin.map(rider => (
+        {sortedRidersForAdmin.map(rider => (
             <div key={rider.id} className="bg-gray-50 rounded-lg shadow-md overflow-hidden flex flex-col border border-gray-200 hover:shadow-lg transition-shadow">
                  <div className="p-3">
                     <div className="flex items-center space-x-3">
@@ -834,9 +1032,10 @@ export const RosterSection: React.FC<RosterSectionProps> = ({
                  </div>
             </div>
         ))}
-      </div>
-    </div>
-  );
+                  </div>
+        </div>
+        </div>
+    );
 
   const renderSelectionGrid = () => {
     if (!selectedEventForGrid) {
@@ -1012,7 +1211,146 @@ export const RosterSection: React.FC<RosterSectionProps> = ({
       </div>
 
       <div className="mt-2">
-        {activeTab === 'roster' && renderRosterTab()}
+        {activeTab === 'roster' && (
+            <div className="bg-white p-3 rounded-lg shadow-md">
+                <div className="mb-3 grid grid-cols-1 md:grid-cols-5 gap-3">
+                    <div>
+                        <label htmlFor="rosterSearch" className="block text-xs font-medium text-gray-700 mb-0.5">Rechercher</label>
+                        <div className="relative">
+                            <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+                                <SearchIcon className="h-4 w-4 text-gray-400" />
+                            </div>
+                            <input
+                                type="text"
+                                id="rosterSearch"
+                                placeholder="Rechercher un coureur..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="block w-full pl-8 pr-3 py-1.5 border border-gray-300 rounded-md leading-5 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-xs"
+                            />
+                        </div>
+                    </div>
+                    <div>
+                        <label htmlFor="rosterGenderFilter" className="block text-xs font-medium text-gray-700 mb-0.5">Sexe</label>
+                        <select
+                            id="rosterGenderFilter"
+                            value={genderFilter}
+                            onChange={(e) => setGenderFilter(e.target.value as 'all' | Sex)}
+                            className="block w-full pl-3 pr-10 py-1.5 text-xs border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
+                        >
+                            <option value="all">Tous</option>
+                            <option value={Sex.MALE}>Homme</option>
+                            <option value={Sex.FEMALE}>Femme</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label htmlFor="rosterAgeCategoryFilter" className="block text-xs font-medium text-gray-700 mb-0.5">Catégorie d'âge</label>
+                        <select
+                            id="rosterAgeCategoryFilter"
+                            value={ageCategoryFilter}
+                            onChange={(e) => setAgeCategoryFilter(e.target.value)}
+                            className="block w-full pl-3 pr-10 py-1.5 text-xs border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
+                        >
+                            <option value="all">Toutes</option>
+                            {['U15', 'U17', 'U19', 'U23', 'Senior'].map(cat => <option key={cat} value={cat}>{cat}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label htmlFor="rosterLevelFilter" className="block text-xs font-medium text-gray-700 mb-0.5">Niveau</label>
+                        <select
+                            id="rosterLevelFilter"
+                            value={levelFilter}
+                            onChange={(e) => setLevelFilter(e.target.value)}
+                            className="block w-full pl-3 pr-10 py-1.5 text-xs border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
+                        >
+                            <option value="all">Tous</option>
+                            {RIDER_LEVEL_CATEGORIES.map(level => <option key={level} value={level}>{level}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-0.5">Tranche d'âge</label>
+                        <div className="flex items-center space-x-1">
+                            <input
+                                type="number"
+                                placeholder="Min"
+                                value={minAgeFilter}
+                                onChange={(e) => setMinAgeFilter(e.target.value)}
+                                className="block w-full px-2 py-1.5 border border-gray-300 rounded-md text-xs bg-white text-gray-900 placeholder-gray-500"
+                                aria-label="Âge minimum"
+                            />
+                            <span className="text-xs">-</span>
+                            <input
+                                type="number"
+                                placeholder="Max"
+                                value={maxAgeFilter}
+                                onChange={(e) => setMaxAgeFilter(e.target.value)}
+                                className="block w-full px-2 py-1.5 border border-gray-300 rounded-md text-xs bg-white text-gray-900 placeholder-gray-500"
+                                aria-label="Âge maximum"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {sortedRidersForAdmin.map(rider => (
+                        <div key={rider.id} className="bg-gray-50 rounded-lg shadow-md overflow-hidden flex flex-col border border-gray-200 hover:shadow-lg transition-shadow">
+                             <div className="p-3">
+                                <div className="flex items-center space-x-3">
+                                    {rider.photoUrl ? <img src={rider.photoUrl} alt={rider.firstName} className="w-12 h-12 rounded-full object-cover"/> : <UserCircleIcon className="w-12 h-12 text-gray-400"/>}
+                                    <div>
+                                        <h3 className="text-md font-semibold text-gray-800">{rider.firstName} {rider.lastName}</h3>
+                                        <p className="text-xs text-gray-500">{rider.qualitativeProfile || 'Profil N/A'}</p>
+                                    </div>
+                                </div>
+                                <div className="mt-2 text-xs text-gray-600 space-y-0.5">
+                                    <p><strong>Forme:</strong> {rider.forme || '?'}</p>
+                                    <p><strong>Moral:</strong> {rider.moral || '?'}</p>
+                                    <p><strong>Santé:</strong> {rider.healthCondition || '-'}</p>
+                                    
+                                    {/* Âge et catégorie d'âge en haut à droite */}
+                                    {(() => {
+                                        const { category, age } = getAgeCategory(rider.birthDate);
+                                        return (
+                                            <div className="mt-2 pt-2 border-t border-gray-200">
+                                                <p><strong>Âge:</strong> {age !== null ? `${age} ans` : '?'} <span className="text-blue-600 font-medium">({category})</span></p>
+                                            </div>
+                                        );
+                                    })()}
+                                    
+                                    {/* Catégories de niveau (sélectionnables) */}
+                                    {rider.categories && rider.categories.length > 0 && (
+                                        <div className="mt-2 pt-2 border-t border-gray-200">
+                                            <p><strong>Niveaux:</strong></p>
+                                            <div className="flex flex-wrap gap-1 mt-1">
+                                                {rider.categories
+                                                    .filter(cat => !['U15', 'U17', 'U19', 'U23', 'Senior'].includes(cat))
+                                                    .map(cat => (
+                                                        <span key={cat} className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                                                            {cat}
+                                                        </span>
+                                                    ))
+                                                }
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                             </div>
+                             <div className="mt-auto p-2 border-t border-gray-200 flex justify-end space-x-1 bg-gray-50">
+                                <ActionButton onClick={() => openEditModal(rider)} variant="secondary" size="sm" icon={<PencilIcon className="w-4 h-4"/>} title="Modifier">
+                                    <span className="sr-only">Modifier</span>
+                                </ActionButton>
+                                <ActionButton onClick={() => openViewModal(rider)} variant="info" size="sm" icon={<EyeIcon className="w-4 h-4"/>} title="Voir">
+                                    <span className="sr-only">Voir</span>
+                                </ActionButton>
+                                <ActionButton onClick={() => handleDeleteRider(rider)} variant="danger" size="sm" icon={<TrashIcon className="w-4 h-4"/>} title="Supprimer">
+                                    <span className="sr-only">Supprimer</span>
+                                </ActionButton>
+                             </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        )}
         {activeTab === 'selectionGrid' && renderSelectionGrid()}
         {activeTab === 'seasonPlanning' && (
             <SeasonPlanningTab 

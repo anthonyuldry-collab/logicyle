@@ -590,91 +590,51 @@ export const PerformanceSection: React.FC<{ appState: AppState }> = ({ appState 
 
         {activeTab === 'charts' && (
           <div className="space-y-6">
-            <div className="bg-gradient-to-r from-green-50 to-blue-50 p-6 rounded-lg border border-green-200">
-              <h3 className="text-lg font-semibold text-green-900 mb-2">
-                📊 Centre d'Analyse Graphique des Performances
+            <div className="bg-white p-6 rounded-lg shadow border">
+              <h3 className="text-xl font-bold text-black mb-4">
+                📊 Analyse Graphique des Performances
               </h3>
-              <p className="text-green-700">
-                Visualisez et analysez les performances de vos athlètes avec des graphiques interactifs. 
-                Comparez les riders, analysez les tendances et identifiez les forces et faiblesses de chacun.
+              <p className="text-black mb-6">
+                Visualisez les performances de votre équipe avec des graphiques clairs et lisibles.
               </p>
-            </div>
-            
-            {/* Filtres pour les graphiques */}
-            <div className="bg-white p-4 rounded-lg shadow border">
-              <div className="flex flex-wrap gap-4 items-center">
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm font-medium">Mode d'affichage:</span>
-                  <div className="flex bg-gray-100 rounded-lg p-1">
-                    <button
-                      onClick={() => setDisplayMode('watts')}
-                      className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-                        displayMode === 'watts' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:bg-gray-200'
-                      }`}
-                    >
-                      Watts
-                    </button>
-                    <button
-                      onClick={() => setDisplayMode('wattsPerKg')}
-                      className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-                        displayMode === 'wattsPerKg' ? 'bg-blue-500 text-white' : 'text-gray-600 hover:bg-gray-200'
-                      }`}
-                    >
-                      W/kg
-                    </button>
-                  </div>
-                </div>
-                
-                <div className="flex items-center space-x-2">
-                  <span className="text-sm font-medium">Durées sélectionnées:</span>
-                  <div className="flex flex-wrap gap-1">
-                    {POWER_DURATIONS_CONFIG.map(duration => (
+              
+              {/* Contrôles simples */}
+              <div className="mb-6">
+                <div className="flex flex-wrap gap-4 items-center">
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm font-medium text-black">Affichage:</span>
+                    <div className="flex bg-gray-100 rounded-lg p-1">
                       <button
-                        key={duration.key}
-                        onClick={() => {
-                          if (selectedDurations.includes(duration.key)) {
-                            setSelectedDurations(prev => prev.filter(d => d !== duration.key));
-                          } else {
-                            setSelectedDurations(prev => [...prev, duration.key]);
-                          }
-                        }}
-                        className={`px-2 py-1 text-xs rounded-full transition-colors ${
-                          selectedDurations.includes(duration.key)
-                            ? 'bg-blue-500 text-white'
-                            : 'bg-gray-200 text-gray-600 hover:bg-gray-300'
+                        onClick={() => setDisplayMode('watts')}
+                        className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                          displayMode === 'watts' ? 'bg-blue-500 text-white' : 'text-black hover:bg-gray-200'
                         }`}
                       >
-                        {duration.label}
+                        Watts
                       </button>
-                    ))}
+                      <button
+                        onClick={() => setDisplayMode('wattsPerKg')}
+                        className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                          displayMode === 'wattsPerKg' ? 'bg-blue-500 text-white' : 'text-black hover:bg-gray-200'
+                        }`}
+                      >
+                        W/kg
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Graphique de comparaison */}
-              <div className="lg:col-span-2">
+              
+              {/* Graphique principal uniquement */}
+              <div className="bg-gray-50 p-4 rounded-lg">
+                <h4 className="text-lg font-bold text-black mb-4 text-center">
+                  Comparaison des Performances - Équipe Complète
+                </h4>
                 <RiderComparisonChart 
                   riders={riders} 
                   displayMode={displayMode} 
-                  selectedDurations={selectedDurations} 
+                  selectedDurations={['1s', '5s', '30s', '1min', '3min', '5min', '12min', '20min', 'cp']} 
                 />
-              </div>
-              
-              {/* Graphiques individuels avec limite */}
-              {riders.slice(0, 4).map(rider => (
-                <div key={rider.id} className="bg-white p-4 rounded-lg shadow border">
-                  <h4 className="text-sm font-semibold text-gray-900 mb-2 text-center">
-                    {rider.firstName} {rider.lastName}
-                  </h4>
-                  <RiderRadarChart rider={rider} displayMode={displayMode} />
-                </div>
-              ))}
-              
-              {/* Graphique des tendances */}
-              <div className="lg:col-span-2">
-                <PerformanceTrendsChart riders={riders} displayMode={displayMode} />
               </div>
             </div>
           </div>
@@ -682,41 +642,91 @@ export const PerformanceSection: React.FC<{ appState: AppState }> = ({ appState 
 
         {activeTab === 'comparison' && (
           <div className="space-y-6">
-            <div className="bg-gradient-to-r from-orange-50 to-red-50 p-6 rounded-lg border border-orange-200">
-              <h3 className="text-lg font-semibold text-orange-900 mb-2">
+            <div className="bg-white p-6 rounded-lg shadow border">
+              <h3 className="text-xl font-bold text-black mb-4">
                 🔍 Comparaison des Performances
               </h3>
-              <p className="text-orange-700">
-                Comparez directement les performances de deux athlètes pour identifier leurs forces 
-                et faiblesses respectives et optimiser vos stratégies d'entraînement.
+              <p className="text-black mb-6">
+                Sélectionnez deux athlètes pour comparer leurs performances côte à côte.
               </p>
-            </div>
-            
-            {/* Sélecteur de comparaison */}
-            <div className="bg-white p-6 rounded-lg shadow border">
-              <RiderComparisonSelector 
-                riders={riders} 
-                onCompare={(rider1, rider2) => {
-                  // Logique de comparaison
-                  console.log('Comparaison entre:', rider1.firstName, 'et', rider2.firstName);
-                }} 
-              />
-            </div>
-            
-            {/* Graphique de comparaison radar */}
-            {riders.length >= 2 && (
-              <div className="bg-white p-6 rounded-lg shadow border">
-                <h4 className="text-lg font-semibold text-gray-900 mb-4 text-center">
-                  Comparaison Radar - {riders[0].firstName} vs {riders[1].firstName}
-                </h4>
-                <RiderComparisonRadarChart 
-                  rider1={riders[0]} 
-                  rider2={riders[1]} 
-                  displayMode={displayMode}
-                  title={`${riders[0].firstName} vs ${riders[1].firstName}`}
-                />
+              
+              {/* Sélecteur simple et fonctionnel */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-black mb-2">Athlète 1</label>
+                  <select 
+                    className="w-full p-2 border border-gray-300 rounded-md text-black"
+                    onChange={(e) => {
+                      const rider = riders.find(r => r.id === e.target.value);
+                      if (rider) console.log('Athlète 1 sélectionné:', rider.firstName);
+                    }}
+                  >
+                    <option value="">Sélectionner un athlète</option>
+                    {riders.map(rider => (
+                      <option key={rider.id} value={rider.id}>
+                        {rider.firstName} {rider.lastName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-black mb-2">Athlète 2</label>
+                  <select 
+                    className="w-full p-2 border border-gray-300 rounded-md text-black"
+                    onChange={(e) => {
+                      const rider = riders.find(r => r.id === e.target.value);
+                      if (rider) console.log('Athlète 2 sélectionné:', rider.firstName);
+                    }}
+                  >
+                    <option value="">Sélectionner un athlète</option>
+                    {riders.map(rider => (
+                      <option key={rider.id} value={rider.id}>
+                        {rider.firstName} {rider.lastName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
-            )}
+              
+              {/* Tableau de comparaison simple */}
+              <div className="mt-6">
+                <h4 className="text-lg font-bold text-black mb-4">Comparaison des Puissances (W/kg)</h4>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full border border-gray-300">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="border border-gray-300 px-4 py-2 text-left text-sm font-medium text-black">Durée</th>
+                        <th className="border border-gray-300 px-4 py-2 text-center text-sm font-medium text-black">Athlète 1</th>
+                        <th className="border border-gray-300 px-4 py-2 text-center text-sm font-medium text-black">Athlète 2</th>
+                        <th className="border border-gray-300 px-4 py-2 text-center text-sm font-medium text-black">Différence</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {POWER_DURATIONS_CONFIG.map(duration => (
+                        <tr key={duration.key}>
+                          <td className="border border-gray-300 px-4 py-2 text-sm font-medium text-black">
+                            {duration.label}
+                          </td>
+                          <td className="border border-gray-300 px-4 py-2 text-center text-sm text-black">
+                            -
+                          </td>
+                          <td className="border border-gray-300 px-4 py-2 text-center text-sm text-black">
+                            -
+                          </td>
+                          <td className="border border-gray-300 px-4 py-2 text-center text-sm text-black">
+                            -
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <p className="text-sm text-gray-600 mt-2">
+                  Sélectionnez deux athlètes pour voir la comparaison détaillée.
+                </p>
+              </div>
+            </div>
           </div>
         )}
 
