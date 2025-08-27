@@ -11,7 +11,7 @@ import SearchIcon from '../components/icons/SearchIcon';
 import UserCircleIcon from '../components/icons/UserCircleIcon';
 import ConfirmationModal from '../components/ConfirmationModal';
 import { useTranslations } from '../hooks/useTranslations';
-import { useAppStateSafe } from '../hooks/useAppState';
+
 import { getAgeCategory } from '../utils/ageUtils';
 
 interface RosterSectionProps {
@@ -32,7 +32,6 @@ export default function RosterSection({
   appState
 }: RosterSectionProps) {
   const { t } = useTranslations();
-  const { appState: safeAppState } = useAppStateSafe();
 
   const [activeTab, setActiveTab] = useState<'roster' | 'seasonPlanning'>('roster');
   const [searchTerm, setSearchTerm] = useState('');
