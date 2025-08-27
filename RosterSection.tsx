@@ -1,7 +1,5 @@
-
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { Rider, PowerProfile, RaceEvent, RiderEventSelection, PerformanceEntry, FavoriteRace, PerformanceFactorDetail, AllergyItem, PerformanceNutrition, RiderQualitativeProfile, PredefinedAllergen, DisciplinePracticed, Address, EventBudgetItem, TeamProduct, User, TeamRole, RiderEventStatus, EventType, FormeStatus, MoralStatus, HealthCondition, Discipline, BudgetItemCategory, ClothingType, PowerZoneKey, Sex, ScoutingProfile, TeamState, GlobalState, AppState } from '../types';
-import { EVENT_TYPE_COLORS, RIDER_EVENT_STATUS_COLORS, PERFORMANCE_PROJECT_FACTORS_CONFIG, RIDER_QUALITATIVE_PROFILE_COLORS, POWER_PROFILE_REFERENCE_TABLES, RIDER_ALLERGY_SEVERITY_COLORS, POWER_ZONES_CONFIG, POWER_ZONE_COLORS, COGGAN_CATEGORY_COLORS, PREDEFINED_ALLERGEN_INFO, POWER_ANALYSIS_DURATIONS_CONFIG, RIDER_LEVEL_CATEGORIES, SPIDER_CHART_CHARACTERISTICS_CONFIG } from '../constants';
+import React, { useState, useMemo, useCallback } from 'react';
+import { Rider, RaceEvent, RiderEventSelection, RiderEventStatus, EventType, Sex } from '../types';
 import SectionWrapper from '../components/SectionWrapper';
 import ActionButton from '../components/ActionButton';
 import Modal from '../components/Modal';
@@ -11,8 +9,8 @@ import PencilIcon from '../components/icons/PencilIcon';
 import TrashIcon from '../components/icons/TrashIcon';
 import UploadIcon from '../components/icons/UploadIcon';
 import DocumentDuplicateIcon from '../components/icons/DocumentDuplicateIcon';
-import ReplaceIcon from '../components/icons/ReplaceIcon'; 
-import EyeIcon from '../components/icons/EyeIcon'; 
+import ReplaceIcon from '../components/icons/ReplaceIcon';
+import EyeIcon from '../components/icons/EyeIcon';
 import BeakerIcon from '../components/icons/BeakerIcon';
 import ExclamationCircleIcon from '../components/icons/ExclamationCircleIcon';
 import InformationCircleIcon from '../components/icons/InformationCircleIcon';
@@ -28,586 +26,163 @@ import TableCellsIcon from '../components/icons/TableCellsIcon';
 import { getAgeCategory } from '../utils/ageUtils';
 import { getRiderCharacteristicSafe } from '../utils/riderUtils';
 
-
 interface RosterSectionProps {
-  riders: Rider[];
-  onSaveRider: (rider: Rider) => void;
-  onDeleteRider: (rider: Rider) => void;
   raceEvents: RaceEvent[];
-  setRaceEvents: React.Dispatch<React.SetStateAction<RaceEvent[]>>; 
+  riders: Rider[];
   riderEventSelections: RiderEventSelection[];
-  setRiderEventSelections: React.Dispatch<React.SetStateAction<RiderEventSelection[]>>;
-  performanceEntries: PerformanceEntry[];
-  scoutingProfiles: ScoutingProfile[];
-  teamProducts: TeamProduct[];
-  currentUser: User;
-  appState: AppState;
+  setRiderEventSelections: (selections: RiderEventSelection[]) => void;
+  setRaceEvents: (events: RaceEvent[]) => void;
+  appState: any;
 }
 
-const generateId = () => Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
-
-// Suppression de la fonction locale getAgeCategory - utilisation de l'import
-
-const calculateWkg = (power?: number, weight?: number): string => {
-  if (typeof power === 'number' && typeof weight === 'number' && weight > 0) {
-    return (power / weight).toFixed(1);
-  }
-  return "-";
+const calculateWkg = (power: number, weight: number): string => {
+  if (!weight || weight <= 0) return '0.0';
+  return (power / weight).toFixed(1);
 };
 
-type PowerProfileStateFilter = 'powerProfileFresh' | 'powerProfile15KJ' | 'powerProfile30KJ';
-
-const profileKeyToDisplay: Record<PowerProfileStateFilter, string> = {
-    powerProfileFresh: "Frais",
-    powerProfile15KJ: "15 kJ/kg",
-    powerProfile30KJ: "30 kJ/kg"
+const powerProfileConfig = {
+  powerProfile15KJ: "15 kJ/kg",
+  powerProfile30KJ: "30 kJ/kg"
 };
 
 const getEventDuration = (event: RaceEvent): number => {
-    if (!event.date) return 0;
-    // Use Date.parse for robustness, then create UTC dates to avoid timezone issues.
-    const startDateMs = Date.parse(event.date);
-    const endDateMs = Date.parse(event.endDate || event.date);
-
-    if (isNaN(startDateMs) || isNaN(endDateMs)) return 0;
-
-    const startDate = new Date(startDateMs);
-    const endDate = new Date(endDateMs);
-
-    // Set to UTC midnight to compare dates only
-    const startUtc = Date.UTC(startDate.getUTCFullYear(), startDate.getUTCMonth(), startDate.getUTCDate());
-    const endUtc = Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), endDate.getUTCDate());
-
-    const diffTime = endUtc - startUtc;
-    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
-    return Math.max(1, diffDays); // Ensure it's at least 1 day
+  if (!event.date) return 1;
+  
+  const startDate = new Date(event.date + "T12:00:00Z");
+  const endDate = event.endDate ? new Date(event.endDate + "T12:00:00Z") : startDate;
+  
+  const diffTime = endDate.getTime() - startDate.getTime();
+  const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
+  return Math.max(1, diffDays);
 };
 
-interface SeasonPlanningTabProps {
-    raceEvents: RaceEvent[];
-    riders: Rider[];
-    riderEventSelections: RiderEventSelection[];
-    setRiderEventSelections: React.Dispatch<React.SetStateAction<RiderEventSelection[]>>;
-    setRaceEvents: React.Dispatch<React.SetStateAction<RaceEvent[]>>;
-    appState: AppState;
-}
-
-const SeasonPlanningTab: React.FC<SeasonPlanningTabProps> = ({
-    raceEvents,
-    riders,
-    riderEventSelections,
-    setRiderEventSelections,
-    setRaceEvents,
-    appState,
-}) => {
-    const [viewMode, setViewMode] = useState<'grid' | 'calendar'>('grid');
-    const [calendarDate, setCalendarDate] = useState(new Date());
-    
-    // États de tri pour le planning de saison
-    const [planningSortBy, setPlanningSortBy] = useState<'name' | 'raceDays'>('name');
-    const [planningSortDirection, setPlanningSortDirection] = useState<'asc' | 'desc'>('asc');
-
-    const futureEvents = useMemo(() => {
-        if (!raceEvents) return [];
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        return raceEvents
-            .filter(event => new Date(event.endDate || event.date) >= today)
-            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-    }, [raceEvents]);
-
-    const raceDaysByRider = useMemo(() => {
-        const raceDays: Record<string, number> = {};
-        if (!riders || !riderEventSelections || !raceEvents) return raceDays;
-
-        const eventDurations = new Map<string, number>();
-        if (raceEvents) {
-            raceEvents.forEach(event => {
-                eventDurations.set(event.id, getEventDuration(event));
-            });
-        }
-
-        if (riders) {
-            riders.forEach(rider => {
-                raceDays[rider.id] = 0;
-            });
-        }
-
-        if (riderEventSelections) {
-            riderEventSelections.forEach(selection => {
-                if (selection.status === RiderEventStatus.TITULAIRE && raceDays.hasOwnProperty(selection.riderId)) {
-                    const duration = eventDurations.get(selection.eventId) || 0;
-                    raceDays[selection.riderId] += duration;
-                }
-            });
-        }
-
-        return raceDays;
-    }, [riders, riderEventSelections, raceEvents]);
-
-    // Fonction de tri pour le planning de saison
-    const sortedRidersForPlanning = useMemo(() => {
-        if (!riders) return [];
-        
-        return [...riders].sort((a, b) => {
-            let aValue: string | number;
-            let bValue: string | number;
-            
-            switch (planningSortBy) {
-                case 'name':
-                    aValue = `${a.firstName} ${a.lastName}`.toLowerCase();
-                    bValue = `${b.firstName} ${b.lastName}`.toLowerCase();
-                    break;
-                case 'raceDays':
-                    aValue = raceDaysByRider[a.id] || 0;
-                    bValue = raceDaysByRider[b.id] || 0;
-                    break;
-                default:
-                    aValue = a.firstName;
-                    bValue = b.firstName;
-            }
-            
-            if (typeof aValue === 'string' && typeof bValue === 'string') {
-                if (planningSortDirection === 'asc') {
-                    return aValue.localeCompare(bValue);
-                } else {
-                    return bValue.localeCompare(aValue);
-                }
-            } else {
-                if (planningSortDirection === 'asc') {
-                    return (aValue as number) - (bValue as number);
-                } else {
-                    return (bValue as number) - (aValue as number);
-                }
-            }
-        });
-    }, [riders, planningSortBy, planningSortDirection, raceDaysByRider]);
-
-    // Fonction de gestion du tri pour le planning
-    const handlePlanningSort = (sortBy: 'name' | 'raceDays') => {
-        if (planningSortBy === sortBy) {
-            setPlanningSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
-        } else {
-            setPlanningSortBy(sortBy);
-            setPlanningSortDirection('asc');
-        }
-    };
-
-    const handlePlanningGridSelectionChange = async (riderId: string, eventId: string, newStatus: RiderEventStatus) => {
-        // Mise à jour locale immédiate pour l'interface
-        setRiderEventSelections(prev => {
-            const existingSelectionIndex = prev.findIndex(s => s.riderId === riderId && s.eventId === eventId);
-            
-            if (newStatus === RiderEventStatus.NON_RETENU) {
-                if (existingSelectionIndex > -1) {
-                    return prev.filter((_, index) => index !== existingSelectionIndex);
-                }
-                return prev;
-            }
-
-            if (existingSelectionIndex > -1) {
-                const updatedSelections = [...prev];
-                updatedSelections[existingSelectionIndex] = { ...updatedSelections[existingSelectionIndex], status: newStatus };
-                return updatedSelections;
-            } else {
-                return [...prev, { id: generateId(), eventId, riderId, status: newStatus }];
-            }
-        });
-
-        // Mise à jour locale des événements
-        setRaceEvents(prev => prev.map(e => {
-            if (e.id === eventId) {
-                const isTitu = newStatus === RiderEventStatus.TITULAIRE;
-                const isAlreadySelected = (e.selectedRiderIds || []).includes(riderId);
-                if (isTitu && !isAlreadySelected) {
-                    return { ...e, selectedRiderIds: [...(e.selectedRiderIds || []), riderId] };
-                }
-                if (!isTitu && isAlreadySelected) {
-                    return { ...e, selectedRiderIds: (e.selectedRiderIds || []).filter(id => id !== riderId) };
-                }
-            }
-            return e;
-        }));
-
-        // Sauvegarde automatique dans Firebase
-        try {
-            if (appState.activeTeamId) {
-                // Sauvegarder la sélection du coureur
-                if (newStatus !== RiderEventStatus.NON_RETENU) {
-                    const selectionData = {
-                        id: generateId(),
-                        eventId,
-                        riderId,
-                        status: newStatus,
-                        createdAt: new Date().toISOString()
-                    };
-                    
-                    // Import dynamique pour éviter les problèmes de dépendances circulaires
-                    const { saveData } = await import('../services/firebaseService');
-                    await saveData(appState.activeTeamId, 'riderEventSelections', selectionData);
-                }
-
-                // Sauvegarder l'événement mis à jour
-                const updatedEvent = raceEvents.find(e => e.id === eventId);
-                if (updatedEvent) {
-                    const { saveData } = await import('../services/firebaseService');
-                    await saveData(appState.activeTeamId, 'raceEvents', updatedEvent);
-                }
-            }
-        } catch (error) {
-            alert('⚠️ Erreur lors de la sauvegarde. Les changements ne sont que temporaires.');
-        }
-    };
-
-    const renderGridView = () => (
-        <div>
-            {/* Contrôles de tri pour le planning */}
-            <div className="mb-3 flex flex-wrap items-center gap-3 p-2 bg-gray-50 rounded-lg border">
-                <span className="text-xs font-medium text-gray-700">Trier par:</span>
-                <button
-                    onClick={() => handlePlanningSort('name')}
-                    className={`px-2 py-1 text-xs rounded transition-colors ${
-                        planningSortBy === 'name' 
-                            ? 'bg-blue-500 text-white' 
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    }`}
-                >
-                    Nom {planningSortBy === 'name' && (planningSortDirection === 'asc' ? '↑' : '↓')}
-                </button>
-                <button
-                    onClick={() => handlePlanningSort('raceDays')}
-                    className={`px-2 py-1 text-xs rounded transition-colors ${
-                        planningSortBy === 'raceDays' 
-                            ? 'bg-blue-500 text-white' 
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                    }`}
-                >
-                    Jours de Course {planningSortBy === 'raceDays' && (planningSortDirection === 'asc' ? '↑' : '↓')}
-                </button>
-            </div>
-            
-            <div className="overflow-x-auto border rounded-lg" style={{ maxHeight: '60vh' }}>
-                <table className="min-w-full border-collapse">
-                <thead className="bg-gray-100 z-10" style={{ position: 'sticky', top: 0 }}>
-                    <tr>
-                        <th className="p-1.5 border text-xs font-semibold text-gray-600 w-40 z-20" style={{ position: 'sticky', left: 0, backgroundColor: 'inherit' }}>Coureur</th>
-                        <th className="p-1.5 border text-xs font-semibold text-gray-600 w-20 z-20" style={{ position: 'sticky', left: '10rem', backgroundColor: 'inherit' }}>Jours</th>
-                        {futureEvents && futureEvents.map(event => (
-                            <th key={event.id} className="p-1.5 border text-xs font-semibold text-gray-600 min-w-[120px]">
-                                <div className="font-bold text-xs">{event.name}</div>
-                                <div className="text-xs">{new Date(event.date + 'T12:00:00Z').toLocaleDateString('fr-CA')}</div>
-                                <div className="text-xs text-gray-500">({getEventDuration(event)}j)</div>
-                            </th>
-                        ))}
-                    </tr>
-                </thead>
-                <tbody>
-                    {sortedRidersForPlanning && sortedRidersForPlanning.map(rider => (
-                        <tr key={rider.id} className="hover:bg-gray-50">
-                            <td className="p-1.5 border text-sm font-medium text-gray-800 w-40 z-10" style={{ position: 'sticky', left: 0, backgroundColor: 'inherit' }}>{rider.firstName} {rider.lastName}</td>
-                            <td className="p-1.5 border font-bold text-center text-base text-gray-800 w-20 z-10" style={{ position: 'sticky', left: '10rem', backgroundColor: 'inherit' }}>{raceDaysByRider[rider.id] || 0}</td>
-                            {futureEvents && futureEvents.map(event => {
-                                const selection = riderEventSelections.find(s => s.riderId === rider.id && s.eventId === event.id);
-                                const status = selection?.status || RiderEventStatus.NON_RETENU;
-                                return (
-                                    <td key={event.id} className={`p-0.5 border text-center align-middle ${RIDER_EVENT_STATUS_COLORS[status].split(' ')[0]}`}>
-                                        <select
-                                            value={status}
-                                            onChange={(e) => handlePlanningGridSelectionChange(rider.id, event.id, e.target.value as RiderEventStatus)}
-                                            className={`w-full h-full text-center text-xs p-0.5 border-0 rounded appearance-none focus:outline-none focus:ring-1 focus:ring-blue-400 bg-transparent ${RIDER_EVENT_STATUS_COLORS[status].split(' ')[1]}`}
-                                        >
-                                            {Object.values(RiderEventStatus).map(s => (
-                                                <option key={s} value={s} style={{ backgroundColor: '#fff', color: '#000' }}>{s}</option>
-                                            ))}
-                                        </select>
-                                    </td>
-                                );
-                            })}
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
-        </div>
-        </div>
-    );
-
-    const renderCalendarView = () => {
-        const year = calendarDate.getFullYear();
-        const month = calendarDate.getMonth();
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-        const monthName = calendarDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
-
-        const eventsForMonth = raceEvents.filter(event => {
-            const start = new Date(event.date + "T12:00:00Z");
-            const end = new Date((event.endDate || event.date) + "T12:00:00Z");
-            const monthStart = new Date(year, month, 1);
-            const monthEnd = new Date(year, month, daysInMonth, 23, 59, 59);
-            return start <= monthEnd && end >= monthStart;
-        });
-
-        return (
-            <div className="mt-2">
-                <div className="flex justify-between items-center mb-2">
-                    <ActionButton onClick={() => setCalendarDate(new Date(year, month - 1, 1))} size="sm">&lt; {new Date(year, month - 1, 1).toLocaleDateString('fr-FR', {month: 'long'})}</ActionButton>
-                    <h4 className="text-base font-semibold">{monthName}</h4>
-                    <ActionButton onClick={() => setCalendarDate(new Date(year, month + 1, 1))} size="sm">{new Date(year, month + 1, 1).toLocaleDateString('fr-FR', {month: 'long'})} &gt;</ActionButton>
-                </div>
-                <div className="overflow-x-auto border rounded-lg bg-gray-50" style={{ maxHeight: '60vh' }}>
-                    <div className="grid min-w-max" style={{ gridTemplateColumns: `120px 60px repeat(${daysInMonth}, minmax(30px, 1fr))` }}>
-                        {/* Header */}
-                        <div className="sticky left-0 bg-gray-100 z-30 p-1.5 border-b border-r font-semibold text-xs text-gray-700">Coureur</div>
-                        <div className="sticky left-[120px] bg-gray-100 z-30 p-1.5 border-b border-r font-semibold text-xs text-gray-700">Jours</div>
-                        {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => (
-                            <div key={day} className="text-center p-1 border-b border-r text-xs font-medium text-gray-500">{day}</div>
-                        ))}
-                        {/* Rider Rows */}
-                        {riders.map(rider => (
-                            <React.Fragment key={rider.id}>
-                                <div className="sticky left-0 bg-white z-20 p-1.5 border-b border-r text-xs font-medium whitespace-nowrap">{rider.firstName} {rider.lastName}</div>
-                                <div className="sticky left-[120px] bg-white z-20 p-1.5 border-b border-r text-xs font-bold text-center">{raceDaysByRider[rider.id] || 0}</div>
-                                <div className="col-start-3 relative border-b" style={{ gridColumnEnd: daysInMonth + 3, display: 'grid', gridTemplateColumns: `repeat(${daysInMonth}, 1fr)`}}>
-                                    {Array.from({ length: daysInMonth }).map((_, i) => <div key={i} className="border-r h-full"></div>)}
-                                    {eventsForMonth.map(event => {
-                                        const selection = riderEventSelections.find(s => s.riderId === rider.id && s.eventId === event.id);
-                                        if (!selection || ![RiderEventStatus.TITULAIRE, RiderEventStatus.REMPLACANT, RiderEventStatus.PRE_SELECTION].includes(selection.status)) return null;
-
-                                        const start = new Date(event.date + "T12:00:00Z");
-                                        const end = new Date((event.endDate || event.date) + "T12:00:00Z");
-                                        
-                                        const startDay = start.getMonth() < month ? 1 : start.getDate();
-                                        const endDay = end.getMonth() > month ? daysInMonth : end.getDate();
-                                        
-                                        const duration = endDay - startDay + 1;
-                                        if (duration <= 0) return null;
-                                        
-                                        const color = event.eventType === EventType.COMPETITION ? 'bg-blue-600' : 'bg-yellow-500';
-                                        const opacity = selection.status !== RiderEventStatus.TITULAIRE ? 'opacity-60' : '';
-
-                                        return (
-                                            <div
-                                                key={event.id}
-                                                className={`absolute h-5/6 my-auto inset-y-0 px-1 flex items-center text-xs text-white rounded overflow-hidden cursor-pointer ${color} ${opacity}`}
-                                                style={{
-                                                    gridColumnStart: startDay,
-                                                    gridColumnEnd: `span ${duration}`,
-                                                }}
-                                                title={`${event.name}\n${start.toLocaleDateString()} - ${end.toLocaleDateString()}\nStatut: ${selection.status}`}
-                                            >
-                                                <span className="truncate">{event.name}</span>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </React.Fragment>
-                        ))}
-                    </div>
-                </div>
-                <div className="flex justify-end items-center mt-1 text-xs space-x-3">
-                    <div className="flex items-center"><span className="w-3 h-3 bg-blue-600 rounded-sm mr-1"></span>Compétition</div>
-                    <div className="flex items-center"><span className="w-3 h-3 bg-yellow-500 rounded-sm mr-1"></span>Stage</div>
-                    <div className="flex items-center"><span className="w-3 h-3 bg-gray-400 rounded-sm mr-1 opacity-60"></span>Non-Titulaire</div>
-                </div>
-            </div>
-        );
-    };
-    
-    return (
-        <div className="bg-white p-3 rounded-lg shadow-md">
-            <div className="flex justify-between items-center mb-2">
-                <h3 className="text-lg font-semibold">Planning Prévisionnel de la Saison</h3>
-                 <div className="flex items-center p-1 bg-gray-200 rounded-lg">
-                    <ActionButton onClick={() => setViewMode('grid')} variant={viewMode === 'grid' ? 'primary' : 'secondary'} size="sm" className={viewMode === 'grid' ? 'shadow-md' : 'bg-transparent shadow-none'}>
-                        <TableCellsIcon className="w-4 h-4" />
-                        <span className="ml-1">Grille</span>
-                    </ActionButton>
-                    <ActionButton onClick={() => setViewMode('calendar')} variant={viewMode === 'calendar' ? 'primary' : 'secondary'} size="sm" className={viewMode === 'calendar' ? 'shadow-md' : 'bg-transparent shadow-none'}>
-                        <CalendarIcon className="w-4 h-4" />
-                         <span className="ml-1">Calendrier</span>
-                    </ActionButton>
-                </div>
-            </div>
-            {viewMode === 'grid' ? renderGridView() : renderCalendarView()}
-        </div>
-    );
-};
-
-export const RosterSection: React.FC<RosterSectionProps> = ({
-  riders,
-  onSaveRider,
-  onDeleteRider,
+export default function RosterSection({
   raceEvents,
-  setRaceEvents,
+  riders,
   riderEventSelections,
   setRiderEventSelections,
-  performanceEntries,
-  scoutingProfiles,
-  currentUser,
+  setRaceEvents,
   appState
-}) => {
-  // Utilisation sécurisée d'appState
-  const safeAppState = useAppStateSafe(appState);
-  
-  // Protection minimale - seulement riders est requis
-  if (!riders) {
-    return (
-      <SectionWrapper title="Gestion de l'Effectif">
-        <div className="text-center p-8 bg-gray-50 rounded-lg border">
-          <h3 className="text-xl font-semibold text-gray-700">Chargement...</h3>
-          <p className="mt-2 text-gray-500">Initialisation des données de l'effectif...</p>
-        </div>
-      </SectionWrapper>
-    );
-  }
-
+}: RosterSectionProps) {
   const { t } = useTranslations();
-  const [activeTab, setActiveTab] = useState<'roster' | 'selectionGrid' | 'groupMonitoring' | 'seasonPlanning'>('roster');
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [editingRider, setEditingRider] = useState<Rider | null>(null);
-  const [isNewRider, setIsNewRider] = useState(false);
-  const [isViewMode, setIsViewMode] = useState(false);
+  const { appState: safeAppState } = useAppStateSafe();
+
+  // States for roster management
+  const [activeTab, setActiveTab] = useState<'roster' | 'seasonPlanning'>('roster');
   const [searchTerm, setSearchTerm] = useState('');
   const [genderFilter, setGenderFilter] = useState<'all' | Sex>('all');
-  const [ageCategoryFilter, setAgeCategoryFilter] = useState<'all' | string>('all');
-  const [levelFilter, setLevelFilter] = useState<'all' | string>('all');
-  const [minAgeFilter, setMinAgeFilter] = useState<string>('');
-  const [maxAgeFilter, setMaxAgeFilter] = useState<string>('');
-  
-  const [isSelectionGridEventModalOpen, setIsSelectionGridEventModalOpen] = useState(false);
-  const [selectedEventForGrid, setSelectedEventForGrid] = useState<RaceEvent | null>(null);
-  const [gridSelections, setGridSelections] = useState<RiderEventSelection[]>([]);
+  const [ageCategoryFilter, setAgeCategoryFilter] = useState('all');
+  const [levelFilter, setLevelFilter] = useState('all');
+  const [minAgeFilter, setMinAgeFilter] = useState('');
+  const [maxAgeFilter, setMaxAgeFilter] = useState('');
+  const [selectedRider, setSelectedRider] = useState<Rider | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [riderToDelete, setRiderToDelete] = useState<Rider | null>(null);
 
-  const [confirmAction, setConfirmAction] = useState<{ title: string; message: string; onConfirm: () => void } | null>(null);
+  // States for season planning
+  const [planningSortBy, setPlanningSortBy] = useState<'name' | 'raceDays'>('name');
+  const [planningSortDirection, setPlanningSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [calendarDate, setCalendarDate] = useState(new Date());
+  const [viewMode, setViewMode] = useState<'grid' | 'calendar'>('grid');
 
-  // Group Monitoring States
-  const [monitoringAgeFilter, setMonitoringAgeFilter] = useState('all');
-  const [monitoringLevelFilter, setMonitoringLevelFilter] = useState('all');
-  const [monitoringSortConfig, setMonitoringSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>({ key: 'charClimbing', direction: 'desc' });
-  const [includeScouting, setIncludeScouting] = useState(false);
-
-  const scheduleConflicts = useMemo(() => {
-    const conflicts: Record<string, { eventName: string; status: RiderEventStatus }[]> = {};
-    if (!riders || !riderEventSelections || !raceEvents) return conflicts;
-
-    riders.forEach(rider => {
-      const selections = riderEventSelections.filter(s => s.riderId === rider.id && s.status === RiderEventStatus.TITULAIRE);
-      
-      selections.forEach((selection, selIndex) => {
-        const event = raceEvents.find(e => e.id === selection.eventId);
-        if (!event) return;
-        const eventStartDate = new Date(event.date + 'T00:00:00Z');
-        const eventEndDate = new Date((event.endDate || event.date) + 'T23:59:59Z');
-
-        for (let i = selIndex + 1; i < selections.length; i++) {
-          const otherSelection = selections[i];
-          const otherEvent = raceEvents.find(e => e.id === otherSelection.eventId);
-          if (!otherEvent) continue;
-
-          const otherStartDate = new Date(otherEvent.date + 'T00:00:00Z');
-          const otherEndDate = new Date((otherEvent.endDate || otherEvent.date) + 'T23:59:59Z');
-
-          if (eventStartDate <= otherEndDate && eventEndDate >= otherStartDate) {
-            if (!conflicts[rider.id]) conflicts[rider.id] = [];
-            
-            if(!conflicts[rider.id].some(c => c.eventName === event.name)){
-                 conflicts[rider.id].push({ eventName: event.name, status: selection.status });
-            }
-            if(!conflicts[rider.id].some(c => c.eventName === otherEvent.name)){
-                conflicts[rider.id].push({ eventName: otherEvent.name, status: otherSelection.status });
-            }
-          }
-        }
-      });
-    });
-    return conflicts;
-  }, [riders, riderEventSelections, raceEvents]);
-
-
-  const filteredRidersForAdmin = useMemo(() => {
-    return riders
-      .filter(rider => {
-        const { age, category } = getAgeCategory(rider.birthDate);
-        const nameMatch = `${rider.firstName} ${rider.lastName}`.toLowerCase().includes(searchTerm.toLowerCase());
-        const genderMatch = genderFilter === 'all' || rider.sex === genderFilter;
-        const ageCategoryMatch = ageCategoryFilter === 'all' || category === ageCategoryFilter;
-        const levelMatch = levelFilter === 'all' || (rider.categories && rider.categories.includes(levelFilter));
-        
-        const minAge = minAgeFilter ? parseInt(minAgeFilter, 10) : 0;
-        const maxAge = maxAgeFilter ? parseInt(maxAgeFilter, 10) : 999;
-        const ageRangeMatch = age === null || (age >= minAge && age <= maxAge);
-
-        return nameMatch && genderMatch && ageCategoryMatch && levelMatch && ageRangeMatch;
-      })
-      .sort((a,b) => a.lastName.localeCompare(b.lastName));
-  }, [riders, searchTerm, genderFilter, ageCategoryFilter, levelFilter, minAgeFilter, maxAgeFilter]);
-  
-  // États de tri pour l'effectif
+  // States for roster sorting
   const [rosterSortBy, setRosterSortBy] = useState<'name' | 'age' | 'level' | 'raceDays'>('name');
   const [rosterSortDirection, setRosterSortDirection] = useState<'asc' | 'desc'>('asc');
 
-  // Fonction de tri pour l'effectif
+  // Sorting function for roster
   const sortedRidersForAdmin = useMemo(() => {
-    if (!filteredRidersForAdmin) return [];
-    
-    return [...filteredRidersForAdmin].sort((a, b) => {
-      let aValue: string | number;
-      let bValue: string | number;
-      
-      switch (rosterSortBy) {
-        case 'name':
-          aValue = `${a.firstName} ${a.lastName}`.toLowerCase();
-          bValue = `${b.firstName} ${b.lastName}`.toLowerCase();
-          break;
-        case 'age':
-          const aAge = getAgeCategory(a.birthDate).age || 0;
-          const bAge = getAgeCategory(b.birthDate).age || 0;
-          aValue = aAge;
-          bValue = bAge;
-          break;
-        case 'level':
-          aValue = a.qualitativeProfile || '';
-          bValue = b.qualitativeProfile || '';
-          break;
-        case 'raceDays':
-          // Calculer les jours de course pour chaque rider
-          const aRaceDays = riderEventSelections
-            .filter(s => s.riderId === a.id && s.status === RiderEventStatus.TITULAIRE)
-            .reduce((total, selection) => {
-              const event = raceEvents.find(e => e.id === selection.eventId);
-              return total + (event ? getEventDuration(event) : 0);
-            }, 0);
-          const bRaceDays = riderEventSelections
-            .filter(s => s.riderId === b.id && s.status === RiderEventStatus.TITULAIRE)
-            .reduce((total, selection) => {
-              const event = raceEvents.find(e => e.id === selection.eventId);
-              return total + (event ? getEventDuration(event) : 0);
-            }, 0);
-          aValue = aRaceDays;
-          bValue = bRaceDays;
-          break;
-        default:
-          aValue = a.firstName;
-          bValue = b.firstName;
-      }
-      
-      if (typeof aValue === 'string' && typeof bValue === 'string') {
-        if (rosterSortDirection === 'asc') {
-          return aValue.localeCompare(bValue);
-        } else {
-          return bValue.localeCompare(aValue);
-        }
+    let filtered = [...riders];
+
+    // Apply filters
+    if (searchTerm) {
+      filtered = filtered.filter(rider => 
+        `${rider.firstName} ${rider.lastName}`.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    if (genderFilter !== 'all') {
+      filtered = filtered.filter(rider => rider.sex === genderFilter);
+    }
+
+    if (ageCategoryFilter !== 'all') {
+      filtered = filtered.filter(rider => {
+        const { category } = getAgeCategory(rider.birthDate);
+        return category === ageCategoryFilter;
+      });
+    }
+
+    if (levelFilter !== 'all') {
+      filtered = filtered.filter(rider => {
+        const level = (rider as any).level;
+        return level === levelFilter;
+      });
+    }
+
+    if (minAgeFilter || maxAgeFilter) {
+      filtered = filtered.filter(rider => {
+        const { age } = getAgeCategory(rider.birthDate);
+        if (age === null) return false;
+        const minAge = minAgeFilter ? parseInt(minAgeFilter) : 0;
+        const maxAge = maxAgeFilter ? parseInt(maxAgeFilter) : 999;
+        return age >= minAge && age <= maxAge;
+      });
+    }
+
+    // Apply sorting
+    return filtered.sort((a, b) => {
+      if (rosterSortBy === 'name') {
+        const nameA = `${a.firstName} ${a.lastName}`.toLowerCase();
+        const nameB = `${b.firstName} ${b.lastName}`.toLowerCase();
+        return rosterSortDirection === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
+      } else if (rosterSortBy === 'age') {
+        const ageA = getAgeCategory(a.birthDate).age || 0;
+        const ageB = getAgeCategory(b.birthDate).age || 0;
+        return rosterSortDirection === 'asc' ? ageA - ageB : ageB - ageA;
+      } else if (rosterSortBy === 'level') {
+        const levelA = (a as any).level || '';
+        const levelB = (b as any).level || '';
+        return rosterSortDirection === 'asc' ? levelA.localeCompare(levelB) : levelB.localeCompare(levelA);
       } else {
-        if (rosterSortDirection === 'asc') {
-          return (aValue as number) - (bValue as number);
-        } else {
-          return (bValue as number) - (aValue as number);
-        }
+        const raceDaysA = raceEvents.filter(event => {
+          const selection = riderEventSelections.find(s => s.riderId === a.id && s.eventId === event.id);
+          return selection && [RiderEventStatus.TITULAIRE, RiderEventStatus.REMPLACANT, RiderEventStatus.PRE_SELECTION].includes(selection.status);
+        }).length;
+        const raceDaysB = raceEvents.filter(event => {
+          const selection = riderEventSelections.find(s => s.riderId === b.id && s.eventId === event.id);
+          return selection && [RiderEventStatus.TITULAIRE, RiderEventStatus.REMPLACANT, RiderEventStatus.PRE_SELECTION].includes(selection.status);
+        }).length;
+        return rosterSortDirection === 'asc' ? raceDaysA - raceDaysB : raceDaysB - raceDaysA;
       }
     });
-  }, [filteredRidersForAdmin, rosterSortBy, rosterSortDirection, riderEventSelections, raceEvents]);
+  }, [riders, raceEvents, riderEventSelections, searchTerm, genderFilter, ageCategoryFilter, levelFilter, minAgeFilter, maxAgeFilter, rosterSortBy, rosterSortDirection]);
 
+  // Sorting function for season planning
+  const sortedRidersForPlanning = useMemo(() => {
+    const sorted = [...riders].sort((a, b) => {
+      const raceDaysA = raceEvents.filter(event => {
+        const selection = riderEventSelections.find(s => s.riderId === a.id && s.eventId === event.id);
+        return selection && [RiderEventStatus.TITULAIRE, RiderEventStatus.REMPLACANT, RiderEventStatus.PRE_SELECTION].includes(selection.status);
+      }).length;
+      
+      const raceDaysB = raceEvents.filter(event => {
+        const selection = riderEventSelections.find(s => s.riderId === b.id && s.eventId === event.id);
+        return selection && [RiderEventStatus.TITULAIRE, RiderEventStatus.REMPLACANT, RiderEventStatus.PRE_SELECTION].includes(selection.status);
+      }).length;
 
+      if (planningSortBy === 'name') {
+        const nameA = `${a.firstName} ${a.lastName}`.toLowerCase();
+        const nameB = `${b.firstName} ${b.lastName}`.toLowerCase();
+        return planningSortDirection === 'asc' ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
+      } else {
+        return planningSortDirection === 'asc' ? raceDaysA - raceDaysB : raceDaysB - raceDaysA;
+      }
+    });
+    return sorted;
+  }, [riders, raceEvents, riderEventSelections, planningSortBy, planningSortDirection]);
 
-  // Fonction de gestion du tri pour l'effectif
+  // Handle roster sort
   const handleRosterSort = (sortBy: 'name' | 'age' | 'level' | 'raceDays') => {
     if (rosterSortBy === sortBy) {
       setRosterSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
@@ -616,322 +191,151 @@ export const RosterSection: React.FC<RosterSectionProps> = ({
       setRosterSortDirection('asc');
     }
   };
-  
-  // --- Start of Group Monitoring Logic ---
-  const requestMonitoringSort = (key: string) => {
-    let direction: 'asc' | 'desc' = 'asc';
-    if (monitoringSortConfig && monitoringSortConfig.key === key && monitoringSortConfig.direction === 'asc') {
-        direction = 'desc';
+
+  // Handle planning sort
+  const handlePlanningSort = (sortBy: 'name' | 'raceDays') => {
+    if (planningSortBy === sortBy) {
+      setPlanningSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setPlanningSortBy(sortBy);
+      setPlanningSortDirection('asc');
     }
-    setMonitoringSortConfig({ key, direction });
   };
-  
-  const monitoringAllAgeCategoriesForFilter = useMemo(() => {
-    const ageCats = new Set<string>();
-    riders.forEach(r => {
-        const { category } = getAgeCategory(r.birthDate);
-        if (category !== 'N/A') ageCats.add(category);
+
+  // Calculate race days for each rider
+  const raceDaysByRider = useMemo(() => {
+    const daysByRider: { [key: string]: number } = {};
+    
+    riders.forEach(rider => {
+      const days = raceEvents.filter(event => {
+        const selection = riderEventSelections.find(s => s.riderId === rider.id && s.eventId === event.id);
+        return selection && [RiderEventStatus.TITULAIRE, RiderEventStatus.REMPLACANT, RiderEventStatus.PRE_SELECTION].includes(selection.status);
+      }).length;
+      
+      daysByRider[rider.id] = days;
     });
-    const sortedAgeCats = Array.from(ageCats).sort((a, b) => {
-        if (a === 'Senior') return 1;
-        if (b === 'Senior') return -1;
-        const aNum = parseInt(a.replace('U', ''), 10);
-        const bNum = parseInt(b.replace('U', ''), 10);
-        if (!isNaN(aNum) && !isNaN(bNum)) return aNum - bNum;
-        return a.localeCompare(b);
-    });
-    return ['all', ...sortedAgeCats];
-  }, [riders]);
+    
+    return daysByRider;
+  }, [riders, raceEvents, riderEventSelections]);
 
-  const monitoringAllLevelCategoriesForFilter = useMemo(() => {
-    const levelCats = new Set<string>();
-    riders.forEach(r => {
-      (r.categories || []).forEach(cat => {
-        if (RIDER_LEVEL_CATEGORIES.includes(cat) || cat === 'Handisport') {
-            levelCats.add(cat);
-        }
-      })
-    });
-    return ['all', ...Array.from(levelCats).sort()];
-  }, [riders]);
-
-  type MonitoredPerson = (Rider | ScoutingProfile) & { isScout: boolean };
-  const monitoredRiders = useMemo((): MonitoredPerson[] => {
-    const combinedRiders: MonitoredPerson[] = [
-        ...riders.map(r => ({ ...r, isScout: false })),
-        ...(includeScouting ? scoutingProfiles.map(s => ({ ...s, isScout: true })) : [])
-    ];
-
-    const ridersToAnalyze = combinedRiders.filter(rider => {
-        const ageMatch = monitoringAgeFilter === 'all' || getAgeCategory(rider.birthDate).category === monitoringAgeFilter;
-        const levelMatch = monitoringLevelFilter === 'all' || (rider.categories || []).includes(monitoringLevelFilter);
-        return ageMatch && levelMatch;
-    });
-        
-    if (monitoringSortConfig) {
-      ridersToAnalyze.sort((a, b) => {
-        const getSortValue = (item: MonitoredPerson, key: string): string | number => {
-          if (key === 'riderName') return `${item.firstName} ${item.lastName}`;
-          if (key === 'qualitativeProfile') return item.qualitativeProfile || '';
-          
-          if (key.startsWith('char') || key === 'generalPerformanceScore' || key === 'fatigueResistanceScore') {
-            const score = (item as any)[key as keyof MonitoredPerson] as number | undefined;
-            return score ?? -1;
-          }
-
-          return -1;
-        };
-
-        const valA = getSortValue(a, monitoringSortConfig.key);
-        const valB = getSortValue(b, monitoringSortConfig.key);
-
-        let comparison = 0;
-        if (typeof valA === 'string' && typeof valB === 'string') {
-          comparison = valA.localeCompare(valB);
-        } else if (typeof valA === 'number' && typeof valB === 'number') {
-          comparison = valA - valB;
-        }
-        
-        if (comparison !== 0) {
-          return monitoringSortConfig.direction === 'asc' ? comparison : -comparison;
-        }
-        
-        // Stabilize sort by name
-        const nameA = `${a.firstName} ${a.lastName}`;
-        const nameB = `${b.firstName} ${b.lastName}`;
-        return nameA.localeCompare(nameB);
-      });
+  // Handle planning grid selection change
+  const handlePlanningGridSelectionChange = (riderId: string, eventId: string, status: RiderEventStatus) => {
+    const existingSelection = riderEventSelections.find(s => s.riderId === riderId && s.eventId === eventId);
+    
+    if (existingSelection) {
+      setRiderEventSelections(prev => prev.map(s => 
+        s.id === existingSelection.id ? { ...s, status } : s
+      ));
+    } else {
+      const newSelection: RiderEventSelection = {
+        id: `${riderId}-${eventId}`,
+        riderId,
+        eventId,
+        status
+      };
+      setRiderEventSelections(prev => [...prev, newSelection]);
     }
-
-
-    return ridersToAnalyze;
-  }, [riders, scoutingProfiles, includeScouting, monitoringAgeFilter, monitoringLevelFilter, monitoringSortConfig]);
-
-
-  // --- End of Group Monitoring Logic ---
-
-  const handleSaveRider = (riderToSave: Rider) => {
-    onSaveRider(riderToSave);
-    setIsDetailModalOpen(false);
-  };
-  
-  const handleDeleteRider = (rider: Rider) => {
-    setConfirmAction({
-        title: `Supprimer ${rider.firstName} ${rider.lastName}`,
-        message: "Êtes-vous sûr de vouloir supprimer ce coureur ? Cette action est irréversible et supprimera toutes les données associées.",
-        onConfirm: () => {
-            onDeleteRider(rider);
-            setConfirmAction(null);
-        }
-    });
   };
 
-  const openAddModal = () => {
-    setIsNewRider(true);
-    setEditingRider(null);
-    setIsDetailModalOpen(true);
-  };
-  
+  // Modal handlers
   const openEditModal = (rider: Rider) => {
-    setIsNewRider(false);
-    setEditingRider(rider);
-    setIsViewMode(false);
-    setIsDetailModalOpen(true);
+    setSelectedRider(rider);
+    setIsEditModalOpen(true);
   };
 
   const openViewModal = (rider: Rider) => {
-    setIsNewRider(false);
-    setEditingRider(rider);
-    setIsViewMode(true);
-    setIsDetailModalOpen(true);
+    setSelectedRider(rider);
+    setIsViewModalOpen(true);
   };
 
-  const handleOpenSelectionGrid = (event: RaceEvent) => {
-    setSelectedEventForGrid(event);
-    const existingSelections = riderEventSelections.filter(s => s.eventId === event.id);
-    const selectionsWithAllRiders = riders.map(rider => {
-        const existing = existingSelections.find(s => s.riderId === rider.id);
-        return existing || { id: generateId(), eventId: event.id, riderId: rider.id, status: RiderEventStatus.NON_RETENU };
-    });
-    setGridSelections(selectionsWithAllRiders);
-    setIsSelectionGridEventModalOpen(false);
-    setActiveTab('selectionGrid');
+  const handleDeleteRider = (rider: Rider) => {
+    setRiderToDelete(rider);
+    setIsDeleteModalOpen(true);
   };
 
-  const handleGridSelectionChange = (riderId: string, newStatus: RiderEventStatus) => {
-    setGridSelections(prev => {
-        const newGrid = [...prev];
-        const index = newGrid.findIndex(s => s.riderId === riderId);
-        if(index > -1) {
-            newGrid[index] = {...newGrid[index], status: newStatus};
-        }
-        return newGrid;
-    });
-  };
-
-  const handleSaveGrid = async () => {
-    if (!selectedEventForGrid) return;
-    
-    try {
-      // Mise à jour locale
-      setRiderEventSelections(prev => {
-          // Filter out all selections for the current event from the global state
-          const otherSelections = prev.filter(s => s.eventId !== selectedEventForGrid.id);
-          // Add back only the new or updated selections
-          return [...otherSelections, ...gridSelections.filter(s => s.status !== RiderEventStatus.NON_RETENU)];
-      });
-      
-      setRaceEvents(prev => prev.map(e => {
-          if(e.id === selectedEventForGrid.id) {
-              const titulairesIds = gridSelections
-                  .filter(s => s.status === RiderEventStatus.TITULAIRE)
-                  .map(s => s.riderId);
-              return {...e, selectedRiderIds: titulairesIds};
-          }
-          return e;
-      }));
-
-      // Sauvegarde automatique dans Firebase
-      if (appState.activeTeamId) {
-          const { saveData } = await import('../services/firebaseService');
-          
-          // Sauvegarder toutes les sélections mises à jour
-          const selectionsToSave = gridSelections.filter(s => s.status !== RiderEventStatus.NON_RETENU);
-          for (const selection of selectionsToSave) {
-              await saveData(appState.activeTeamId, 'riderEventSelections', selection);
-          }
-          
-          // Sauvegarder l'événement mis à jour
-          const updatedEvent = raceEvents.find(e => e.id === selectedEventForGrid.id);
-          if (updatedEvent) {
-              const titulairesIds = gridSelections
-                  .filter(s => s.status === RiderEventStatus.TITULAIRE)
-                  .map(s => s.riderId);
-              const eventToSave = { ...updatedEvent, selectedRiderIds: titulairesIds };
-              await saveData(appState.activeTeamId, 'raceEvents', eventToSave);
-          }
-          
-          // Grille de sélection sauvegardée
-      }
-      
-      setActiveTab('roster');
-      setSelectedEventForGrid(null);
-      
-    } catch (error) {
-      alert('⚠️ Erreur lors de la sauvegarde. Les changements ne sont que temporaires.');
-    }
-  };
-    
-  const tabButtonStyle = (tabName: 'roster' | 'selectionGrid' | 'groupMonitoring' | 'seasonPlanning') => 
-    `px-2 py-1.5 font-medium text-xs rounded-t-md whitespace-nowrap transition-colors duration-150 focus:outline-none ${
-      activeTab === tabName 
-        ? 'bg-white text-gray-800 border-b-2 border-blue-500 shadow-sm' 
-        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-    }`;
-
-  if (currentUser.permissionRole === TeamRole.VIEWER) {
-    return (
-      <SectionWrapper title="Annuaire de l'Équipe">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {riders.map(rider => (
-            <div key={rider.id} className="bg-white p-3 rounded-lg shadow-md border flex flex-col">
-              <div className="flex items-center space-x-3 mb-3">
-                  {rider.photoUrl ? <img src={rider.photoUrl} alt={rider.firstName} className="w-12 h-12 rounded-full object-cover"/> : <UserCircleIcon className="w-12 h-12 text-gray-400"/>}
-                  <div>
-                      <h3 className="text-md font-semibold text-gray-800">{rider.firstName} {rider.lastName}</h3>
-                      <p className="text-xs text-gray-500">{rider.qualitativeProfile || 'Profil N/A'}</p>
-                  </div>
-              </div>
-              <div className="space-y-1 text-sm flex-grow">
-                {rider.phone && <p className="flex items-center text-gray-600"><PhoneIcon className="w-4 h-4 mr-2 text-gray-400"/>{rider.phone}</p>}
-                {rider.email && <p className="flex items-center text-gray-600"><MailIcon className="w-4 h-4 mr-2 text-gray-400"/>{rider.email}</p>}
-              </div>
-            </div>
-          ))}
-        </div>
-      </SectionWrapper>
-    );
-  }
-    
+  // Render roster tab
   const renderRosterTab = () => (
     <div className="bg-white p-3 rounded-lg shadow-md">
-       <div className="mb-3 grid grid-cols-1 md:grid-cols-5 gap-3">
+      <div className="mb-3 grid grid-cols-1 md:grid-cols-5 gap-3">
         <div>
-            <label htmlFor="rosterSearch" className="block text-xs font-medium text-gray-700 mb-0.5">Rechercher</label>
-            <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
-                    <SearchIcon className="h-4 w-4 text-gray-400" />
-                </div>
-                <input
-                    type="text"
-                    id="rosterSearch"
-                    placeholder="Rechercher un coureur..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="block w-full pl-8 pr-3 py-1.5 border border-gray-300 rounded-md leading-5 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-xs"
-                />
+          <label htmlFor="rosterSearch" className="block text-xs font-medium text-gray-700 mb-0.5">Rechercher</label>
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
+              <SearchIcon className="h-4 w-4 text-gray-400" />
             </div>
+            <input
+              type="text"
+              id="rosterSearch"
+              placeholder="Rechercher un coureur..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="block w-full pl-8 pr-3 py-1.5 border border-gray-300 rounded-md leading-5 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-xs"
+            />
+          </div>
         </div>
         <div>
-            <label htmlFor="rosterGenderFilter" className="block text-xs font-medium text-gray-700 mb-0.5">Sexe</label>
-            <select
-                id="rosterGenderFilter"
-                value={genderFilter}
-                onChange={(e) => setGenderFilter(e.target.value as 'all' | Sex)}
-                className="block w-full pl-3 pr-10 py-1.5 text-xs border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
-            >
-                <option value="all">Tous</option>
-                <option value={Sex.MALE}>Homme</option>
-                <option value={Sex.FEMALE}>Femme</option>
-            </select>
+          <label htmlFor="rosterGenderFilter" className="block text-xs font-medium text-gray-700 mb-0.5">Sexe</label>
+          <select
+            id="rosterGenderFilter"
+            value={genderFilter}
+            onChange={(e) => setGenderFilter(e.target.value as 'all' | Sex)}
+            className="block w-full pl-3 pr-10 py-1.5 text-xs border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
+          >
+            <option value="all">Tous</option>
+            <option value={Sex.MALE}>Homme</option>
+            <option value={Sex.FEMALE}>Femme</option>
+          </select>
         </div>
         <div>
-            <label htmlFor="rosterAgeCategoryFilter" className="block text-xs font-medium text-gray-700 mb-0.5">Catégorie d'âge</label>
-            <select
-                id="rosterAgeCategoryFilter"
-                value={ageCategoryFilter}
-                onChange={(e) => setAgeCategoryFilter(e.target.value)}
-                className="block w-full pl-3 pr-10 py-1.5 text-xs border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
-            >
-                <option value="all">Toutes</option>
-                {['U15', 'U17', 'U19', 'U23', 'Senior'].map(cat => <option key={cat} value={cat}>{cat}</option>)}
-            </select>
+          <label htmlFor="rosterAgeCategoryFilter" className="block text-xs font-medium text-gray-700 mb-0.5">Catégorie d'âge</label>
+          <select
+            id="rosterAgeCategoryFilter"
+            value={ageCategoryFilter}
+            onChange={(e) => setAgeCategoryFilter(e.target.value)}
+            className="block w-full pl-3 pr-10 py-1.5 text-xs border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
+          >
+            <option value="all">Toutes</option>
+            {['U15', 'U17', 'U19', 'U23', 'Senior'].map(cat => <option key={cat} value={cat}>{cat}</option>)}
+          </select>
         </div>
         <div>
-            <label htmlFor="rosterLevelFilter" className="block text-xs font-medium text-gray-700 mb-0.5">Niveau</label>
-            <select
-                id="rosterLevelFilter"
-                value={levelFilter}
-                onChange={(e) => setLevelFilter(e.target.value)}
-                className="block w-full pl-3 pr-10 py-1.5 text-xs border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
-            >
-                <option value="all">Tous</option>
-                {RIDER_LEVEL_CATEGORIES.map(level => <option key={level} value={level}>{level}</option>)}
-            </select>
+          <label htmlFor="rosterLevelFilter" className="block text-xs font-medium text-gray-700 mb-0.5">Niveau</label>
+          <select
+            id="rosterLevelFilter"
+            value={levelFilter}
+            onChange={(e) => setLevelFilter(e.target.value)}
+            className="block w-full pl-3 pr-10 py-1.5 text-xs border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
+          >
+            <option value="all">Tous</option>
+            <option value="Elite">Elite</option>
+            <option value="Pro">Pro</option>
+            <option value="Amateur">Amateur</option>
+            <option value="Espoir">Espoir</option>
+          </select>
         </div>
         <div>
-            <label className="block text-xs font-medium text-gray-700 mb-0.5">Tranche d'âge</label>
-            <div className="flex items-center space-x-1">
-                <input
-                    type="number"
-                    placeholder="Min"
-                    value={minAgeFilter}
-                    onChange={(e) => setMinAgeFilter(e.target.value)}
-                    className="block w-full px-2 py-1.5 border border-gray-300 rounded-md text-xs bg-white text-gray-900 placeholder-gray-500"
-                    aria-label="Âge minimum"
-                />
-                <span className="text-xs">-</span>
-                <input
-                    type="number"
-                    placeholder="Max"
-                    value={maxAgeFilter}
-                    onChange={(e) => setMaxAgeFilter(e.target.value)}
-                    className="block w-full px-2 py-1.5 border border-gray-300 rounded-md text-xs bg-white text-gray-900 placeholder-gray-500"
-                    aria-label="Âge maximum"
-                />
-            </div>
+          <label className="block text-xs font-medium text-gray-700 mb-0.5">Tranche d'âge</label>
+          <div className="flex items-center space-x-1">
+            <input
+              type="number"
+              placeholder="Min"
+              value={minAgeFilter}
+              onChange={(e) => setMinAgeFilter(e.target.value)}
+              className="block w-full px-2 py-1.5 border border-gray-300 rounded-md text-xs bg-white text-gray-900 placeholder-gray-500"
+              aria-label="Âge minimum"
+            />
+            <span className="text-xs">-</span>
+            <input
+              type="number"
+              placeholder="Max"
+              value={maxAgeFilter}
+              onChange={(e) => setMaxAgeFilter(e.target.value)}
+              className="block w-full px-2 py-1.5 border border-gray-300 rounded-md text-xs bg-white text-gray-900 placeholder-gray-500"
+              aria-label="Âge maximum"
+            />
+          </div>
         </div>
-    </div>
+      </div>
 
       {/* Contrôles de tri pour l'effectif */}
       <div className="mb-3 flex flex-wrap items-center gap-3 p-2 bg-gray-50 rounded-lg border">
@@ -980,431 +384,297 @@ export const RosterSection: React.FC<RosterSectionProps> = ({
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {sortedRidersForAdmin.map(rider => (
-            <div key={rider.id} className="bg-gray-50 rounded-lg shadow-md overflow-hidden flex flex-col border border-gray-200 hover:shadow-lg transition-shadow">
-                 <div className="p-3">
-                    <div className="flex items-center space-x-3">
-                        {rider.photoUrl ? <img src={rider.photoUrl} alt={rider.firstName} className="w-12 h-12 rounded-full object-cover"/> : <UserCircleIcon className="w-12 h-12 text-gray-400"/>}
-                        <div>
-                            <h3 className="text-md font-semibold text-gray-800">{rider.firstName} {rider.lastName}</h3>
-                            <p className="text-xs text-gray-500">{rider.qualitativeProfile || 'Profil N/A'}</p>
-                        </div>
+          <div key={rider.id} className="bg-gray-50 rounded-lg shadow-md overflow-hidden flex flex-col border border-gray-200 hover:shadow-lg transition-shadow">
+            <div className="p-3">
+              <div className="flex items-center space-x-3">
+                {rider.photoUrl ? <img src={rider.photoUrl} alt={rider.firstName} className="w-12 h-12 rounded-full object-cover"/> : <UserCircleIcon className="w-12 h-12 text-gray-400"/>}
+                <div>
+                  <h3 className="text-md font-semibold text-gray-800">{rider.firstName} {rider.lastName}</h3>
+                  <p className="text-xs text-gray-500">{(rider as any).qualitativeProfile || 'Profil N/A'}</p>
+                </div>
+              </div>
+              <div className="mt-2 text-xs text-gray-600 space-y-0.5">
+                <p><strong>Forme:</strong> {(rider as any).forme || '?'}</p>
+                <p><strong>Moral:</strong> {(rider as any).moral || '?'}</p>
+                <p><strong>Santé:</strong> {(rider as any).healthCondition || '-'}</p>
+                
+                {/* Âge et catégorie d'âge en haut à droite */}
+                {(() => {
+                  const { category, age } = getAgeCategory(rider.birthDate);
+                  return (
+                    <div className="mt-2 pt-2 border-t border-gray-200">
+                      <p><strong>Âge:</strong> {age !== null ? `${age} ans` : '?'} <span className="text-blue-600 font-medium">({category})</span></p>
                     </div>
-                    <div className="mt-2 text-xs text-gray-600 space-y-0.5">
-                        <p><strong>Forme:</strong> {rider.forme || '?'}</p>
-                        <p><strong>Moral:</strong> {rider.moral || '?'}</p>
-                        <p><strong>Santé:</strong> {rider.healthCondition || '-'}</p>
-                        
-                        {/* Âge et catégorie d'âge en haut à droite */}
-                        {(() => {
-                            const { category, age } = getAgeCategory(rider.birthDate);
-                            return (
-                                <div className="mt-2 pt-2 border-t border-gray-200">
-                                    <p><strong>Âge:</strong> {age !== null ? `${age} ans` : '?'} <span className="text-blue-600 font-medium">({category})</span></p>
-                                </div>
-                            );
-                        })()}
-                        
-                        {/* Catégories de niveau (sélectionnables) */}
-                        {rider.categories && rider.categories.length > 0 && (
-                            <div className="mt-2 pt-2 border-t border-gray-200">
-                                <p><strong>Niveaux:</strong></p>
-                                <div className="flex flex-wrap gap-1 mt-1">
-                                    {rider.categories
-                                        .filter(cat => !['U15', 'U17', 'U19', 'U23', 'Senior'].includes(cat))
-                                        .map(cat => (
-                                            <span key={cat} className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-                                                {cat}
-                                            </span>
-                                        ))
-                                    }
-                                </div>
-                            </div>
-                        )}
+                  );
+                })()}
+                
+                {/* Catégories de niveau (sélectionnables) */}
+                {(rider as any).categories && (rider as any).categories.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-gray-200">
+                    <p><strong>Niveaux:</strong></p>
+                    <div className="flex flex-wrap gap-1 mt-1">
+                      {(rider as any).categories
+                        .filter((cat: string) => !['U15', 'U17', 'U19', 'U23', 'Senior'].includes(cat))
+                        .map((cat: string) => (
+                          <span key={cat} className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
+                            {cat}
+                          </span>
+                        ))
+                      }
                     </div>
-                 </div>
-                 <div className="mt-auto p-2 border-t border-gray-200 flex justify-end space-x-1 bg-gray-50">
-                    <ActionButton onClick={() => openEditModal(rider)} variant="secondary" size="sm" icon={<PencilIcon className="w-4 h-4"/>} title="Modifier">
-                        <span className="sr-only">Modifier</span>
-                    </ActionButton>
-                    <ActionButton onClick={() => openViewModal(rider)} variant="info" size="sm" icon={<EyeIcon className="w-4 h-4"/>} title="Voir">
-                        <span className="sr-only">Voir</span>
-                    </ActionButton>
-                    <ActionButton onClick={() => handleDeleteRider(rider)} variant="danger" size="sm" icon={<TrashIcon className="w-4 h-4"/>} title="Supprimer">
-                        <span className="sr-only">Supprimer</span>
-                    </ActionButton>
-                 </div>
+                  </div>
+                )}
+              </div>
             </div>
+            <div className="mt-auto p-2 border-t border-gray-200 flex justify-end space-x-1 bg-gray-50">
+              <ActionButton onClick={() => openEditModal(rider)} variant="secondary" size="sm" icon={<PencilIcon className="w-4 h-4"/>} title="Modifier">
+                <span className="sr-only">Modifier</span>
+              </ActionButton>
+              <ActionButton onClick={() => openViewModal(rider)} variant="info" size="sm" icon={<EyeIcon className="w-4 h-4"/>} title="Voir">
+                <span className="sr-only">Voir</span>
+              </ActionButton>
+              <ActionButton onClick={() => handleDeleteRider(rider)} variant="danger" size="sm" icon={<TrashIcon className="w-4 h-4"/>} title="Supprimer">
+                <span className="sr-only">Supprimer</span>
+              </ActionButton>
+            </div>
+          </div>
         ))}
       </div>
     </div>
   );
 
-  const renderSelectionGrid = () => {
-    if (!selectedEventForGrid) {
-      return (
-        <div className="text-center p-8 bg-white rounded-lg shadow-md">
-          <p className="text-gray-600">Veuillez sélectionner un événement pour voir la grille de sélection.</p>
-          <ActionButton onClick={() => setIsSelectionGridEventModalOpen(true)} className="mt-4">
-            Choisir un Événement
+  // Render grid view for season planning
+  const renderGridView = () => (
+    <div>
+      {/* Sorting controls for planning */}
+      <div className="mb-3 flex flex-wrap items-center gap-3 p-2 bg-gray-50 rounded-lg border">
+        <span className="text-xs font-medium text-gray-700">Trier par:</span>
+        <button
+          onClick={() => handlePlanningSort('name')}
+          className={`px-2 py-1 text-xs rounded transition-colors ${
+            planningSortBy === 'name' 
+              ? 'bg-blue-500 text-white' 
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+          }`}
+        >
+          Nom {planningSortBy === 'name' && (planningSortDirection === 'asc' ? '↑' : '↓')}
+        </button>
+        <button
+          onClick={() => handlePlanningSort('raceDays')}
+          className={`px-2 py-1 text-xs rounded transition-colors ${
+            planningSortBy === 'raceDays' 
+              ? 'bg-blue-500 text-white' 
+              : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+          }`}
+        >
+          Jours de Course {planningSortBy === 'raceDays' && (planningSortDirection === 'asc' ? '↑' : '↓')}
+        </button>
+      </div>
+      
+      {/* Main table */}
+      <div className="overflow-x-auto border rounded-lg" style={{ maxHeight: '60vh' }}>
+        <table className="min-w-full border-collapse">
+          <thead className="bg-gray-100 z-10" style={{ position: 'sticky', top: 0 }}>
+            <tr>
+              <th className="p-1.5 border text-xs font-semibold text-gray-600 w-40 z-20" style={{ position: 'sticky', left: 0, backgroundColor: 'inherit' }}>Coureur</th>
+              <th className="p-1.5 border text-xs font-semibold text-gray-600 w-20 z-20" style={{ position: 'sticky', left: '10rem', backgroundColor: 'inherit' }}>Jours</th>
+              {raceEvents && raceEvents.map(event => (
+                <th key={event.id} className="p-1.5 border text-xs font-semibold text-gray-600 min-w-[120px]">
+                  <div className="font-bold text-xs">{event.name}</div>
+                  <div className="text-xs">{new Date(event.date + 'T12:00:00Z').toLocaleDateString('fr-CA')}</div>
+                  <div className="text-xs text-gray-500">({getEventDuration(event)}j)</div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {sortedRidersForPlanning && sortedRidersForPlanning.map(rider => (
+              <tr key={rider.id} className="hover:bg-gray-50">
+                <td className="p-1.5 border text-sm font-medium text-gray-800 w-40 z-10" style={{ position: 'sticky', left: 0, backgroundColor: 'inherit' }}>{rider.firstName} {rider.lastName}</td>
+                <td className="p-1.5 border font-bold text-center text-base text-gray-800 w-20 z-10" style={{ position: 'sticky', left: '10rem', backgroundColor: 'inherit' }}>{raceDaysByRider[rider.id] || 0}</td>
+                {raceEvents && raceEvents.map(event => {
+                  const selection = riderEventSelections.find(s => s.riderId === rider.id && s.eventId === event.id);
+                  const status = selection?.status || RiderEventStatus.NON_RETENU;
+                  return (
+                    <td key={event.id} className="p-0.5 border text-center align-middle">
+                      <select
+                        value={status}
+                        onChange={(e) => handlePlanningGridSelectionChange(rider.id, event.id, e.target.value as RiderEventStatus)}
+                        className="w-full h-full text-center text-xs p-0.5 border-0 rounded appearance-none focus:outline-none focus:ring-1 focus:ring-blue-400 bg-transparent"
+                      >
+                        {Object.values(RiderEventStatus).map(s => (
+                          <option key={s} value={s} style={{ backgroundColor: '#fff', color: '#000' }}>{s}</option>
+                        ))}
+                      </select>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  // Render calendar view for season planning
+  const renderCalendarView = () => {
+    const year = calendarDate.getFullYear();
+    const month = calendarDate.getMonth();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const monthName = calendarDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+
+    const eventsForMonth = raceEvents.filter(event => {
+      const start = new Date(event.date + "T12:00:00Z");
+      const end = new Date((event.endDate || event.date) + "T12:00:00Z");
+      const monthStart = new Date(year, month, 1);
+      const monthEnd = new Date(year, month, daysInMonth, 23, 59, 59);
+      return start <= monthEnd && end >= monthStart;
+    });
+
+    return (
+      <div className="mt-2">
+        <div className="flex justify-between items-center mb-2">
+          <ActionButton onClick={() => setCalendarDate(new Date(year, month - 1, 1))} size="sm">&lt; {new Date(year, month - 1, 1).toLocaleDateString('fr-FR', {month: 'long'})}</ActionButton>
+          <h4 className="text-base font-semibold">{monthName}</h4>
+          <ActionButton onClick={() => setCalendarDate(new Date(year, month + 1, 1))} size="sm">{new Date(year, month + 1, 1).toLocaleDateString('fr-FR', {month: 'long'})} &gt;</ActionButton>
+        </div>
+        <div className="overflow-x-auto border rounded-lg bg-gray-50" style={{ maxHeight: '60vh' }}>
+          <div className="grid min-w-max" style={{ gridTemplateColumns: `120px 60px repeat(${daysInMonth}, minmax(30px, 1fr))` }}>
+            {/* Header */}
+            <div className="sticky left-0 bg-gray-100 z-30 p-1.5 border-b border-r font-semibold text-xs text-gray-700">Coureur</div>
+            <div className="sticky left-[120px] bg-gray-100 z-20 p-1.5 border-b border-r font-semibold text-xs text-gray-700">Jours</div>
+            {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(day => (
+              <div key={day} className="text-center p-1 border-b border-r text-xs font-medium text-gray-500">{day}</div>
+            ))}
+            {/* Rider Rows */}
+            {riders.map(rider => (
+              <React.Fragment key={rider.id}>
+                <div className="sticky left-0 bg-white z-20 p-1.5 border-b border-r text-xs font-medium whitespace-nowrap">{rider.firstName} {rider.lastName}</div>
+                <div className="sticky left-[120px] bg-white z-20 p-1.5 border-b border-r text-xs font-bold text-center">{raceDaysByRider[rider.id] || 0}</div>
+                <div className="col-start-3 relative border-b" style={{ gridColumnEnd: daysInMonth + 3, display: 'grid', gridTemplateColumns: `repeat(${daysInMonth}, 1fr)`}}>
+                  {Array.from({ length: daysInMonth }).map((_, i) => <div key={i} className="border-r h-full"></div>)}
+                  {eventsForMonth.map(event => {
+                    const selection = riderEventSelections.find(s => s.riderId === rider.id && s.eventId === event.id);
+                    if (!selection || ![RiderEventStatus.TITULAIRE, RiderEventStatus.REMPLACANT, RiderEventStatus.PRE_SELECTION].includes(selection.status)) return null;
+
+                    const start = new Date(event.date + "T12:00:00Z");
+                    const end = new Date((event.endDate || event.date) + "T12:00:00Z");
+                    
+                    const startDay = start.getMonth() < month ? 1 : start.getDate();
+                    const endDay = end.getMonth() > month ? daysInMonth : end.getDate();
+                    
+                    const duration = endDay - startDay + 1;
+                    if (duration <= 0) return null;
+                    
+                    const color = event.eventType === EventType.COMPETITION ? 'bg-blue-600' : 'bg-yellow-500';
+                    const opacity = selection.status !== RiderEventStatus.TITULAIRE ? 'opacity-60' : '';
+
+                    return (
+                      <div
+                        key={event.id}
+                        className={`absolute h-5/6 my-auto inset-y-0 px-1 flex items-center text-xs text-white rounded overflow-hidden cursor-pointer ${color} ${opacity}`}
+                        style={{
+                          gridColumnStart: startDay,
+                          gridColumnEnd: `span ${duration}`,
+                        }}
+                        title={`${event.name}\n${start.toLocaleDateString()} - ${end.toLocaleDateString()}\nStatut: ${selection.status}`}
+                      >
+                        <span className="truncate">{event.name}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+        <div className="flex justify-end items-center mt-1 text-xs space-x-3">
+          <div className="flex items-center"><span className="w-3 h-3 bg-blue-600 rounded-sm mr-1"></span>Competition</div>
+          <div className="flex items-center"><span className="w-3 h-3 bg-yellow-500 rounded-sm mr-1"></span>Stage</div>
+          <div className="flex items-center"><span className="w-3 h-3 bg-gray-400 rounded-sm mr-1 opacity-60"></span>Non-Titulaire</div>
+        </div>
+      </div>
+    );
+  };
+
+  // Render season planning tab
+  const renderSeasonPlanningTab = () => (
+    <div className="bg-white p-3 rounded-lg shadow-md">
+      <div className="flex justify-between items-center mb-2">
+        <h3 className="text-lg font-semibold">Planning Previsionnel de la Saison</h3>
+        <div className="flex items-center p-1 bg-gray-200 rounded-lg">
+          <ActionButton onClick={() => setViewMode('grid')} variant={viewMode === 'grid' ? 'primary' : 'secondary'} size="sm" className={viewMode === 'grid' ? 'shadow-md' : 'bg-transparent shadow-none'}>
+            <TableCellsIcon className="w-4 h-4" />
+            <span className="ml-1">Grille</span>
+          </ActionButton>
+          <ActionButton onClick={() => setViewMode('calendar')} variant={viewMode === 'calendar' ? 'primary' : 'secondary'} size="sm" className={viewMode === 'calendar' ? 'shadow-md' : 'bg-transparent shadow-none'}>
+            <CalendarIcon className="w-4 h-4" />
+            <span className="ml-1">Calendrier</span>
           </ActionButton>
         </div>
-      );
-    }
-    
-    return (
-        <div className="bg-white p-4 rounded-lg shadow-md">
-            <h3 className="text-xl font-semibold mb-2">Sélection pour : {selectedEventForGrid.name}</h3>
-            <p className="text-sm text-gray-500 mb-4">
-                Statut des coureurs pour cet événement. Les titulaires sont automatiquement ajoutés aux participants de l'événement.
-            </p>
-            <div className="overflow-x-auto">
-                <table className="min-w-full">
-                    <thead className="bg-gray-100">
-                        <tr>
-                            <th className="px-4 py-2 text-left text-sm font-semibold text-gray-600">Coureur</th>
-                            <th className="px-4 py-2 text-left text-sm font-semibold text-gray-600">Statut</th>
-                            <th className="px-4 py-2 text-left text-sm font-semibold text-gray-600">Conflit Calendrier</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                        {riders.map(rider => {
-                            const selection = gridSelections.find(s => s.riderId === rider.id);
-                            const conflict = scheduleConflicts[rider.id];
-                            return (
-                                <tr key={rider.id}>
-                                    <td className="px-4 py-2 font-medium">{rider.firstName} {rider.lastName}</td>
-                                    <td className="px-4 py-2">
-                                        <select
-                                            value={selection?.status || RiderEventStatus.NON_RETENU}
-                                            onChange={(e) => handleGridSelectionChange(rider.id, e.target.value as RiderEventStatus)}
-                                            className="block w-full pl-3 pr-10 py-1.5 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md bg-white text-gray-900"
-                                        >
-                                            {Object.values(RiderEventStatus).map(status => (
-                                                <option key={status} value={status}>{status}</option>
-                                            ))}
-                                        </select>
-                                    </td>
-                                     <td className="px-4 py-2">
-                                        {conflict && conflict.length > 1 && (
-                                            <div className="text-xs text-red-500" title={conflict.map(c => c.eventName).join(', ')}>
-                                                <ExclamationCircleIcon className="w-4 h-4 inline mr-1" />
-                                                Conflit
-                                            </div>
-                                        )}
-                                    </td>
-                                </tr>
-                            );
-                        })}
-                    </tbody>
-                </table>
-            </div>
-             <div className="mt-6 flex justify-end space-x-2">
-                 <ActionButton onClick={() => setSelectedEventForGrid(null)} variant="secondary">
-                     Changer d'Événement
-                </ActionButton>
-                <ActionButton onClick={handleSaveGrid}>
-                    Enregistrer la Sélection
-                </ActionButton>
-            </div>
-        </div>
-    );
-  };
-    
-  const renderGroupMonitoringTab = () => {
-    const getSortIndicator = (key: string) => {
-        if (!monitoringSortConfig || monitoringSortConfig.key !== key) return null;
-        return monitoringSortConfig.direction === 'asc' ? ' ▲' : ' ▼';
-    };
+      </div>
+      {viewMode === 'grid' ? renderGridView() : renderCalendarView()}
+    </div>
+  );
 
-    const getScoreColor = (score: number) => {
-      if (score >= 90) return 'bg-purple-500';
-      if (score >= 80) return 'bg-blue-500';
-      if (score >= 70) return 'bg-green-500';
-      if (score >= 60) return 'bg-yellow-500';
-      if (score >= 50) return 'bg-orange-500';
-      return 'bg-red-500';
-    };
-
-    return (
-        <div className="text-gray-700">
-            <div className="mb-2 p-2 bg-gray-100 rounded-md flex flex-wrap gap-x-4 gap-y-2 items-center">
-                <div>
-                    <label htmlFor="ageCategoryFilter" className="block text-xs font-medium text-gray-600 mb-0.5">Catégorie d'Âge:</label>
-                    <select id="ageCategoryFilter" value={monitoringAgeFilter} onChange={e => setMonitoringAgeFilter(e.target.value)} className="w-full text-xs py-1 border-gray-300 bg-white rounded-md">
-                        {monitoringAllAgeCategoriesForFilter.map(cat => <option key={cat} value={cat}>{cat === 'all' ? 'Toutes' : cat}</option>)}
-                    </select>
-                </div>
-                 <div>
-                    <label htmlFor="levelCategoryFilter" className="block text-xs font-medium text-gray-600 mb-0.5">Catégorie de Niveau:</label>
-                    <select id="levelCategoryFilter" value={monitoringLevelFilter} onChange={e => setMonitoringLevelFilter(e.target.value)} className="w-full text-xs py-1 border-gray-300 bg-white rounded-md">
-                        {monitoringAllLevelCategoriesForFilter.map(cat => <option key={cat} value={cat}>{cat === 'all' ? 'Toutes' : cat}</option>)}
-                    </select>
-                </div>
-                 <div className="flex items-center self-end pb-0.5">
-                    <input type="checkbox" id="includeScouting" checked={includeScouting} onChange={e => setIncludeScouting(e.target.checked)} className="h-3 w-3 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500" />
-                    <label htmlFor="includeScouting" className="ml-1 text-xs text-gray-700">Inclure Scouting</label>
-                </div>
-            </div>
-            {monitoredRiders.length > 0 ? (
-                <div className="overflow-x-auto" style={{ maxHeight: '60vh' }}>
-                    <table className="min-w-full bg-white">
-                        <thead className="bg-gray-100">
-                            <tr>
-                                <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-600 cursor-pointer" onClick={() => requestMonitoringSort('riderName')}>Coureur {getSortIndicator('riderName')}</th>
-                                <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-600 cursor-pointer" onClick={() => requestMonitoringSort('qualitativeProfile')}>Profil {getSortIndicator('qualitativeProfile')}</th>
-                                <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-600 cursor-pointer" onClick={() => requestMonitoringSort('generalPerformanceScore')}>Note Gén. {getSortIndicator('generalPerformanceScore')}</th>
-                                <th className="px-2 py-1.5 text-left text-xs font-semibold text-gray-600 cursor-pointer" onClick={() => requestMonitoringSort('fatigueResistanceScore')}>Résist. {getSortIndicator('fatigueResistanceScore')}</th>
-                                {SPIDER_CHART_CHARACTERISTICS_CONFIG.map(char => (
-                                    <th key={char.key} className="px-2 py-1.5 text-left text-xs font-semibold text-gray-600 cursor-pointer" onClick={() => requestMonitoringSort(char.key)}>{char.label} {getSortIndicator(char.key)}</th>
-                                ))}
-                            </tr>
-                        </thead>
-                         <tbody className="divide-y divide-gray-200">
-                             {monitoredRiders.map(rider => (
-                                <tr key={rider.id}>
-                                    <td className="px-2 py-1.5 text-xs font-medium">{rider.firstName} {rider.lastName} {rider.isScout && <span className="text-xs text-purple-600">(Scout)</span>}</td>
-                                    <td className="px-2 py-1.5">
-                                        {rider.qualitativeProfile && <span className={`px-1.5 py-0.5 text-xs rounded-full ${RIDER_QUALITATIVE_PROFILE_COLORS[rider.qualitativeProfile]}`}>{rider.qualitativeProfile}</span>}
-                                    </td>
-                                    <td className="px-2 py-1.5">
-                                        <div className="flex items-center gap-1.5">
-                                            <div className="w-14 bg-gray-200 rounded-full h-1.5"><div className={`${getScoreColor(rider.generalPerformanceScore || 0)} h-1.5 rounded-full`} style={{width: `${rider.generalPerformanceScore || 0}%`}}></div></div>
-                                            <span className="font-semibold text-xs">{rider.generalPerformanceScore?.toFixed(0)}</span>
-                                        </div>
-                                    </td>
-                                    <td className="px-2 py-1.5">
-                                        <div className="flex items-center gap-1.5">
-                                            <div className="w-14 bg-gray-200 rounded-full h-1.5"><div className={`${getScoreColor(rider.fatigueResistanceScore || 0)} h-1.5 rounded-full`} style={{width: `${rider.fatigueResistanceScore || 0}%`}}></div></div>
-                                            <span className="font-semibold text-xs">{rider.fatigueResistanceScore?.toFixed(0)}</span>
-                                        </div>
-                                    </td>
-                                    {SPIDER_CHART_CHARACTERISTICS_CONFIG.map(char => (
-                                        <td key={char.key} className="px-2 py-1.5">
-                                            <div className="flex items-center gap-1.5">
-                                                <div className="w-14 bg-gray-200 rounded-full h-1.5"><div className={`${getScoreColor(getRiderCharacteristicSafe(rider, char.key))} h-1.5 rounded-full`} style={{width: `${getRiderCharacteristicSafe(rider, char.key)}%`}}></div></div>
-                                                <span className="font-semibold text-xs">{getRiderCharacteristicSafe(rider, char.key).toFixed(0)}</span>
-                                            </div>
-                                        </td>
-                                    ))}
-                                </tr>
-                             ))}
-                         </tbody>
-                    </table>
-                </div>
-            ) : (
-                 <p className="italic text-gray-500 text-center py-4">Aucun coureur à afficher avec les filtres actuels.</p>
-            )}
-        </div>
-    );
-  };
-  
   return (
-    <SectionWrapper
-      title="Gestion de l'Effectif"
-      actionButton={<ActionButton onClick={openAddModal} icon={<PlusCircleIcon className="w-5 h-5"/>}>Ajouter Coureur</ActionButton>}
+    <SectionWrapper 
+      title="Annuaire de l'Equipe"
+      actionButton={<ActionButton onClick={() => {}} icon={<PlusCircleIcon className="w-5 h-5"/>}>Ajouter Coureur</ActionButton>}
     >
-             <div className="mb-2 border-b border-gray-200">
+      <div className="mb-2 border-b border-gray-200">
         <nav className="-mb-px flex space-x-1 overflow-x-auto" aria-label="Tabs">
-          <button onClick={() => setActiveTab('roster')} className={tabButtonStyle('roster')}>Effectif</button>
-          <button onClick={() => setActiveTab('selectionGrid')} className={tabButtonStyle('selectionGrid')}>Grille de Sélection</button>
-          <button onClick={() => setActiveTab('seasonPlanning')} className={tabButtonStyle('seasonPlanning')}>Planning Saison</button>
-          <button onClick={() => setActiveTab('groupMonitoring')} className={tabButtonStyle('groupMonitoring')}>Qualité de l'effectif</button>
+          <button onClick={() => setActiveTab('roster')} className={activeTab === 'roster' ? 'border-blue-500 text-blue-600 border-b-2 py-2 px-3 text-sm font-medium' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 py-2 px-3 text-sm font-medium'}>Effectif</button>
+          <button onClick={() => setActiveTab('seasonPlanning')} className={activeTab === 'seasonPlanning' ? 'border-blue-500 text-blue-600 border-b-2 py-2 px-3 text-sm font-medium' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 py-2 px-3 text-sm font-medium'}>Planning Saison</button>
         </nav>
       </div>
+      
+      {activeTab === 'roster' ? renderRosterTab() : renderSeasonPlanningTab()}
 
-      <div className="mt-2">
-        {activeTab === 'roster' && (
-            <div className="bg-white p-3 rounded-lg shadow-md">
-                <div className="mb-3 grid grid-cols-1 md:grid-cols-5 gap-3">
-                    <div>
-                        <label htmlFor="rosterSearch" className="block text-xs font-medium text-gray-700 mb-0.5">Rechercher</label>
-                        <div className="relative">
-                            <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
-                                <SearchIcon className="h-4 w-4 text-gray-400" />
-                            </div>
-                            <input
-                                type="text"
-                                id="rosterSearch"
-                                placeholder="Rechercher un coureur..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="block w-full pl-8 pr-3 py-1.5 border border-gray-300 rounded-md leading-5 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-xs"
-                            />
-                        </div>
-                    </div>
-                    <div>
-                        <label htmlFor="rosterGenderFilter" className="block text-xs font-medium text-gray-700 mb-0.5">Sexe</label>
-                        <select
-                            id="rosterGenderFilter"
-                            value={genderFilter}
-                            onChange={(e) => setGenderFilter(e.target.value as 'all' | Sex)}
-                            className="block w-full pl-3 pr-10 py-1.5 text-xs border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
-                        >
-                            <option value="all">Tous</option>
-                            <option value={Sex.MALE}>Homme</option>
-                            <option value={Sex.FEMALE}>Femme</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label htmlFor="rosterAgeCategoryFilter" className="block text-xs font-medium text-gray-700 mb-0.5">Catégorie d'âge</label>
-                        <select
-                            id="rosterAgeCategoryFilter"
-                            value={ageCategoryFilter}
-                            onChange={(e) => setAgeCategoryFilter(e.target.value)}
-                            className="block w-full pl-3 pr-10 py-1.5 text-xs border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
-                        >
-                            <option value="all">Toutes</option>
-                            {['U15', 'U17', 'U19', 'U23', 'Senior'].map(cat => <option key={cat} value={cat}>{cat}</option>)}
-                        </select>
-                    </div>
-                    <div>
-                        <label htmlFor="rosterLevelFilter" className="block text-xs font-medium text-gray-700 mb-0.5">Niveau</label>
-                        <select
-                            id="rosterLevelFilter"
-                            value={levelFilter}
-                            onChange={(e) => setLevelFilter(e.target.value)}
-                            className="block w-full pl-3 pr-10 py-1.5 text-xs border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
-                        >
-                            <option value="all">Tous</option>
-                            {RIDER_LEVEL_CATEGORIES.map(level => <option key={level} value={level}>{level}</option>)}
-                        </select>
-                    </div>
-                    <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-0.5">Tranche d'âge</label>
-                        <div className="flex items-center space-x-1">
-                            <input
-                                type="number"
-                                placeholder="Min"
-                                value={minAgeFilter}
-                                onChange={(e) => setMinAgeFilter(e.target.value)}
-                                className="block w-full px-2 py-1.5 border border-gray-300 rounded-md text-xs bg-white text-gray-900 placeholder-gray-500"
-                                aria-label="Âge minimum"
-                            />
-                            <span className="text-xs">-</span>
-                            <input
-                                type="number"
-                                placeholder="Max"
-                                value={maxAgeFilter}
-                                onChange={(e) => setMaxAgeFilter(e.target.value)}
-                                className="block w-full px-2 py-1.5 border border-gray-300 rounded-md text-xs bg-white text-gray-900 placeholder-gray-500"
-                                aria-label="Âge maximum"
-                            />
-                        </div>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {sortedRidersForAdmin.map(rider => (
-                        <div key={rider.id} className="bg-gray-50 rounded-lg shadow-md overflow-hidden flex flex-col border border-gray-200 hover:shadow-lg transition-shadow">
-                             <div className="p-3">
-                                <div className="flex items-center space-x-3">
-                                    {rider.photoUrl ? <img src={rider.photoUrl} alt={rider.firstName} className="w-12 h-12 rounded-full object-cover"/> : <UserCircleIcon className="w-12 h-12 text-gray-400"/>}
-                                    <div>
-                                        <h3 className="text-md font-semibold text-gray-800">{rider.firstName} {rider.lastName}</h3>
-                                        <p className="text-xs text-gray-500">{rider.qualitativeProfile || 'Profil N/A'}</p>
-                                    </div>
-                                </div>
-                                <div className="mt-2 text-xs text-gray-600 space-y-0.5">
-                                    <p><strong>Forme:</strong> {rider.forme || '?'}</p>
-                                    <p><strong>Moral:</strong> {rider.moral || '?'}</p>
-                                    <p><strong>Santé:</strong> {rider.healthCondition || '-'}</p>
-                                    
-                                    {/* Âge et catégorie d'âge en haut à droite */}
-                                    {(() => {
-                                        const { category, age } = getAgeCategory(rider.birthDate);
-                                        return (
-                                            <div className="mt-2 pt-2 border-t border-gray-200">
-                                                <p><strong>Âge:</strong> {age !== null ? `${age} ans` : '?'} <span className="text-blue-600 font-medium">({category})</span></p>
-                                            </div>
-                                        );
-                                    })()}
-                                    
-                                    {/* Catégories de niveau (sélectionnables) */}
-                                    {rider.categories && rider.categories.length > 0 && (
-                                        <div className="mt-2 pt-2 border-t border-gray-200">
-                                            <p><strong>Niveaux:</strong></p>
-                                            <div className="flex flex-wrap gap-1 mt-1">
-                                                {rider.categories
-                                                    .filter(cat => !['U15', 'U17', 'U19', 'U23', 'Senior'].includes(cat))
-                                                    .map(cat => (
-                                                        <span key={cat} className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full">
-                                                            {cat}
-                                                        </span>
-                                                    ))
-                                                }
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                             </div>
-                             <div className="mt-auto p-2 border-t border-gray-200 flex justify-end space-x-1 bg-gray-50">
-                                <ActionButton onClick={() => openEditModal(rider)} variant="secondary" size="sm" icon={<PencilIcon className="w-4 h-4"/>} title="Modifier">
-                                    <span className="sr-only">Modifier</span>
-                                </ActionButton>
-                                <ActionButton onClick={() => openViewModal(rider)} variant="info" size="sm" icon={<EyeIcon className="w-4 h-4"/>} title="Voir">
-                                    <span className="sr-only">Voir</span>
-                                </ActionButton>
-                                <ActionButton onClick={() => handleDeleteRider(rider)} variant="danger" size="sm" icon={<TrashIcon className="w-4 h-4"/>} title="Supprimer">
-                                    <span className="sr-only">Supprimer</span>
-                                </ActionButton>
-                             </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
-        )}
-        {activeTab === 'selectionGrid' && renderSelectionGrid()}
-        {activeTab === 'seasonPlanning' && (
-            <SeasonPlanningTab 
-                raceEvents={raceEvents}
-                riders={riders}
-                riderEventSelections={riderEventSelections}
-                setRiderEventSelections={setRiderEventSelections}
-                setRaceEvents={setRaceEvents}
-                appState={appState}
-            />
-        )}
-        {activeTab === 'groupMonitoring' && renderGroupMonitoringTab()}
-      </div>
-
-      {isDetailModalOpen && (
-        <RiderDetailModal 
-            isOpen={isDetailModalOpen}
-            onClose={() => setIsDetailModalOpen(false)}
-            rider={editingRider}
-            onSaveRider={handleSaveRider}
-            isEditMode={!isViewMode && isNewRider}
-            raceEvents={raceEvents}
-            riderEventSelections={riderEventSelections}
-            performanceEntries={performanceEntries}
-            powerDurationsConfig={POWER_ANALYSIS_DURATIONS_CONFIG}
-            calculateWkg={calculateWkg}
-            appState={appState}
-        />
+      {/* Modals */}
+      {selectedRider && (
+        <>
+          <RiderDetailModal
+            rider={selectedRider}
+            isOpen={isViewModalOpen}
+            onClose={() => setIsViewModalOpen(false)}
+            onEdit={() => {
+              setIsViewModalOpen(false);
+              setIsEditModalOpen(true);
+            }}
+            onDelete={() => {
+              setIsViewModalOpen(false);
+              handleDeleteRider(selectedRider);
+            }}
+            isAdmin={true}
+          />
+          
+          <RiderDetailModal
+            rider={selectedRider}
+            isOpen={isEditModalOpen}
+            onClose={() => setIsEditModalOpen(false)}
+            onSave={(updatedRider) => {
+              // Handle save logic here
+              setIsEditModalOpen(false);
+            }}
+            isAdmin={true}
+            isEditing={true}
+          />
+        </>
       )}
 
-      {isSelectionGridEventModalOpen && (
-        <Modal isOpen={isSelectionGridEventModalOpen} onClose={() => setIsSelectionGridEventModalOpen(false)} title="Choisir un Événement">
-            <div className="max-h-96 overflow-y-auto">
-                {raceEvents.sort((a,b) => new Date(a.date).getTime() - new Date(b.date).getTime()).map(event => (
-                    <button key={event.id} onClick={() => handleOpenSelectionGrid(event)} className="w-full text-left p-2 hover:bg-gray-100 rounded-md">
-                        {event.name} - {new Date(event.date + "T12:00:00Z").toLocaleDateString('fr-CA')}
-                    </button>
-                ))}
-            </div>
-        </Modal>
-      )}
-
-      {confirmAction && (
-        <ConfirmationModal
-            isOpen={true}
-            onClose={() => setConfirmAction(null)}
-            onConfirm={confirmAction.onConfirm}
-            title={confirmAction.title}
-            message={confirmAction.message}
-        />
-      )}
-
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={() => {
+          // Handle delete logic here
+          setIsDeleteModalOpen(false);
+          setRiderToDelete(null);
+        }}
+        title="Confirmer la suppression"
+        message="Êtes-vous sûr de vouloir supprimer ce coureur ? Cette action est irréversible et supprimera toutes les données associées."
+      />
     </SectionWrapper>
   );
-};
+}
