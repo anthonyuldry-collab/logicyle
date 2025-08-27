@@ -394,6 +394,17 @@ const PowerPerformanceTable: React.FC<{ riders: Rider[] }> = ({ riders }) => {
 
 // Composant principal de la section des performances
 export const PerformanceSection: React.FC<{ appState: AppState }> = ({ appState }) => {
+  // Protection contre appState null/undefined
+  if (!appState) {
+    console.warn('⚠️ PerformanceSection: appState is null or undefined');
+    return (
+      <SectionWrapper title="Centre Stratégique des Performances">
+        <div className="p-6 text-center text-gray-500">
+          Chargement des données...
+        </div>
+      </SectionWrapper>
+    );
+  }
   const [activeTab, setActiveTab] = useState<PerformancePoleTab>('global');
   const [activeRiderTab, setActiveRiderTab] = useState<RiderPerformanceTab>('ppr');
   const [selectedRider, setSelectedRider] = useState<Rider | null>(null);

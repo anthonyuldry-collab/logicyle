@@ -31,6 +31,17 @@ export default function RosterSection({
   setRaceEvents,
   appState
 }: RosterSectionProps) {
+  // Protection contre appState null/undefined
+  if (!appState) {
+    console.warn('⚠️ RosterSection: appState is null or undefined');
+    return (
+      <SectionWrapper title="Annuaire de l'Equipe">
+        <div className="p-6 text-center text-gray-500">
+          Chargement des données...
+        </div>
+      </SectionWrapper>
+    );
+  }
   const { t } = useTranslations();
 
   const [activeTab, setActiveTab] = useState<'roster' | 'seasonPlanning'>('roster');
