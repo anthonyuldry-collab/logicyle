@@ -1035,10 +1035,9 @@ export const RosterSection: React.FC<RosterSectionProps> = ({
                  </div>
             </div>
         ))}
-                  </div>
-        </div>
-        </div>
-    );
+      </div>
+    </div>
+  );
 
   const renderSelectionGrid = () => {
     if (!selectedEventForGrid) {
