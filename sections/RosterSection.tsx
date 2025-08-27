@@ -102,6 +102,10 @@ const SeasonPlanningTab: React.FC<SeasonPlanningTabProps> = ({
 }) => {
     const [viewMode, setViewMode] = useState<'grid' | 'calendar'>('grid');
     const [calendarDate, setCalendarDate] = useState(new Date());
+    
+    // États de tri pour le planning de saison
+    const [planningSortBy, setPlanningSortBy] = useState<'name' | 'raceDays'>('name');
+    const [planningSortDirection, setPlanningSortDirection] = useState<'asc' | 'desc'>('asc');
 
     const futureEvents = useMemo(() => {
         if (!raceEvents) return [];
@@ -140,6 +144,54 @@ const SeasonPlanningTab: React.FC<SeasonPlanningTabProps> = ({
 
         return raceDays;
     }, [riders, riderEventSelections, raceEvents]);
+
+    // Fonction de tri pour le planning de saison
+    const sortedRidersForPlanning = useMemo(() => {
+        if (!riders) return [];
+        
+        return [...riders].sort((a, b) => {
+            let aValue: string | number;
+            let bValue: string | number;
+            
+            switch (planningSortBy) {
+                case 'name':
+                    aValue = `${a.firstName} ${a.lastName}`.toLowerCase();
+                    bValue = `${b.firstName} ${b.lastName}`.toLowerCase();
+                    break;
+                case 'raceDays':
+                    aValue = raceDaysByRider[a.id] || 0;
+                    bValue = raceDaysByRider[b.id] || 0;
+                    break;
+                default:
+                    aValue = a.firstName;
+                    bValue = b.firstName;
+            }
+            
+            if (typeof aValue === 'string' && typeof bValue === 'string') {
+                if (planningSortDirection === 'asc') {
+                    return aValue.localeCompare(bValue);
+                } else {
+                    return bValue.localeCompare(aValue);
+                }
+            } else {
+                if (planningSortDirection === 'asc') {
+                    return (aValue as number) - (bValue as number);
+                } else {
+                    return (bValue as number) - (aValue as number);
+                }
+            }
+        });
+    }, [riders, planningSortBy, planningSortDirection, raceDaysByRider]);
+
+    // Fonction de gestion du tri pour le planning
+    const handlePlanningSort = (sortBy: 'name' | 'raceDays') => {
+        if (planningSortBy === sortBy) {
+            setPlanningSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+        } else {
+            setPlanningSortBy(sortBy);
+            setPlanningSortDirection('asc');
+        }
+    };
 
     const handlePlanningGridSelectionChange = async (riderId: string, eventId: string, newStatus: RiderEventStatus) => {
         // Mise à jour locale immédiate pour l'interface
@@ -491,10 +543,6 @@ export const RosterSection: React.FC<RosterSectionProps> = ({
   const [rosterSortBy, setRosterSortBy] = useState<'name' | 'age' | 'level' | 'raceDays'>('name');
   const [rosterSortDirection, setRosterSortDirection] = useState<'asc' | 'desc'>('asc');
 
-  // États de tri pour le planning de saison
-  const [planningSortBy, setPlanningSortBy] = useState<'name' | 'raceDays'>('name');
-  const [planningSortDirection, setPlanningSortDirection] = useState<'asc' | 'desc'>('asc');
-
   // Fonction de tri pour l'effectif
   const sortedRidersForAdmin = useMemo(() => {
     if (!filteredRidersForAdmin) return [];
@@ -556,43 +604,7 @@ export const RosterSection: React.FC<RosterSectionProps> = ({
     });
   }, [filteredRidersForAdmin, rosterSortBy, rosterSortDirection, riderEventSelections, raceEvents]);
 
-  // Fonction de tri pour le planning de saison
-  const sortedRidersForPlanning = useMemo(() => {
-    if (!riders) return [];
-    
-    return [...riders].sort((a, b) => {
-      let aValue: string | number;
-      let bValue: string | number;
-      
-      switch (planningSortBy) {
-        case 'name':
-          aValue = `${a.firstName} ${a.lastName}`.toLowerCase();
-          bValue = `${b.firstName} ${b.lastName}`.toLowerCase();
-          break;
-        case 'raceDays':
-          aValue = raceDaysByRider[a.id] || 0;
-          bValue = raceDaysByRider[b.id] || 0;
-          break;
-        default:
-          aValue = a.firstName;
-          bValue = b.firstName;
-      }
-      
-      if (typeof aValue === 'string' && typeof bValue === 'string') {
-        if (planningSortDirection === 'asc') {
-          return aValue.localeCompare(bValue);
-        } else {
-          return bValue.localeCompare(bValue);
-        }
-      } else {
-        if (planningSortDirection === 'asc') {
-          return (aValue as number) - (bValue as number);
-        } else {
-          return (bValue as number) - (aValue as number);
-        }
-      }
-    });
-  }, [riders, planningSortBy, planningSortDirection, raceDaysByRider]);
+
 
   // Fonction de gestion du tri pour l'effectif
   const handleRosterSort = (sortBy: 'name' | 'age' | 'level' | 'raceDays') => {
@@ -601,16 +613,6 @@ export const RosterSection: React.FC<RosterSectionProps> = ({
     } else {
       setRosterSortBy(sortBy);
       setRosterSortDirection('asc');
-    }
-  };
-
-  // Fonction de gestion du tri pour le planning
-  const handlePlanningSort = (sortBy: 'name' | 'raceDays') => {
-    if (planningSortBy === sortBy) {
-      setPlanningSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
-    } else {
-      setPlanningSortBy(sortBy);
-      setPlanningSortDirection('asc');
     }
   };
   
