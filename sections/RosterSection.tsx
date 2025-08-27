@@ -1218,6 +1218,25 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
           }}
           onSaveRider={handleSaveRider}
           isAdmin={true}
+          raceEvents={raceEvents}
+          riderEventSelections={riderEventSelections}
+          performanceEntries={[]}
+          powerDurationsConfig={[
+            { key: 'power1s', label: '1s', unit: 'W', sortable: true },
+            { key: 'power5s', label: '5s', unit: 'W', sortable: true },
+            { key: 'power30s', label: '30s', unit: 'W', sortable: true },
+            { key: 'power1min', label: '1min', unit: 'W', sortable: true },
+            { key: 'power3min', label: '3min', unit: 'W', sortable: true },
+            { key: 'power5min', label: '5min', unit: 'W', sortable: true },
+            { key: 'power12min', label: '12min', unit: 'W', sortable: true },
+            { key: 'power20min', label: '20min', unit: 'W', sortable: true },
+            { key: 'criticalPower', label: 'CP', unit: 'W', sortable: true }
+          ]}
+          calculateWkg={(power?: number, weight?: number) => {
+            if (!power || !weight) return '-';
+            return (power / weight).toFixed(1);
+          }}
+          appState={appState}
         />
       )}
 
