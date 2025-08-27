@@ -190,6 +190,20 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
     return ridersWithRaceDays;
   }, [riders, raceDaysByRider, planningSortBy, planningSortDirection]);
 
+  // État pour le tri de l'onglet Qualité
+  const [qualitySortField, setQualitySortField] = useState<string>('generalScore');
+  const [qualitySortDirection, setQualitySortDirection] = useState<'asc' | 'desc'>('desc');
+
+  // Fonction de tri pour l'onglet Qualité
+  const handleQualitySort = (field: string) => {
+    if (qualitySortField === field) {
+      setQualitySortDirection(qualitySortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setQualitySortField(field);
+      setQualitySortDirection('desc');
+    }
+  };
+
   // Rendu de l'onglet Effectif
   const renderRosterTab = () => (
     <div className="space-y-4">
@@ -603,20 +617,6 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
       };
     };
 
-    // État pour le tri
-    const [sortField, setSortField] = useState<string>('generalScore');
-    const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-
-    // Fonction de tri
-    const handleSort = (field: string) => {
-      if (sortField === field) {
-        setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-      } else {
-        setSortField(field);
-        setSortDirection('desc');
-      }
-    };
-
     // Tri des coureurs
     const sortedRiders = [...riders].sort((a, b) => {
       const profileA = calculateCogganProfileScore(a);
@@ -625,18 +625,18 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
       let valueA: number;
       let valueB: number;
       
-      if (sortField === 'generalScore') {
+      if (qualitySortField === 'generalScore') {
         valueA = profileA.generalScore;
         valueB = profileB.generalScore;
-      } else if (sortField.startsWith('power')) {
-        valueA = profileA.scores[sortField as keyof typeof profileA.scores] || 0;
-        valueB = profileB.scores[sortField as keyof typeof profileB.scores] || 0;
+      } else if (qualitySortField.startsWith('power')) {
+        valueA = profileA.scores[qualitySortField as keyof typeof profileA.scores] || 0;
+        valueB = profileB.scores[qualitySortField as keyof typeof profileB.scores] || 0;
       } else {
         valueA = 0;
         valueB = 0;
       }
       
-      if (sortDirection === 'asc') {
+      if (qualitySortDirection === 'asc') {
         return valueA - valueB;
       } else {
         return valueB - valueA;
@@ -707,111 +707,111 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Coureur</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     <button 
-                      onClick={() => handleSort('generalScore')}
+                      onClick={() => handleQualitySort('generalScore')}
                       className="flex items-center space-x-1 hover:text-gray-700"
                     >
                       <span>Note Générale</span>
-                      {sortField === 'generalScore' && (
-                        <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      {qualitySortField === 'generalScore' && (
+                        <span>{qualitySortDirection === 'asc' ? '↑' : '↓'}</span>
                       )}
                     </button>
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     <button 
-                      onClick={() => handleSort('power1s')}
+                      onClick={() => handleQualitySort('power1s')}
                       className="flex items-center space-x-1 hover:text-gray-700"
                     >
                       <span>1s</span>
-                      {sortField === 'power1s' && (
-                        <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      {qualitySortField === 'power1s' && (
+                        <span>{qualitySortDirection === 'asc' ? '↑' : '↓'}</span>
                       )}
                     </button>
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     <button 
-                      onClick={() => handleSort('power5s')}
+                      onClick={() => handleQualitySort('power5s')}
                       className="flex items-center space-x-1 hover:text-gray-700"
                     >
                       <span>5s</span>
-                      {sortField === 'power5s' && (
-                        <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      {qualitySortField === 'power5s' && (
+                        <span>{qualitySortDirection === 'asc' ? '↑' : '↓'}</span>
                       )}
                     </button>
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     <button 
-                      onClick={() => handleSort('power30s')}
+                      onClick={() => handleQualitySort('power30s')}
                       className="flex items-center space-x-1 hover:text-gray-700"
                     >
                       <span>30s</span>
-                      {sortField === 'power30s' && (
-                        <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      {qualitySortField === 'power30s' && (
+                        <span>{qualitySortDirection === 'asc' ? '↑' : '↓'}</span>
                       )}
                     </button>
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     <button 
-                      onClick={() => handleSort('power1min')}
+                      onClick={() => handleQualitySort('power1min')}
                       className="flex items-center space-x-1 hover:text-gray-700"
                     >
                       <span>1min</span>
-                      {sortField === 'power1min' && (
-                        <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      {qualitySortField === 'power1min' && (
+                        <span>{qualitySortDirection === 'asc' ? '↑' : '↓'}</span>
                       )}
                     </button>
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     <button 
-                      onClick={() => handleSort('power3min')}
+                      onClick={() => handleQualitySort('power3min')}
                       className="flex items-center space-x-1 hover:text-gray-700"
                     >
                       <span>3min</span>
-                      {sortField === 'power3min' && (
-                        <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      {qualitySortField === 'power3min' && (
+                        <span>{qualitySortDirection === 'asc' ? '↑' : '↓'}</span>
                       )}
                     </button>
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     <button 
-                      onClick={() => handleSort('power5min')}
+                      onClick={() => handleQualitySort('power5min')}
                       className="flex items-center space-x-1 hover:text-gray-700"
                     >
                       <span>5min</span>
-                      {sortField === 'power5min' && (
-                        <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      {qualitySortField === 'power5min' && (
+                        <span>{qualitySortDirection === 'asc' ? '↑' : '↓'}</span>
                       )}
                     </button>
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     <button 
-                      onClick={() => handleSort('power12min')}
+                      onClick={() => handleQualitySort('power12min')}
                       className="flex items-center space-x-1 hover:text-gray-700"
                     >
                       <span>12min</span>
-                      {sortField === 'power12min' && (
-                        <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      {qualitySortField === 'power12min' && (
+                        <span>{qualitySortDirection === 'asc' ? '↑' : '↓'}</span>
                       )}
                     </button>
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     <button 
-                      onClick={() => handleSort('power20min')}
+                      onClick={() => handleQualitySort('power20min')}
                       className="flex items-center space-x-1 hover:text-gray-700"
                     >
                       <span>20min</span>
-                      {sortField === 'power20min' && (
-                        <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      {qualitySortField === 'power20min' && (
+                        <span>{qualitySortDirection === 'asc' ? '↑' : '↓'}</span>
                       )}
                     </button>
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     <button 
-                      onClick={() => handleSort('criticalPower')}
+                      onClick={() => handleQualitySort('criticalPower')}
                       className="flex items-center space-x-1 hover:text-gray-700"
                     >
                       <span>CP</span>
-                      {sortField === 'criticalPower' && (
-                        <span>{sortDirection === 'asc' ? '↑' : '↓'}</span>
+                      {qualitySortField === 'criticalPower' && (
+                        <span>{qualitySortDirection === 'asc' ? '↑' : '↓'}</span>
                       )}
                     </button>
                   </th>
