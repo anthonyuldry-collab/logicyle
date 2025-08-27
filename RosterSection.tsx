@@ -114,13 +114,13 @@ export default function RosterSection({
               <div className="mt-2 text-xs text-gray-600 space-y-0.5">
                 <p><strong>Forme:</strong> {(rider as any).forme || '?'}</p>
                 <p><strong>Moral:</strong> {(rider as any).moral || '?'}</p>
-                <p><strong>Santé:</strong> {(rider as any).healthCondition || '-'}</p>
+                <p><strong>Sante:</strong> {(rider as any).healthCondition || '-'}</p>
                 
                 {(() => {
                   const { category, age } = getAgeCategory(rider.birthDate);
                   return (
                     <div className="mt-2 pt-2 border-t border-gray-200">
-                      <p><strong>Âge:</strong> {age !== null ? `${age} ans` : '?'} <span className="text-blue-600 font-medium">({category})</span></p>
+                                             <p><strong>Age:</strong> {age !== null ? `${age} ans` : '?'} <span className="text-blue-600 font-medium">({category})</span></p>
                     </div>
                   );
                 })()}
@@ -143,7 +143,7 @@ export default function RosterSection({
   const renderSeasonPlanningTab = () => (
     <div className="bg-white p-3 rounded-lg shadow-md">
       <h3 className="text-lg font-semibold mb-4">Planning Previsionnel de la Saison</h3>
-      <p className="text-gray-600">Fonctionnalité en cours de développement...</p>
+      <p className="text-gray-600">Fonctionnalite en cours de developpement...</p>
     </div>
   );
 
@@ -201,7 +201,7 @@ export default function RosterSection({
           setRiderToDelete(null);
         }}
         title="Confirmer la suppression"
-        message="Êtes-vous sûr de vouloir supprimer ce coureur ? Cette action est irréversible et supprimera toutes les données associées."
+        message="Etes-vous sur de vouloir supprimer ce coureur ? Cette action est irreversible et supprimera toutes les donnees associees."
       />
     </SectionWrapper>
   );
