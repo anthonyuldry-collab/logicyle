@@ -76,7 +76,12 @@ export default function RosterSection({
               placeholder="Rechercher un coureur..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="block w-full pl-8 pr-3 py-1.5 border border-gray-300 rounded-md leading-5 bg-white text-gray-900 placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-xs"
+              className={`
+                block w-full pl-8 pr-3 py-1.5 border border-gray-300 rounded-md 
+                leading-5 bg-white text-gray-900 placeholder-gray-500 
+                focus:outline-none focus:placeholder-gray-400 focus:ring-1 
+                focus:ring-blue-500 focus:border-blue-500 text-xs
+              `}
             />
           </div>
         </div>
@@ -149,8 +154,26 @@ export default function RosterSection({
     >
       <div className="mb-2 border-b border-gray-200">
         <nav className="-mb-px flex space-x-1 overflow-x-auto" aria-label="Tabs">
-          <button onClick={() => setActiveTab('roster')} className={activeTab === 'roster' ? 'border-blue-500 text-blue-600 border-b-2 py-2 px-3 text-sm font-medium' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 py-2 px-3 text-sm font-medium'}>Effectif</button>
-          <button onClick={() => setActiveTab('seasonPlanning')} className={activeTab === 'seasonPlanning' ? 'border-blue-500 text-blue-600 border-b-2 py-2 px-3 text-sm font-medium' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 py-2 px-3 text-sm font-medium'}>Planning Saison</button>
+          <button 
+            onClick={() => setActiveTab('roster')} 
+            className={
+              activeTab === 'roster' 
+                ? 'border-blue-500 text-blue-600 border-b-2 py-2 px-3 text-sm font-medium' 
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 py-2 px-3 text-sm font-medium'
+            }
+          >
+            Effectif
+          </button>
+          <button 
+            onClick={() => setActiveTab('seasonPlanning')} 
+            className={
+              activeTab === 'seasonPlanning' 
+                ? 'border-blue-500 text-blue-600 border-b-2 py-2 px-3 text-sm font-medium' 
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 border-b-2 py-2 px-3 text-sm font-medium'
+            }
+          >
+            Planning Saison
+          </button>
         </nav>
       </div>
       
