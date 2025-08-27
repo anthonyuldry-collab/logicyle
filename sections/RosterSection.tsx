@@ -1,326 +1,369 @@
-import React, { useState } from 'react';
-import { Rider, RaceEvent, RiderEventSelection, RiderEventStatus, Sex } from '../types';
-import SectionWrapper from '../components/SectionWrapper';
-import ActionButton from '../components/ActionButton';
+import React, { useState, useMemo } from 'react';
+import { 
+  UserCircleIcon, 
+  PencilIcon, 
+  TrashIcon, 
+  EyeIcon,
+  PlusCircleIcon,
+  MagnifyingGlassIcon
+} from '@heroicons/react/24/outline';
+import { SectionWrapper } from '../components/SectionWrapper';
+import { ActionButton } from '../components/ActionButton';
 import { RiderDetailModal } from '../components/RiderDetailModal';
-import PlusCircleIcon from '../components/icons/PlusCircleIcon';
-import PencilIcon from '../components/icons/PencilIcon';
-import TrashIcon from '../components/icons/TrashIcon';
-import EyeIcon from '../components/icons/EyeIcon';
-import SearchIcon from '../components/icons/SearchIcon';
-import UserCircleIcon from '../components/icons/UserCircleIcon';
-import ConfirmationModal from '../components/ConfirmationModal';
-import { useTranslations } from '../hooks/useTranslations';
-
+import { ConfirmationModal } from '../components/ConfirmationModal';
+import { Rider, RaceEvent, RiderEventSelection } from '../types';
 import { getAgeCategory } from '../utils/ageUtils';
 
 interface RosterSectionProps {
-  raceEvents: RaceEvent[];
-  riders: Rider[];
-  riderEventSelections: RiderEventSelection[];
-  setRiderEventSelections: (selections: RiderEventSelection[]) => void;
-  setRaceEvents: (events: RaceEvent[]) => void;
   appState: any;
+  onSaveRider: (rider: Rider) => void;
 }
 
-export default function RosterSection({
-  raceEvents,
-  riders,
-  riderEventSelections,
-  setRiderEventSelections,
-  setRaceEvents,
-  appState
-}: RosterSectionProps) {
-  // Protection contre appState null/undefined
+export default function RosterSection({ appState, onSaveRider }: RosterSectionProps) {
   if (!appState) {
-    console.warn('⚠️ RosterSection: appState is null or undefined');
-    return (
-      <SectionWrapper title="Annuaire de l'Equipe">
-        <div className="p-6 text-center text-gray-500">
-          Chargement des données...
-        </div>
-      </SectionWrapper>
-    );
+    return <div>Chargement...</div>;
   }
-  const { t } = useTranslations();
 
+  const { riders, raceEvents, riderEventSelections } = appState;
+  
+  // États pour la gestion des onglets
   const [activeTab, setActiveTab] = useState<'roster' | 'seasonPlanning' | 'quality'>('roster');
+  
+  // États pour la recherche et les filtres
   const [searchTerm, setSearchTerm] = useState('');
-  const [genderFilter, setGenderFilter] = useState<'all' | Sex>('all');
+  const [genderFilter, setGenderFilter] = useState<'all' | 'male' | 'female'>('all');
   const [ageCategoryFilter, setAgeCategoryFilter] = useState<string>('all');
   const [minAgeFilter, setMinAgeFilter] = useState<number>(0);
   const [maxAgeFilter, setMaxAgeFilter] = useState<number>(100);
+  
+  // États pour le tri
   const [rosterSortBy, setRosterSortBy] = useState<'name' | 'age' | 'category'>('name');
   const [rosterSortDirection, setRosterSortDirection] = useState<'asc' | 'desc'>('asc');
   const [planningSortBy, setPlanningSortBy] = useState<'name' | 'raceDays'>('name');
   const [planningSortDirection, setPlanningSortDirection] = useState<'asc' | 'desc'>('asc');
+  
+  // États pour la gestion des modales
   const [selectedRider, setSelectedRider] = useState<Rider | null>(null);
-  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [riderToDelete, setRiderToDelete] = useState<Rider | null>(null);
 
-  const openViewModal = (rider: Rider) => {
-    setSelectedRider(rider);
-    setIsViewModalOpen(true);
-  };
-
+  // Fonction pour ouvrir la modale d'édition
   const openEditModal = (rider: Rider) => {
     setSelectedRider(rider);
     setIsEditModalOpen(true);
   };
 
+  // Fonction pour ouvrir la modale de visualisation
+  const openViewModal = (rider: Rider) => {
+    setSelectedRider(rider);
+    setIsViewModalOpen(true);
+  };
+
+  // Fonction pour gérer la suppression
   const handleDeleteRider = (rider: Rider) => {
     setRiderToDelete(rider);
     setIsDeleteModalOpen(true);
   };
 
-  // Fonction de tri pour l'effectif
-  const handleRosterSort = (sortBy: 'name' | 'age' | 'category') => {
-    if (rosterSortBy === sortBy) {
+  // Fonction pour le tri de l'effectif
+  const handleRosterSort = (field: 'name' | 'age' | 'category') => {
+    if (rosterSortBy === field) {
       setRosterSortDirection(rosterSortDirection === 'asc' ? 'desc' : 'asc');
     } else {
-      setRosterSortBy(sortBy);
+      setRosterSortBy(field);
       setRosterSortDirection('asc');
     }
   };
 
-  // Fonction de tri pour le planning
-  const handlePlanningSort = (sortBy: 'name' | 'raceDays') => {
-    if (planningSortBy === sortBy) {
+  // Fonction pour le tri du planning
+  const handlePlanningSort = (field: 'name' | 'raceDays') => {
+    if (planningSortBy === field) {
       setPlanningSortDirection(planningSortDirection === 'asc' ? 'desc' : 'asc');
     } else {
-      setPlanningSortBy(sortBy);
+      setPlanningSortBy(field);
       setPlanningSortDirection('asc');
     }
   };
 
-  // Filtrage et tri des coureurs pour l'effectif
-  const filteredRiders = riders.filter(rider => {
-    if (searchTerm) {
-      const fullName = `${rider.firstName} ${rider.lastName}`.toLowerCase();
-      if (!fullName.includes(searchTerm.toLowerCase())) return false;
-    }
-    if (genderFilter !== 'all' && rider.sex !== genderFilter) return false;
-    
-    const { age } = getAgeCategory(rider.birthDate);
-    if (age !== null) {
-      if (age < minAgeFilter || age > maxAgeFilter) return false;
-    }
-    
-    if (ageCategoryFilter !== 'all') {
-      const { category } = getAgeCategory(rider.birthDate);
-      if (category !== ageCategoryFilter) return false;
-    }
-    
-    
-    
-    return true;
-  });
+  // Calcul des coureurs triés et filtrés pour l'effectif
+  const sortedRidersForAdmin = useMemo(() => {
+    let filtered = riders.filter(rider => {
+      const matchesSearch = rider.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                           rider.lastName.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesGender = genderFilter === 'all' || rider.gender === genderFilter;
+      
+      const { age } = getAgeCategory(rider.birthDate);
+      const matchesAge = age !== null && age >= minAgeFilter && age <= maxAgeFilter;
+      
+      const matchesCategory = ageCategoryFilter === 'all' || 
+                             (age !== null && getAgeCategory(rider.birthDate).category === ageCategoryFilter);
+      
+      return matchesSearch && matchesGender && matchesAge && matchesCategory;
+    });
 
-  // Tri des coureurs filtrés
-  const sortedRidersForAdmin = [...filteredRiders].sort((a, b) => {
-    let aValue: any, bValue: any;
-    
-    switch (rosterSortBy) {
-      case 'name':
-        aValue = `${a.firstName} ${a.lastName}`.toLowerCase();
-        bValue = `${b.firstName} ${b.lastName}`.toLowerCase();
-        break;
-      case 'age':
-        const aAge = getAgeCategory(a.birthDate).age || 0;
-        const bAge = getAgeCategory(b.birthDate).age || 0;
-        aValue = aAge;
-        bValue = bAge;
-        break;
-      case 'category':
-        aValue = getAgeCategory(a.birthDate).category;
-        bValue = getAgeCategory(b.birthDate).category;
-        break;
+    // Tri
+    filtered.sort((a, b) => {
+      let aValue: any, bValue: any;
+      
+      switch (rosterSortBy) {
+        case 'name':
+          aValue = `${a.firstName} ${a.lastName}`.toLowerCase();
+          bValue = `${b.firstName} ${b.lastName}`.toLowerCase();
+          break;
+        case 'age':
+          aValue = getAgeCategory(a.birthDate).age || 0;
+          bValue = getAgeCategory(b.birthDate).age || 0;
+          break;
+        case 'category':
+          aValue = getAgeCategory(a.birthDate).category;
+          bValue = getAgeCategory(b.birthDate).category;
+          break;
+        default:
+          return 0;
+      }
+      
+      if (rosterSortDirection === 'asc') {
+        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+      } else {
+        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+      }
+    });
 
-      default:
-        return 0;
-    }
-    
-    if (rosterSortDirection === 'asc') {
-      return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
-    } else {
-      return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
-    }
-  });
+    return filtered;
+  }, [riders, searchTerm, genderFilter, ageCategoryFilter, minAgeFilter, maxAgeFilter, rosterSortBy, rosterSortDirection]);
 
-  // Calcul des jours de course par coureur pour le planning
-  const raceDaysByRider = riders.map(rider => {
-    const riderEvents = raceEvents.filter(event => 
-      event.selectedRiderIds?.includes(rider.id)
-    );
-    return {
-      rider,
-      raceDays: riderEvents.length,
-      events: riderEvents
-    };
-  });
-
-  // Tri des coureurs pour le planning
-  const sortedRidersForPlanning = [...raceDaysByRider].sort((a, b) => {
-    let aValue: any, bValue: any;
+  // Calcul des jours de course par coureur
+  const raceDaysByRider = useMemo(() => {
+    const riderRaceDays = new Map<string, { raceDays: number; events: RaceEvent[] }>();
     
-    switch (planningSortBy) {
-      case 'name':
-        aValue = `${a.rider.firstName} ${a.rider.lastName}`.toLowerCase();
-        bValue = `${b.rider.firstName} ${b.rider.lastName}`.toLowerCase();
-        break;
-      case 'raceDays':
-        aValue = a.raceDays;
-        bValue = b.raceDays;
-        break;
-      default:
-        return 0;
-    }
+    riders.forEach(rider => {
+      const riderEvents = riderEventSelections
+        .filter(selection => selection.riderId === rider.id)
+        .map(selection => raceEvents.find(event => event.id === selection.eventId))
+        .filter(Boolean) as RaceEvent[];
+      
+      const uniqueDays = new Set(riderEvents.map(event => event.date)).size;
+      
+      riderRaceDays.set(rider.id, {
+        raceDays: uniqueDays,
+        events: riderEvents
+      });
+    });
     
-    if (planningSortDirection === 'asc') {
-      return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
-    } else {
-      return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
-    }
-  });
+    return riderRaceDays;
+  }, [riders, raceEvents, riderEventSelections]);
 
+  // Calcul des coureurs triés pour le planning
+  const sortedRidersForPlanning = useMemo(() => {
+    const ridersWithRaceDays = riders.map(rider => {
+      const { raceDays, events } = raceDaysByRider.get(rider.id) || { raceDays: 0, events: [] };
+      return { rider, raceDays, events };
+    });
+
+    // Tri
+    ridersWithRaceDays.sort((a, b) => {
+      let aValue: any, bValue: any;
+      
+      switch (planningSortBy) {
+        case 'name':
+          aValue = `${a.rider.firstName} ${a.rider.lastName}`.toLowerCase();
+          bValue = `${b.rider.firstName} ${b.rider.lastName}`.toLowerCase();
+          break;
+        case 'raceDays':
+          aValue = a.raceDays;
+          bValue = b.raceDays;
+          break;
+        default:
+          return 0;
+      }
+      
+      if (planningSortDirection === 'asc') {
+        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+      } else {
+        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+      }
+    });
+
+    return ridersWithRaceDays;
+  }, [riders, raceDaysByRider, planningSortBy, planningSortDirection]);
+
+  // Rendu de l'onglet Effectif
   const renderRosterTab = () => (
-    <div className="bg-white p-3 rounded-lg shadow-md">
-      {/* Filtres et recherche */}
-      <div className="mb-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-        <div>
-          <label htmlFor="rosterSearch" className="block text-xs font-medium text-gray-700 mb-0.5">Rechercher</label>
+    <div className="space-y-4">
+      {/* Contrôles de recherche et filtres */}
+      <div className="bg-white p-4 rounded-lg shadow-sm border">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Recherche */}
           <div className="relative">
-            <div className="absolute inset-y-0 left-0 pl-2 flex items-center pointer-events-none">
-              <SearchIcon className="h-4 w-4 text-gray-400" />
-            </div>
+            <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
               type="text"
-              id="rosterSearch"
               placeholder="Rechercher un coureur..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className={`
-                block w-full pl-8 pr-3 py-1.5 border border-gray-300 rounded-md 
-                leading-5 bg-white text-gray-900 placeholder-gray-500 
-                focus:outline-none focus:placeholder-gray-400 focus:ring-1 
-                focus:ring-blue-500 focus:border-blue-500 text-xs
-              `}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
-        </div>
-        
-        <div>
-          <label htmlFor="rosterGenderFilter" className="block text-xs font-medium text-gray-700 mb-0.5">Sexe</label>
+          
+          {/* Filtre genre */}
           <select
-            id="rosterGenderFilter"
             value={genderFilter}
-            onChange={(e) => setGenderFilter(e.target.value as 'all' | Sex)}
-            className="block w-full pl-3 pr-10 py-1.5 text-xs border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
+            onChange={(e) => setGenderFilter(e.target.value as 'all' | 'male' | 'female')}
+            className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
-            <option value="all">Tous</option>
-            <option value={Sex.MALE}>Homme</option>
-            <option value={Sex.FEMALE}>Femme</option>
+            <option value="all">Tous les genres</option>
+            <option value="male">Hommes</option>
+            <option value="female">Femmes</option>
           </select>
-        </div>
-
-        <div>
-          <label htmlFor="ageCategoryFilter" className="block text-xs font-medium text-gray-700 mb-0.5">Categorie</label>
+          
+          {/* Filtre catégorie d'âge */}
           <select
-            id="ageCategoryFilter"
             value={ageCategoryFilter}
             onChange={(e) => setAgeCategoryFilter(e.target.value)}
-            className="block w-full pl-3 pr-10 py-1.5 text-xs border-gray-300 bg-white text-gray-900 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
+            className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
-            <option value="all">Toutes</option>
+            <option value="all">Toutes catégories</option>
             <option value="U17">U17</option>
             <option value="U19">U19</option>
             <option value="U23">U23</option>
             <option value="Elite">Elite</option>
           </select>
+          
+          {/* Filtre âge */}
+          <div className="flex space-x-2">
+            <input
+              type="number"
+              placeholder="Âge min"
+              value={minAgeFilter}
+              onChange={(e) => setMinAgeFilter(Number(e.target.value))}
+              className="w-1/2 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <input
+              type="number"
+              placeholder="Âge max"
+              value={maxAgeFilter}
+              onChange={(e) => setMaxAgeFilter(Number(e.target.value))}
+              className="w-1/2 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
+        </div>
+        
+        {/* Contrôles de tri */}
+        <div className="mt-4 flex flex-wrap gap-2">
+          <span className="text-sm font-medium text-gray-700 mr-2">Trier par:</span>
+          <button
+            onClick={() => handleRosterSort('name')}
+            className={`px-3 py-1 text-sm rounded-md transition-colors ${
+              rosterSortBy === 'name' 
+                ? 'bg-blue-100 text-blue-700 border border-blue-300' 
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            Nom {rosterSortBy === 'name' && (rosterSortDirection === 'asc' ? '↑' : '↓')}
+          </button>
+          <button
+            onClick={() => handleRosterSort('age')}
+            className={`px-3 py-1 text-sm rounded-md transition-colors ${
+              rosterSortBy === 'age' 
+                ? 'bg-blue-100 text-blue-700 border border-blue-300' 
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            Âge {rosterSortBy === 'age' && (rosterSortDirection === 'asc' ? '↑' : '↓')}
+          </button>
+          <button
+            onClick={() => handleRosterSort('category')}
+            className={`px-3 py-1 text-sm rounded-md transition-colors ${
+              rosterSortBy === 'category' 
+                ? 'bg-blue-100 text-blue-700 border border-blue-300' 
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            Catégorie {rosterSortBy === 'category' && (rosterSortDirection === 'asc' ? '↑' : '↓')}
+          </button>
         </div>
       </div>
 
-      {/* Contrôles de tri */}
-      <div className="mb-4 flex flex-wrap gap-2">
-        <span className="text-xs font-medium text-gray-700 mr-2">Trier par:</span>
-        <button
-          onClick={() => handleRosterSort('name')}
-          className={`px-3 py-1 text-xs rounded-md transition-colors ${
-            rosterSortBy === 'name' 
-              ? 'bg-blue-100 text-blue-700 border border-blue-300' 
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          }`}
-        >
-          Nom {rosterSortBy === 'name' && (rosterSortDirection === 'asc' ? '↑' : '↓')}
-        </button>
-        <button
-          onClick={() => handleRosterSort('age')}
-          className={`px-3 py-1 text-xs rounded-md transition-colors ${
-            rosterSortBy === 'age' 
-              ? 'bg-blue-100 text-blue-700 border border-blue-300' 
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          }`}
-        >
-          Age {rosterSortBy === 'age' && (rosterSortDirection === 'asc' ? '↑' : '↓')}
-        </button>
-        <button
-          onClick={() => handleRosterSort('category')}
-          className={`px-3 py-1 text-xs rounded-md transition-colors ${
-            rosterSortBy === 'category' 
-              ? 'bg-blue-100 text-blue-700 border border-blue-300' 
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          }`}
-        >
-          Categorie {rosterSortBy === 'category' && (rosterSortDirection === 'asc' ? '↑' : '↓')}
-        </button>
-
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {sortedRidersForAdmin.map(rider => (
-          <div key={rider.id} className="bg-gray-50 rounded-lg shadow-md overflow-hidden flex flex-col border border-gray-200 hover:shadow-lg transition-shadow">
-            <div className="p-3">
-              <div className="flex items-center space-x-3">
-                {rider.photoUrl ? <img src={rider.photoUrl} alt={rider.firstName} className="w-12 h-12 rounded-full object-cover"/> : <UserCircleIcon className="w-12 h-12 text-gray-400"/>}
-                <div>
-                  <h3 className="text-md font-semibold text-gray-800">{rider.firstName} {rider.lastName}</h3>
-                  <p className="text-xs text-gray-500">{(rider as any).qualitativeProfile || 'Profil N/A'}</p>
-                </div>
-              </div>
-              <div className="mt-2 text-xs text-gray-600 space-y-0.5">
-                <p><strong>Forme:</strong> {(rider as any).forme || '?'}</p>
-                <p><strong>Moral:</strong> {(rider as any).moral || '?'}</p>
-                <p><strong>Sante:</strong> {(rider as any).healthCondition || '-'}</p>
+      {/* Liste des coureurs */}
+      <div className="bg-white rounded-lg shadow-sm border">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Coureur</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Catégorie</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {sortedRidersForAdmin.map((rider) => {
+                const { category, age } = getAgeCategory(rider.birthDate);
                 
-                {(() => {
-                  const { category, age } = getAgeCategory(rider.birthDate);
-                  return (
-                    <div className="mt-2 pt-2 border-t border-gray-200">
-                                             <p><strong>Age:</strong> {age !== null ? `${age} ans` : '?'} <span className="text-blue-600 font-medium">({category})</span></p>
-                    </div>
-                  );
-                })()}
-              </div>
-            </div>
-            <div className="mt-auto p-2 border-t border-gray-200 flex justify-end space-x-1 bg-gray-50">
-              <div className="flex space-x-1"><ActionButton onClick={() => openViewModal(rider)} variant="info" size="sm" icon={<EyeIcon className="w-4 h-4"/>} title="Voir">
-                <span className="sr-only">Voir</span>
-              </ActionButton>
-              <ActionButton onClick={() => openEditModal(rider)} variant="warning" size="sm" icon={<PencilIcon className="w-4 h-4"/>} title="Modifier">
-                <span className="sr-only">Modifier</span>
-              </ActionButton>
-              <ActionButton onClick={() => handleDeleteRider(rider)} variant="danger" size="sm" icon={<TrashIcon className="w-4 h-4"/>} title="Supprimer">
-                <span className="sr-only">Supprimer</span>
-              </ActionButton>
-            </div>
-          </div>
-        ))}
+                return (
+                  <tr key={rider.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        {rider.photoUrl ? (
+                          <img src={rider.photoUrl} alt={rider.firstName} className="w-10 h-10 rounded-full mr-4"/>
+                        ) : (
+                          <UserCircleIcon className="w-10 h-10 text-gray-400 mr-4"/>
+                        )}
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{rider.firstName} {rider.lastName}</div>
+                          <div className="text-sm text-gray-500">{age !== null ? `${age} ans` : 'Âge inconnu'}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        {category}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex space-x-2">
+                        <ActionButton 
+                          onClick={() => openViewModal(rider)} 
+                          variant="info" 
+                          size="sm" 
+                          icon={<EyeIcon className="w-4 h-4"/>} 
+                          title="Voir"
+                        >
+                          <span className="sr-only">Voir</span>
+                        </ActionButton>
+                        <ActionButton 
+                          onClick={() => openEditModal(rider)} 
+                          variant="warning" 
+                          size="sm" 
+                          icon={<PencilIcon className="w-4 h-4"/>} 
+                          title="Modifier"
+                        >
+                          <span className="sr-only">Modifier</span>
+                        </ActionButton>
+                        <ActionButton 
+                          onClick={() => handleDeleteRider(rider)} 
+                          variant="danger" 
+                          size="sm" 
+                          icon={<TrashIcon className="w-4 h-4"/>} 
+                          title="Supprimer"
+                        >
+                          <span className="sr-only">Supprimer</span>
+                        </ActionButton>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
 
+  // Rendu de l'onglet Planning de Saison
   const renderSeasonPlanningTab = () => (
     <div className="bg-white p-3 rounded-lg shadow-md">
       <h3 className="text-lg font-semibold mb-4">Planning Previsionnel de la Saison</h3>
@@ -423,10 +466,22 @@ export default function RosterSection({
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
                     <div className="flex space-x-1">
-                      <ActionButton onClick={() => openViewModal(rider)} variant="info" size="sm" icon={<EyeIcon className="w-4 h-4"/>} title="Voir">
+                      <ActionButton 
+                        onClick={() => openViewModal(rider)} 
+                        variant="info" 
+                        size="sm" 
+                        icon={<EyeIcon className="w-4 h-4"/>} 
+                        title="Voir"
+                      >
                         <span className="sr-only">Voir</span>
                       </ActionButton>
-                      <ActionButton onClick={() => openEditModal(rider)} variant="warning" size="sm" icon={<PencilIcon className="w-4 h-4"/>} title="Modifier">
+                      <ActionButton 
+                        onClick={() => openEditModal(rider)} 
+                        variant="warning" 
+                        size="sm" 
+                        icon={<PencilIcon className="w-4 h-4"/>} 
+                        title="Modifier"
+                      >
                         <span className="sr-only">Modifier</span>
                       </ActionButton>
                     </div>
@@ -473,155 +528,124 @@ export default function RosterSection({
           </div>
         </div>
 
-        <div className="bg-orange-50 p-4 rounded-lg border border-orange-200">
-          <h4 className="text-sm font-semibold text-orange-800 mb-2">Coureurs Disponibles</h4>
-          <div className="space-y-1">
-            {sortedRidersForPlanning
-              .filter(r => r.raceDays === 0)
-              .slice(0, 3)
-              .map(({ rider }) => (
-                <div key={rider.id} className="text-xs text-orange-600">
-                  {rider.firstName} {rider.lastName}
-                </div>
-              ))}
-            {sortedRidersForPlanning.filter(r => r.raceDays === 0).length > 3 && (
-              <p className="text-xs text-orange-500">+{sortedRidersForPlanning.filter(r => r.raceDays === 0).length - 3} autres</p>
-            )}
+        <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
+          <h4 className="text-sm font-semibold text-purple-800 mb-2">Total des Evenements</h4>
+          <div className="text-2xl font-bold text-purple-600">
+            {sortedRidersForPlanning.reduce((total, r) => total + r.events.length, 0)}
           </div>
+          <p className="text-xs text-purple-600 mt-1">evenements planifies</p>
         </div>
       </div>
     </div>
   );
 
+  // Rendu de l'onglet Qualité d'Effectif
   const renderQualityTab = () => (
-    <div className="bg-white p-3 rounded-lg shadow-md">
-      <h3 className="text-lg font-semibold mb-4">Qualite de l'Effectif</h3>
-      
+    <div className="space-y-6">
       {/* Statistiques globales */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-          <h4 className="text-sm font-semibold text-blue-800 mb-2">Total Coureurs</h4>
-          <p className="text-2xl font-bold text-blue-600">{riders.length}</p>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-white p-4 rounded-lg shadow-sm border">
+          <h4 className="text-sm font-medium text-gray-500">Total Coureurs</h4>
+          <p className="text-2xl font-bold text-gray-900">{riders.length}</p>
         </div>
-        
-        <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-          <h4 className="text-sm font-semibold text-green-800 mb-2">En Forme</h4>
+        <div className="bg-white p-4 rounded-lg shadow-sm border">
+          <h4 className="text-sm font-medium text-gray-500">Hommes</h4>
+          <p className="text-2xl font-bold text-blue-600">{riders.filter(r => r.gender === 'male').length}</p>
+        </div>
+        <div className="bg-white p-4 rounded-lg shadow-sm border">
+          <h4 className="text-sm font-medium text-gray-500">Femmes</h4>
+          <p className="text-2xl font-bold text-pink-600">{riders.filter(r => r.gender === 'female').length}</p>
+        </div>
+        <div className="bg-white p-4 rounded-lg shadow-sm border">
+          <h4 className="text-sm font-medium text-gray-500">Moyenne d'Age</h4>
           <p className="text-2xl font-bold text-green-600">
-            {riders.filter(r => (r as any).forme === 'Bonne' || (r as any).forme === 'Excellente').length}
-          </p>
-        </div>
-        
-        <div className="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
-          <h4 className="text-sm font-semibold text-yellow-800 mb-2">Moral Eleve</h4>
-          <p className="text-2xl font-bold text-yellow-600">
-            {riders.filter(r => (r as any).moral === 'Bon' || (r as any).moral === 'Excellent').length}
-          </p>
-        </div>
-        
-        <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
-          <h4 className="text-sm font-semibold text-purple-800 mb-2">Sante Optimale</h4>
-          <p className="text-2xl font-bold text-purple-600">
-            {riders.filter(r => (r as any).healthCondition === 'Bon' || (r as any).healthCondition === 'Excellent').length}
+            {Math.round(riders.reduce((sum, r) => {
+              const { age } = getAgeCategory(r.birthDate);
+              return sum + (age || 0);
+            }, 0) / riders.filter(r => getAgeCategory(r.birthDate).age !== null).length)}
           </p>
         </div>
       </div>
 
-      {/* Tableau de qualité */}
-      <div className="overflow-x-auto">
-        <table className="min-w-full bg-white border border-gray-200 rounded-lg">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Coureur</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Categorie</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Forme</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Moral</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Sante</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Niveau</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {sortedRidersForAdmin.map(rider => {
-              const { category, age } = getAgeCategory(rider.birthDate);
-              const forme = (rider as any).forme || 'Non defini';
-              const moral = (rider as any).moral || 'Non defini';
-              const sante = (rider as any).healthCondition || 'Non defini';
-              const niveau = (rider as any).qualitativeProfile || 'Non defini';
-              
-              const getFormeColor = (forme: string) => {
-                if (forme === 'Excellente') return 'text-green-600 bg-green-100';
-                if (forme === 'Bonne') return 'text-green-700 bg-green-50';
-                if (forme === 'Moyenne') return 'text-yellow-600 bg-yellow-100';
-                if (forme === 'Faible') return 'text-red-600 bg-red-100';
-                return 'text-gray-600 bg-gray-100';
-              };
-              
-              const getMoralColor = (moral: string) => {
-                if (moral === 'Excellent') return 'text-green-600 bg-green-100';
-                if (moral === 'Bon') return 'text-green-700 bg-green-50';
-                if (moral === 'Moyen') return 'text-yellow-600 bg-yellow-100';
-                if (moral === 'Faible') return 'text-red-600 bg-red-100';
-                return 'text-gray-600 bg-gray-100';
-              };
-              
-              const getSanteColor = (sante: string) => {
-                if (sante === 'Excellent') return 'text-green-600 bg-green-100';
-                if (sante === 'Bon') return 'text-green-700 bg-green-50';
-                if (sante === 'Moyen') return 'text-yellow-600 bg-yellow-100';
-                if (sante === 'Faible') return 'text-red-600 bg-red-100';
-                return 'text-gray-600 bg-gray-100';
-              };
-              
-              return (
-                <tr key={rider.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="flex items-center">
-                      {rider.photoUrl ? (
-                        <img src={rider.photoUrl} alt={rider.firstName} className="w-8 h-8 rounded-full mr-3"/>
-                      ) : (
-                        <UserCircleIcon className="w-8 h-8 text-gray-400 mr-3"/>
-                      )}
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">{rider.firstName} {rider.lastName}</div>
-                        <div className="text-sm text-gray-500">{age !== null ? `${age} ans` : 'Age inconnu'}</div>
+      {/* Tableau détaillé de la qualité */}
+      <div className="bg-white rounded-lg shadow-sm border">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h3 className="text-lg font-medium text-gray-900">Qualite Detaillee par Coureur</h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Coureur</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Categorie</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Forme</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {riders.map((rider) => {
+                const { category, age } = getAgeCategory(rider.birthDate);
+                const forme = (rider as any).forme || 'Non defini';
+                
+                return (
+                  <tr key={rider.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        {rider.photoUrl ? (
+                          <img src={rider.photoUrl} alt={rider.firstName} className="w-10 h-10 rounded-full mr-4"/>
+                        ) : (
+                          <UserCircleIcon className="w-10 h-10 text-gray-400 mr-4"/>
+                        )}
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{rider.firstName} {rider.lastName}</div>
+                          <div className="text-sm text-gray-500">{age !== null ? `${age} ans` : 'Age inconnu'}</div>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      {category}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getFormeColor(forme)}`}>
-                      {forme}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getMoralColor(moral)}`}>
-                      {moral}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getSanteColor(sante)}`}>
-                      {sante}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                      {niveau}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
-                    <div className="flex space-x-1"><ActionButton onClick={() => openViewModal(rider)} variant="info" size="sm" icon={<EyeIcon className="w-4 h-4"/>} title="Voir">
-                      <span className="sr-only">Voir</span>
-                    </ActionButton>
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        {category}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        forme === 'Excellente' ? 'text-green-600 bg-green-100' :
+                        forme === 'Bonne' ? 'text-green-700 bg-green-50' :
+                        forme === 'Moyenne' ? 'text-yellow-600 bg-yellow-100' :
+                        forme === 'Faible' ? 'text-red-600 bg-red-100' :
+                        'text-gray-600 bg-gray-100'
+                      }`}>
+                        {forme}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      <div className="flex space-x-2">
+                        <ActionButton 
+                          onClick={() => openViewModal(rider)} 
+                          variant="info" 
+                          size="sm" 
+                          icon={<EyeIcon className="w-4 h-4"/>} 
+                          title="Voir"
+                        >
+                          <span className="sr-only">Voir</span>
+                        </ActionButton>
+                        <ActionButton 
+                          onClick={() => openEditModal(rider)} 
+                          variant="warning" 
+                          size="sm" 
+                          icon={<PencilIcon className="w-4 h-4"/>} 
+                          title="Modifier"
+                        >
+                          <span className="sr-only">Modifier</span>
+                        </ActionButton>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );
