@@ -99,31 +99,44 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
       resultsHistory: [],
       allergies: [],
       performanceNutrition: {
-        hydrationStrategy: '',
-        preRaceMeal: '',
-        duringRaceNutrition: '',
-        postRaceRecovery: '',
-        supplements: []
+        carbsPerHourTarget: 0,
+        hydrationNotes: '',
+        selectedGels: [],
+        selectedBars: [],
+        selectedDrinks: [],
+        customProducts: []
       },
       roadBikeSetup: {
-        bikeType: 'ROUTE',
-        brand: '',
-        model: '',
-        size: '',
-        color: '',
-        year: new Date().getFullYear(),
-        weight: 0,
-        notes: ''
+        specifics: {
+          tailleCadre: '',
+          cintre: '',
+          potence: '',
+          plateau: '',
+          manivelle: '',
+          capteurPuissance: ''
+        },
+        cotes: {
+          hauteurSelle: '',
+          reculSelle: '',
+          longueurBecSelleAxeCintre: '',
+          hauteurGuidonAxeRoueCentreCintre: ''
+        }
       },
       ttBikeSetup: {
-        bikeType: 'CONTRE_LA_MONTRE',
-        brand: '',
-        model: '',
-        size: '',
-        color: '',
-        year: new Date().getFullYear(),
-        weight: 0,
-        notes: ''
+        specifics: {
+          tailleCadre: '',
+          cintre: '',
+          potence: '',
+          plateau: '',
+          manivelle: '',
+          capteurPuissance: ''
+        },
+        cotes: {
+          hauteurSelle: '',
+          reculSelle: '',
+          longueurBecSelleAxeCintre: '',
+          hauteurGuidonAxeRoueCentreCintre: ''
+        }
       },
       clothing: [],
       performanceGoals: '',
