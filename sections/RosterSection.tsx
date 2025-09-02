@@ -59,11 +59,13 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
   const [planningExpanded, setPlanningExpanded] = useState(true);
   const [localRaceEvents, setLocalRaceEvents] = useState(appState.raceEvents || []);
   const [includeScouts, setIncludeScouts] = useState(false);
+  const [localRiderEventSelections, setLocalRiderEventSelections] = useState(appState.riderEventSelections || []);
 
   // Synchroniser l'état local avec l'état global
   useEffect(() => {
     setLocalRaceEvents(appState.raceEvents || []);
-  }, [appState.raceEvents]);
+    setLocalRiderEventSelections(appState.riderEventSelections || []);
+  }, [appState.raceEvents, appState.riderEventSelections]);
   
   // États pour la gestion des modales
   const [selectedRider, setSelectedRider] = useState<Rider | null>(null);
@@ -673,6 +675,9 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
     console.log('🎯 Rendu du planning - Sélections actuelles:', appState.riderEventSelections?.length || 0);
     console.log('🎯 Événements locaux:', localRaceEvents.length);
     console.log('🎯 Détail des sélections:', appState.riderEventSelections);
+    console.log('🎯 Scouts disponibles:', appState.scoutingProfiles?.length || 0);
+    console.log('🎯 Détail des scouts:', appState.scoutingProfiles);
+    console.log('🎯 Riders disponibles:', riders.length);
     
     // Filtrer les événements futurs uniquement
     const futureEvents = localRaceEvents.filter(event => {
@@ -687,7 +692,7 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
       console.log(`🔄 Tentative d'ajout: ${riderId} à ${eventId} avec statut ${status}`);
       try {
         // Vérifier si l'athlète est déjà sélectionné pour cet événement
-        const existingSelection = appState.riderEventSelections?.find(
+        const existingSelection = localRiderEventSelections.find(
           sel => sel.eventId === eventId && sel.riderId === riderId
         );
         
@@ -722,8 +727,11 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
         }
 
         // Mettre à jour l'état local des sélections
-        const updatedSelections = [...(appState.riderEventSelections || []), newSelection];
-        // Mettre à jour l'état global des sélections
+        const updatedSelections = [...localRiderEventSelections, newSelection];
+        setLocalRiderEventSelections(updatedSelections);
+        console.log('✅ État local des sélections mis à jour:', updatedSelections.length);
+        
+        // Mettre à jour l'état global des sélections si disponible
         if (appState.setRiderEventSelections) {
           appState.setRiderEventSelections(updatedSelections);
           console.log('✅ État global des sélections mis à jour:', updatedSelections.length);
@@ -775,10 +783,14 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
             console.warn('⚠️ Aucun teamId actif, sauvegarde locale uniquement');
           }
 
-          // Mettre à jour l'état global des sélections
-          const updatedSelections = appState.riderEventSelections?.map(sel =>
+          // Mettre à jour l'état local des sélections
+          const updatedSelections = localRiderEventSelections.map(sel =>
             sel.id === existingSelection.id ? updatedSelection : sel
-          ) || [];
+          );
+          setLocalRiderEventSelections(updatedSelections);
+          console.log('✅ État local des sélections mis à jour après modification:', updatedSelections.length);
+          
+          // Mettre à jour l'état global des sélections si disponible
           if (appState.setRiderEventSelections) {
             appState.setRiderEventSelections(updatedSelections);
           }
@@ -820,7 +832,7 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
     const removeRiderFromEvent = async (eventId: string, riderId: string) => {
       console.log(`🗑️ Tentative de retrait: ${riderId} de ${eventId}`);
       try {
-        const existingSelection = appState.riderEventSelections.find(
+        const existingSelection = localRiderEventSelections.find(
           sel => sel.eventId === eventId && sel.riderId === riderId
         );
 
@@ -837,10 +849,14 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
             console.warn('⚠️ Aucun teamId actif, suppression locale uniquement');
           }
 
-          // Mettre à jour l'état global des sélections
-          const updatedSelections = appState.riderEventSelections?.filter(
+          // Mettre à jour l'état local des sélections
+          const updatedSelections = localRiderEventSelections.filter(
             sel => sel.id !== existingSelection.id
-          ) || [];
+          );
+          setLocalRiderEventSelections(updatedSelections);
+          console.log('✅ État local des sélections mis à jour après suppression:', updatedSelections.length);
+          
+          // Mettre à jour l'état global des sélections si disponible
           if (appState.setRiderEventSelections) {
             appState.setRiderEventSelections(updatedSelections);
           }
@@ -871,7 +887,7 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
 
     // Fonction pour obtenir le statut d'un athlète pour un événement
     const getRiderEventStatus = (eventId: string, riderId: string): RiderEventStatus | null => {
-      const selection = appState.riderEventSelections?.find(
+      const selection = localRiderEventSelections.find(
         sel => sel.eventId === eventId && sel.riderId === riderId
       );
       console.log(`🔍 getRiderEventStatus(${eventId}, ${riderId}):`, selection ? selection.status : 'null');
@@ -980,6 +996,7 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                                   type="checkbox"
                                   checked={isTitulaire}
                                   onChange={(e) => {
+                                    console.log('🔄 Clic sur case titulaire:', rider.firstName, rider.lastName, 'checked:', e.target.checked);
                                     if (e.target.checked) {
                                       // Ajouter comme titulaire (la fonction gère les doublons)
                                       addRiderToEvent(event.id, rider.id, RiderEventStatus.TITULAIRE);
@@ -1095,8 +1112,10 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
   const calculateCogganProfileScore = (rider: any) => {
     // Vérifier si c'est un scout
     if (rider.isScout) {
+      console.log('🔍 Calcul des scores pour scout:', rider.firstName, rider.lastName);
       // Utiliser les données de scouting
       const scoutingProfile = appState.scoutingProfiles?.find(s => s.id === rider.id);
+      console.log('🔍 Profil de scouting trouvé:', scoutingProfile);
       if (scoutingProfile) {
         const powerProfile = scoutingProfile.powerProfileFresh || {};
         const weight = scoutingProfile.weightKg || 70;
