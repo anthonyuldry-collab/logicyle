@@ -470,13 +470,18 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
             Nom {rosterSortBy === 'name' && (rosterSortDirection === 'asc' ? '↑' : '↓')}
           </button>
           
-          {/* Bouton de débogage */}
+          {/* Bouton de diagnostic pour l'onglet Effectif */}
           <button
             onClick={() => {
-              console.log('=== DIAGNOSTIC COMPLET EFFECTIF ===');
-              console.log('appState:', appState);
-              console.log('riders:', riders);
+              console.log('=== DIAGNOSTIC ONGLET EFFECTIF ===');
               console.log('Total coureurs:', riders.length);
+              console.log('Filtres actifs:', {
+                searchTerm,
+                genderFilter,
+                ageCategoryFilter,
+                minAgeFilter,
+                maxAgeFilter
+              });
               
               // Recherche spécifique du coureur mmisyurina@gmail.com
               const coureurRecherche = riders.find(rider => rider.email === 'mmisyurina@gmail.com');
@@ -490,154 +495,33 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                   sex: coureurRecherche.sex,
                   birthDate: coureurRecherche.birthDate,
                   age,
-                  category,
-                  // Vérification des propriétés critiques
-                  hasFirstName: !!coureurRecherche.firstName,
-                  hasLastName: !!coureurRecherche.lastName,
-                  hasEmail: !!coureurRecherche.email,
-                  hasBirthDate: !!coureurRecherche.birthDate,
-                  hasSex: !!coureurRecherche.sex,
-                  // Vérification des filtres
-                  matchesSearch: coureurRecherche.firstName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                                coureurRecherche.lastName.toLowerCase().includes(searchTerm.toLowerCase()),
-                  matchesGender: genderFilter === 'all' || coureurRecherche.sex === genderFilter,
-                  matchesAge: age !== null && age >= minAgeFilter && age <= maxAgeFilter,
-                  matchesCategory: ageCategoryFilter === 'all' || (age !== null && category === ageCategoryFilter),
-                  // Vérification des valeurs par défaut
-                  isDefaultValues: {
-                    firstName: coureurRecherche.firstName === '',
-                    lastName: coureurRecherche.lastName === '',
-                    email: coureurRecherche.email === '',
-                    birthDate: coureurRecherche.birthDate === new Date().toISOString().split('T')[0],
-                    sex: coureurRecherche.sex === Sex.MALE
-                  }
+                  category
                 });
                 
-                // Diagnostic spécifique des filtres pour ce coureur
-                console.log('🔍 DIAGNOSTIC DES FILTRES POUR mmisyurina@gmail.com:');
-                console.log('Filtre recherche:', {
-                  searchTerm,
-                  firstName: coureurRecherche.firstName,
-                  lastName: coureurRecherche.lastName,
-                  matchesSearch: coureurRecherche.firstName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                                coureurRecherche.lastName.toLowerCase().includes(searchTerm.toLowerCase())
-                });
-                console.log('Filtre genre:', {
-                  genderFilter,
-                  riderSex: coureurRecherche.sex,
-                  matchesGender: genderFilter === 'all' || coureurRecherche.sex === genderFilter
-                });
-                console.log('Filtre âge:', {
-                  minAgeFilter,
-                  maxAgeFilter,
-                  riderAge: age,
-                  matchesAge: age !== null && age >= minAgeFilter && age <= maxAgeFilter
-                });
-                console.log('Filtre catégorie:', {
-                  ageCategoryFilter,
-                  riderCategory: category,
-                  matchesCategory: ageCategoryFilter === 'all' || (age !== null && category === ageCategoryFilter)
-                });
+                // Vérification de la visibilité dans l'onglet Effectif
+                const isVisibleInRoster = sortedRidersForAdmin.some(rider => rider.id === coureurRecherche.id);
+                console.log('🎯 VISIBILITÉ DANS EFFECTIF:', isVisibleInRoster ? '✅ VISIBLE' : '❌ MASQUÉ');
                 
-                // Résumé final
-                const isVisible = (coureurRecherche.firstName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                                  coureurRecherche.lastName.toLowerCase().includes(searchTerm.toLowerCase())) &&
-                                 (genderFilter === 'all' || coureurRecherche.sex === genderFilter) &&
-                                 (age !== null && age >= minAgeFilter && age <= maxAgeFilter) &&
-                                 (ageCategoryFilter === 'all' || (age !== null && category === ageCategoryFilter));
-                
-                console.log('🎯 VISIBILITÉ FINALE:', isVisible ? '✅ VISIBLE' : '❌ MASQUÉ');
-                if (!isVisible) {
+                if (!isVisibleInRoster) {
                   console.log('🚨 RAISONS DU MASQUAGE:');
-                  if (!(coureurRecherche.firstName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                        coureurRecherche.lastName.toLowerCase().includes(searchTerm.toLowerCase()))) {
-                    console.log('- ❌ Ne correspond pas à la recherche:', searchTerm);
-                  }
-                  if (!(genderFilter === 'all' || coureurRecherche.sex === genderFilter)) {
-                    console.log('- ❌ Ne correspond pas au filtre genre:', genderFilter);
-                  }
-                  if (!(age !== null && age >= minAgeFilter && age <= maxAgeFilter)) {
-                    console.log('- ❌ Âge hors limites:', age, 'vs', minAgeFilter, '-', maxAgeFilter);
-                  }
-                  if (!(ageCategoryFilter === 'all' || (age !== null && category === ageCategoryFilter))) {
-                    console.log('- ❌ Catégorie ne correspond pas:', category, 'vs', ageCategoryFilter);
-                  }
+                  console.log('- Filtre recherche:', searchTerm);
+                  console.log('- Filtre genre:', genderFilter);
+                  console.log('- Filtre âge:', `${minAgeFilter}-${maxAgeFilter}`);
+                  console.log('- Filtre catégorie:', ageCategoryFilter);
                 }
               } else {
                 console.log('❌ COUREUR mmisyurina@gmail.com NON TROUVÉ dans riders');
-                console.log('🚨 PROBLÈME: Le coureur n\'existe pas dans la liste riders');
               }
               
-              // Diagnostic détaillé de chaque coureur
-              riders.forEach((rider, index) => {
-                const { age, category } = getAgeCategory(rider.birthDate);
-                const diagnostic = {
-                  index: index + 1,
-                  id: rider.id,
-                  nom: `${rider.firstName} ${rider.lastName}`,
-                  email: rider.email,
-                  sex: rider.sex,
-                  birthDate: rider.birthDate,
-                  age,
-                  category,
-                  // Vérification des propriétés critiques
-                  hasFirstName: !!rider.firstName,
-                  hasLastName: !!rider.lastName,
-                  hasEmail: !!rider.email,
-                  hasBirthDate: !!rider.birthDate,
-                  hasSex: !!rider.sex,
-                  // Vérification des filtres
-                  matchesSearch: rider.firstName.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                                rider.lastName.toLowerCase().includes(searchTerm.toLowerCase()),
-                  matchesGender: genderFilter === 'all' || rider.sex === genderFilter,
-                  matchesAge: age !== null && age >= minAgeFilter && age <= maxAgeFilter,
-                  matchesCategory: ageCategoryFilter === 'all' || (age !== null && category === ageCategoryFilter),
-                  // Vérification des valeurs par défaut
-                  isDefaultValues: {
-                    firstName: rider.firstName === '',
-                    lastName: rider.lastName === '',
-                    email: rider.email === '',
-                    birthDate: rider.birthDate === new Date().toISOString().split('T')[0],
-                    sex: rider.sex === Sex.MALE
-                  }
-                };
-                console.log(`Coureur ${index + 1}:`, diagnostic);
-                
-                // Alerte si coureur potentiellement problématique
-                if (!rider.firstName || !rider.lastName || !rider.email) {
-                  console.warn(`⚠️ Coureur ${index + 1} a des données manquantes:`, {
-                    firstName: rider.firstName,
-                    lastName: rider.lastName,
-                    email: rider.email
-                  });
-                }
-              });
+              // Affichage des coureurs filtrés
+              console.log('Coureurs filtrés:', sortedRidersForAdmin.length);
+              console.log('Coureurs visibles:', sortedRidersForAdmin.map(r => `${r.firstName} ${r.lastName}`));
               
-              // Diagnostic des filtres
-              console.log('=== DIAGNOSTIC DES FILTRES ===');
-              console.log('Filtres actifs:', {
-                searchTerm,
-                genderFilter,
-                ageCategoryFilter,
-                minAgeFilter,
-                maxAgeFilter
-              });
-              console.log('Valeurs par défaut des filtres:', {
-                minAgeFilter: 0,
-                maxAgeFilter: 100,
-                ageCategoryFilter: 'all',
-                genderFilter: 'all'
-              });
-              
-              // Diagnostic des catégories d'âge
-              console.log('=== CATÉGORIES D\'ÂGE SUPPORTÉES ===');
-              console.log('U15: ≤14 ans, U17: ≤16 ans, U19: ≤18 ans, U23: ≤22 ans, Senior: >22 ans');
-              
-              console.log('=== FIN DIAGNOSTIC ===');
+              console.log('=== FIN DIAGNOSTIC EFFECTIF ===');
             }}
             className="px-3 py-1 text-sm rounded-md bg-yellow-100 text-yellow-700 border border-yellow-300 hover:bg-yellow-200"
           >
-            🔍 Diagnostic Complet
+            🔍 Diagnostic Effectif
           </button>
           <button
             onClick={() => handleRosterSort('age')}
@@ -738,181 +622,407 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
     </div>
   );
 
-  // Rendu de l'onglet Planning de Saison
-  const renderSeasonPlanningTab = () => (
-    <div className="bg-white p-3 rounded-lg shadow-md">
-      <h3 className="text-lg font-semibold mb-4">Planning Previsionnel de la Saison</h3>
-      
-      {/* Contrôles de tri pour le planning */}
-      <div className="mb-4 flex flex-wrap gap-2">
-        <span className="text-xs font-medium text-gray-700 mr-2">Trier par:</span>
-        <button
-          onClick={() => handlePlanningSort('name')}
-          className={`px-3 py-1 text-xs rounded-md transition-colors ${
-            planningSortBy === 'name' 
-              ? 'bg-blue-100 text-blue-700 border border-blue-300' 
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          }`}
-        >
-          Nom {planningSortBy === 'name' && (planningSortDirection === 'asc' ? '↑' : '↓')}
-        </button>
-        <button
-          onClick={() => handlePlanningSort('raceDays')}
-          className={`px-3 py-1 text-xs rounded-md transition-colors ${
-            planningSortBy === 'raceDays' 
-              ? 'bg-blue-100 text-blue-700 border border-blue-300' 
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          }`}
-        >
-          Jours de Course {planningSortBy === 'raceDays' && (planningSortDirection === 'asc' ? '↑' : '↓')}
-        </button>
-      </div>
+  // Rendu de l'onglet Planning de Saison - Version avec monitoring de groupe
+  const renderSeasonPlanningTab = () => {
+    // Calcul des données de monitoring de groupe
+    const groupMonitoringData = useMemo(() => {
+      const eventSelections = raceEvents.map(event => ({
+        event,
+        selectedRiders: riders.filter(rider => event.selectedRiderIds?.includes(rider.id)),
+        selectedStaff: appState.staff.filter(staffMember => event.selectedStaffIds?.includes(staffMember.id))
+      }));
 
-      {/* Tableau du planning */}
-      <div className="overflow-x-auto">
-        <table className="min-w-full bg-white border border-gray-200 rounded-lg">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Coureur</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Categorie</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Jours de Course</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Evenements</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Forme</th>
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider border-b">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200">
-            {sortedRidersForPlanning.map(({ rider, raceDays, events }) => {
-              const { category, age } = getAgeCategory(rider.birthDate);
-              const forme = (rider as any).forme || 'Non defini';
+      // Calcul des blocs de course (événements consécutifs)
+      const courseBlocks = [];
+      const sortedEvents = [...raceEvents].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+      
+      let currentBlock = [];
+      for (let i = 0; i < sortedEvents.length; i++) {
+        const currentEvent = sortedEvents[i];
+        const nextEvent = sortedEvents[i + 1];
+        
+        currentBlock.push(currentEvent);
+        
+        // Si c'est le dernier événement ou s'il y a plus de 7 jours entre les événements
+        if (!nextEvent || 
+            (new Date(nextEvent.date).getTime() - new Date(currentEvent.endDate || currentEvent.date).getTime()) > 7 * 24 * 60 * 60 * 1000) {
+          if (currentBlock.length > 0) {
+            courseBlocks.push([...currentBlock]);
+            currentBlock = [];
+          }
+        }
+      }
+
+      return { eventSelections, courseBlocks };
+    }, [raceEvents, riders, appState.staff]);
+
+    return (
+      <div className="space-y-6">
+        {/* En-tête avec contrôles */}
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-xl font-semibold text-gray-800">Monitoring de Groupe - Planning Saison</h3>
+            <div className="flex gap-2">
+              <button
+                onClick={() => handlePlanningSort('name')}
+                className={`px-3 py-2 text-sm rounded-lg transition-colors ${
+                  planningSortBy === 'name' 
+                    ? 'bg-blue-500 text-white shadow-md' 
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                Nom {planningSortBy === 'name' && (planningSortDirection === 'asc' ? '↑' : '↓')}
+              </button>
+              <button
+                onClick={() => handlePlanningSort('raceDays')}
+                className={`px-3 py-2 text-sm rounded-lg transition-colors ${
+                  planningSortBy === 'raceDays' 
+                    ? 'bg-blue-500 text-white shadow-md' 
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                Charge {planningSortBy === 'raceDays' && (planningSortDirection === 'asc' ? '↑' : '↓')}
+              </button>
+            </div>
+          </div>
+
+          {/* Vue d'ensemble des sélections */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
+              <div className="text-2xl font-bold text-blue-600">{raceEvents.length}</div>
+              <p className="text-sm text-blue-700 font-medium">Événements planifiés</p>
+              <p className="text-xs text-blue-600">Total de la saison</p>
+            </div>
+            <div className="bg-gradient-to-r from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
+              <div className="text-2xl font-bold text-green-600">{groupMonitoringData.courseBlocks.length}</div>
+              <p className="text-sm text-green-700 font-medium">Blocs de course</p>
+              <p className="text-xs text-green-600">Périodes concentrées</p>
+            </div>
+            <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
+              <div className="text-2xl font-bold text-purple-600">
+                {Math.round(riders.length > 0 ? (raceEvents.reduce((total, event) => total + (event.selectedRiderIds?.length || 0), 0) / raceEvents.length) : 0)}
+              </div>
+              <p className="text-sm text-purple-700 font-medium">Sélection moyenne</p>
+              <p className="text-xs text-purple-600">Coureurs par événement</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Calendrier des sélections */}
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <h4 className="text-lg font-semibold text-gray-800 mb-4">Calendrier des Sélections</h4>
+          <div className="overflow-x-auto">
+            <table className="min-w-full">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="text-left py-3 px-4 font-medium text-gray-700">Événement</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-700">Date</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-700">Coureurs sélectionnés</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-700">Staff sélectionné</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-700">Bloc</th>
+                </tr>
+              </thead>
+              <tbody>
+                {groupMonitoringData.eventSelections.map(({ event, selectedRiders, selectedStaff }) => {
+                  const blockIndex = groupMonitoringData.courseBlocks.findIndex(block => 
+                    block.some(blockEvent => blockEvent.id === event.id)
+                  );
+                  const blockNumber = blockIndex + 1;
+                  
+                  return (
+                    <tr key={event.id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-3 px-4">
+                        <div className="font-medium text-gray-900">{event.name}</div>
+                        <div className="text-sm text-gray-500">{event.location}</div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="text-sm text-gray-900">
+                          {new Date(event.date).toLocaleDateString('fr-FR', { 
+                            day: '2-digit', 
+                            month: 'short' 
+                          })}
+                        </div>
+                        {event.endDate && event.endDate !== event.date && (
+                          <div className="text-xs text-gray-500">
+                            au {new Date(event.endDate).toLocaleDateString('fr-FR', { 
+                              day: '2-digit', 
+                              month: 'short' 
+                            })}
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex flex-wrap gap-1">
+                          {selectedRiders.slice(0, 3).map(rider => (
+                            <span key={rider.id} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-md">
+                              {rider.firstName} {rider.lastName.charAt(0)}.
+                            </span>
+                          ))}
+                          {selectedRiders.length > 3 && (
+                            <span className="text-xs text-blue-600 font-medium">+{selectedRiders.length - 3}</span>
+                          )}
+                          {selectedRiders.length === 0 && (
+                            <span className="text-xs text-gray-400 italic">Aucune sélection</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <div className="flex flex-wrap gap-1">
+                          {selectedStaff.slice(0, 2).map(staffMember => (
+                            <span key={staffMember.id} className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-md">
+                              {staffMember.firstName} {staffMember.lastName.charAt(0)}.
+                            </span>
+                          ))}
+                          {selectedStaff.length > 2 && (
+                            <span className="text-xs text-green-600 font-medium">+{selectedStaff.length - 2}</span>
+                          )}
+                          {selectedStaff.length === 0 && (
+                            <span className="text-xs text-gray-400 italic">Aucune sélection</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          blockNumber === 1 ? 'bg-red-100 text-red-700' :
+                          blockNumber === 2 ? 'bg-yellow-100 text-yellow-700' :
+                          blockNumber === 3 ? 'bg-green-100 text-green-700' :
+                          'bg-purple-100 text-purple-700'
+                        }`}>
+                          Bloc {blockNumber}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Vue des blocs de course */}
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <h4 className="text-lg font-semibold text-gray-800 mb-4">Répartition des Blocs de Course</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {groupMonitoringData.courseBlocks.map((block, blockIndex) => {
+              const blockNumber = blockIndex + 1;
+              const totalDays = block.reduce((total, event) => {
+                const startDate = new Date(event.date);
+                const endDate = new Date(event.endDate || event.date);
+                return total + Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
+              }, 0);
               
+              const uniqueRiders = new Set();
+              const uniqueStaff = new Set();
+              block.forEach(event => {
+                event.selectedRiderIds?.forEach(id => uniqueRiders.add(id));
+                event.selectedStaffIds?.forEach(id => uniqueStaff.add(id));
+              });
+
               return (
-                <tr key={rider.id} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="flex items-center">
-                      {rider.photoUrl ? (
-                        <img src={rider.photoUrl} alt={rider.firstName} className="w-8 h-8 rounded-full mr-3"/>
-                      ) : (
-                        <UserCircleIcon className="w-8 h-8 text-gray-400 mr-3"/>
-                      )}
-                      <div>
-                        <div className="text-sm font-medium text-gray-900">{rider.firstName} {rider.lastName}</div>
-                        <div className="text-sm text-gray-500">{age !== null ? `${age} ans` : 'Age inconnu'}</div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      {category}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      raceDays === 0 ? 'bg-gray-100 text-gray-600' :
-                      raceDays <= 2 ? 'bg-green-100 text-green-600' :
-                      raceDays <= 5 ? 'bg-yellow-100 text-yellow-600' :
-                      'bg-red-100 text-red-600'
+                <div key={blockIndex} className="border border-gray-200 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <h5 className="font-semibold text-gray-800">Bloc {blockNumber}</h5>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      blockNumber === 1 ? 'bg-red-100 text-red-700' :
+                      blockNumber === 2 ? 'bg-yellow-100 text-yellow-700' :
+                      blockNumber === 3 ? 'bg-green-100 text-green-700' :
+                      'bg-purple-100 text-purple-700'
                     }`}>
-                      {raceDays} jour(s)
+                      {block.length} événement{block.length > 1 ? 's' : ''}
                     </span>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
+                  </div>
+                  
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Période:</span>
+                      <span className="font-medium">
+                        {new Date(block[0].date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
+                        {block.length > 1 && (
+                          <> - {new Date(block[block.length - 1].endDate || block[block.length - 1].date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}</>
+                        )}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Durée:</span>
+                      <span className="font-medium">{totalDays} jour{totalDays > 1 ? 's' : ''}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Coureurs uniques:</span>
+                      <span className="font-medium">{uniqueRiders.size}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">Staff unique:</span>
+                      <span className="font-medium">{uniqueStaff.size}</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-3 pt-3 border-t border-gray-100">
+                    <div className="text-xs text-gray-500 mb-1">Événements:</div>
                     <div className="space-y-1">
-                      {events.slice(0, 2).map(event => (
-                        <div key={event.id} className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                      {block.map(event => (
+                        <div key={event.id} className="text-xs bg-gray-50 px-2 py-1 rounded">
                           {event.name}
                         </div>
                       ))}
-                      {events.length > 2 && (
-                        <p className="text-xs text-blue-600">+{events.length - 2} autres</p>
-                      )}
                     </div>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      forme === 'Excellente' ? 'text-green-600 bg-green-100' :
-                      forme === 'Bonne' ? 'text-green-700 bg-green-50' :
-                      forme === 'Moyenne' ? 'text-yellow-600 bg-yellow-100' :
-                      forme === 'Faible' ? 'text-red-600 bg-red-100' :
-                      'text-gray-600 bg-gray-100'
-                    }`}>
-                      {forme}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
-                    <div className="flex space-x-1">
-                      <ActionButton 
-                        onClick={() => openViewModal(rider)} 
-                        variant="info" 
-                        size="sm" 
-                        icon={<EyeIcon className="w-4 h-4"/>} 
-                        title="Voir"
-                      >
-                        <span className="sr-only">Voir</span>
-                      </ActionButton>
-                      <ActionButton 
-                        onClick={() => openEditModal(rider)} 
-                        variant="warning" 
-                        size="sm" 
-                        icon={<PencilIcon className="w-4 h-4"/>} 
-                        title="Modifier"
-                      >
-                        <span className="sr-only">Modifier</span>
-                      </ActionButton>
-                    </div>
-                  </td>
-                </tr>
+                  </div>
+                </div>
               );
             })}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Statistiques du planning */}
-      <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-          <h4 className="text-sm font-semibold text-blue-800 mb-2">Repartition des Charges</h4>
-          <div className="space-y-2">
-            <div className="flex justify-between text-xs">
-              <span>0-2 courses:</span>
-              <span className="font-medium">{sortedRidersForPlanning.filter(r => r.raceDays <= 2).length} coureurs</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span>3-5 courses:</span>
-              <span className="font-medium">{sortedRidersForPlanning.filter(r => r.raceDays >= 3 && r.raceDays <= 5).length} coureurs</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span>6+ courses:</span>
-              <span className="font-medium">{sortedRidersForPlanning.filter(r => r.raceDays >= 6).length} coureurs</span>
-            </div>
           </div>
         </div>
 
-        <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-          <h4 className="text-sm font-semibold text-green-800 mb-2">Coureurs les Plus Actifs</h4>
-          <div className="space-y-1">
-            {sortedRidersForPlanning
-              .filter(r => r.raceDays > 0)
-              .slice(0, 3)
-              .map(({ rider, raceDays }) => (
-                <div key={rider.id} className="flex justify-between text-xs">
-                  <span>{rider.firstName} {rider.lastName}</span>
-                  <span className="font-medium text-green-600">{raceDays} courses</span>
+        {/* Vue individuelle des coureurs avec monitoring */}
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <h4 className="text-lg font-semibold text-gray-800 mb-4">Monitoring Individuel des Coureurs</h4>
+          
+          {/* Vue simplifiée - Cartes au lieu de tableau */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            {sortedRidersForPlanning.map(({ rider, raceDays, events }) => {
+              const { category, age } = getAgeCategory(rider.birthDate);
+              const forme = (rider as any).forme || 'Non défini';
+              
+              // Calcul de la charge de travail (projection)
+              const chargeLevel = raceDays === 0 ? 'Aucune' : 
+                                raceDays <= 2 ? 'Légère' : 
+                                raceDays <= 5 ? 'Modérée' : 'Élevée';
+              
+              // Calcul des blocs de course pour ce coureur
+              const riderBlocks = groupMonitoringData.courseBlocks.filter(block => 
+                block.some(event => event.selectedRiderIds?.includes(rider.id))
+              );
+              
+              return (
+                <div key={rider.id} className="bg-gradient-to-br from-white to-gray-50 border border-gray-200 rounded-xl p-4 hover:shadow-lg transition-all duration-200">
+                  {/* En-tête du coureur */}
+                  <div className="flex items-center mb-3">
+                    {rider.photoUrl ? (
+                      <img src={rider.photoUrl} alt={rider.firstName} className="w-10 h-10 rounded-full mr-3 border-2 border-gray-200"/>
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center mr-3">
+                        <UserCircleIcon className="w-6 h-6 text-gray-400"/>
+                      </div>
+                    )}
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-gray-900 text-sm">{rider.firstName} {rider.lastName}</h4>
+                      <p className="text-xs text-gray-500">{category} • {age !== null ? `${age} ans` : 'Âge inconnu'}</p>
+                    </div>
+                  </div>
+
+                  {/* Projections principales */}
+                  <div className="space-y-3">
+                    {/* Charge de travail projetée */}
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-medium text-gray-600">Charge projetée:</span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
+                        chargeLevel === 'Aucune' ? 'bg-gray-100 text-gray-600' :
+                        chargeLevel === 'Légère' ? 'bg-green-100 text-green-700' :
+                        chargeLevel === 'Modérée' ? 'bg-yellow-100 text-yellow-700' :
+                        'bg-red-100 text-red-700'
+                      }`}>
+                        {chargeLevel} ({raceDays}j)
+                      </span>
+                    </div>
+
+                    {/* Blocs de course */}
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-medium text-gray-600">Blocs de course:</span>
+                      <span className="text-xs font-medium text-blue-600">{riderBlocks.length}</span>
+                    </div>
+
+                    {/* Événements planifiés */}
+                    <div>
+                      <span className="text-xs font-medium text-gray-600 block mb-1">Événements:</span>
+                      <div className="flex flex-wrap gap-1">
+                        {events.slice(0, 2).map(event => (
+                          <span key={event.id} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-md">
+                            {event.name.length > 15 ? event.name.substring(0, 15) + '...' : event.name}
+                          </span>
+                        ))}
+                        {events.length > 2 && (
+                          <span className="text-xs text-blue-600 font-medium">+{events.length - 2}</span>
+                        )}
+                        {events.length === 0 && (
+                          <span className="text-xs text-gray-400 italic">Aucun événement</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Forme actuelle */}
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-medium text-gray-600">Forme:</span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        forme === 'Excellente' ? 'bg-green-100 text-green-700' :
+                        forme === 'Bonne' ? 'bg-blue-100 text-blue-700' :
+                        forme === 'Moyenne' ? 'bg-yellow-100 text-yellow-700' :
+                        forme === 'Faible' ? 'bg-red-100 text-red-700' :
+                        'bg-gray-100 text-gray-600'
+                      }`}>
+                        {forme}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Actions rapides */}
+                  <div className="flex justify-end gap-1 mt-4 pt-3 border-t border-gray-100">
+                    <ActionButton 
+                      onClick={() => openViewModal(rider)} 
+                      variant="info" 
+                      size="sm" 
+                      icon={<EyeIcon className="w-3 h-3"/>} 
+                      title="Voir détails"
+                    />
+                    <ActionButton 
+                      onClick={() => openEditModal(rider)} 
+                      variant="warning" 
+                      size="sm" 
+                      icon={<PencilIcon className="w-3 h-3"/>} 
+                      title="Modifier"
+                    />
+                  </div>
                 </div>
-              ))}
+              );
+            })}
           </div>
-        </div>
 
-        <div className="bg-purple-50 p-4 rounded-lg border border-purple-200">
-          <h4 className="text-sm font-semibold text-purple-800 mb-2">Total des Evenements</h4>
-          <div className="text-2xl font-bold text-purple-600">
-            {sortedRidersForPlanning.reduce((total, r) => total + r.events.length, 0)}
+          {/* Statistiques de projection simplifiées */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
+              <div className="text-2xl font-bold text-blue-600">
+                {sortedRidersForPlanning.filter(r => r.raceDays <= 2).length}
+              </div>
+              <p className="text-sm text-blue-700 font-medium">Charge légère</p>
+              <p className="text-xs text-blue-600">0-2 événements</p>
+            </div>
+
+            <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 p-4 rounded-lg border border-yellow-200">
+              <div className="text-2xl font-bold text-yellow-600">
+                {sortedRidersForPlanning.filter(r => r.raceDays >= 3 && r.raceDays <= 5).length}
+              </div>
+              <p className="text-sm text-yellow-700 font-medium">Charge modérée</p>
+              <p className="text-xs text-yellow-600">3-5 événements</p>
+            </div>
+
+            <div className="bg-gradient-to-r from-red-50 to-red-100 p-4 rounded-lg border border-red-200">
+              <div className="text-2xl font-bold text-red-600">
+                {sortedRidersForPlanning.filter(r => r.raceDays >= 6).length}
+              </div>
+              <p className="text-sm text-red-700 font-medium">Charge élevée</p>
+              <p className="text-xs text-red-600">6+ événements</p>
+            </div>
+
+            <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
+              <div className="text-2xl font-bold text-purple-600">
+                {sortedRidersForPlanning.reduce((total, r) => total + r.events.length, 0)}
+              </div>
+              <p className="text-sm text-purple-700 font-medium">Total événements</p>
+              <p className="text-xs text-purple-600">Planifiés</p>
+            </div>
           </div>
-          <p className="text-xs text-purple-600 mt-1">evenements planifies</p>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // Algorithme de profilage Coggan Expert - Note générale = moyenne simple de toutes les données
   const calculateCogganProfileScore = (rider: Rider) => {
@@ -952,6 +1062,23 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
       power12min: 5.88, // 5.88 W/kg - FTP ultime (Elite/Hero)
       power20min: 5.88, // 5.88 W/kg - Endurance critique ultime (Elite/Hero)
       criticalPower: 5.35 // 5.35 W/kg - CP ultime (Elite/Hero)
+    };
+    
+    // Références de résistance basées sur les données physiologiques réelles
+    const resistanceReferences = {
+      // Niveaux de performance par durée (en % de déficit par rapport à l'élite)
+      elite: {
+        power20min: -3,      // -3% (97% de l'élite)
+        criticalPower: -2    // -2% (98% de l'élite)
+      },
+      amateur: {
+        power20min: -6,      // -6% (94% de l'élite)
+        criticalPower: -5    // -5% (95% de l'élite)
+      },
+      beginner: {
+        power20min: -12,     // -12% (88% de l'élite)
+        criticalPower: -10   // -10% (90% de l'élite)
+      }
     };
     
     // Références pour les watts bruts (sprint/rouleur) - Calibrées sur l'échelle Elite/Hero
@@ -1014,8 +1141,61 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
     const rouleurScore = getScore(pprNotes.rouleur, 
       Math.round((automaticScores.power12min + automaticScores.power20min + automaticScores.criticalPower) / 3));
     
-    const resistanceScore = getScore(pprNotes.fatigue, 
-      Math.round((automaticScores.power20min + automaticScores.criticalPower) / 2));
+    // Calcul optimisé de la note de résistance basé sur les données physiologiques
+    const calculateResistanceScore = () => {
+      // Si note PPR fatigue disponible, l'utiliser directement
+      if (pprNotes.fatigue > 0) {
+        return pprNotes.fatigue;
+      }
+      
+      // Calcul basé sur les données de puissance et références physiologiques
+      const power20minWkg = power20min;
+      const criticalPowerWkg = criticalPower;
+      
+      if (!power20minWkg && !criticalPowerWkg) {
+        return 0; // Pas de données de résistance
+      }
+      
+      // Calcul du score de résistance basé sur la performance relative
+      let resistanceScore = 0;
+      let dataPoints = 0;
+      
+      if (power20minWkg) {
+        // Score basé sur 20min (FTP) - 60% du score total
+        const power20minRatio = power20minWkg / cogganUltimate.power20min;
+        const power20minScore = Math.round(power20minRatio * 100);
+        resistanceScore += power20minScore * 0.6;
+        dataPoints++;
+      }
+      
+      if (criticalPowerWkg) {
+        // Score basé sur CP - 40% du score total
+        const criticalPowerRatio = criticalPowerWkg / cogganUltimate.criticalPower;
+        const criticalPowerScore = Math.round(criticalPowerRatio * 100);
+        resistanceScore += criticalPowerScore * 0.4;
+        dataPoints++;
+      }
+      
+      // Normalisation si une seule donnée disponible
+      if (dataPoints === 1) {
+        resistanceScore = Math.round(resistanceScore / (dataPoints === 1 ? 0.6 : 0.4));
+      }
+      
+      // Bonus de résistance basé sur la cohérence des données
+      if (dataPoints === 2) {
+        const consistencyBonus = Math.abs(power20minWkg - criticalPowerWkg) < 0.5 ? 5 : 0;
+        resistanceScore += consistencyBonus;
+      }
+      
+      // Bonus pour les athlètes avec une excellente résistance (données cohérentes et élevées)
+      if (resistanceScore >= 80 && dataPoints === 2) {
+        resistanceScore += 3; // Bonus élite
+      }
+      
+      return Math.min(100, Math.max(0, resistanceScore));
+    };
+    
+    const resistanceScore = calculateResistanceScore();
     
     // Note générale : PPR si disponible, sinon moyenne automatique
     const automaticGeneralScore = Math.round(
@@ -1046,38 +1226,14 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
 
     return (
       <div className="space-y-6">
-        {/* Métriques globales */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Métriques globales simplifiées */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-gradient-to-r from-blue-500 to-blue-600 p-4 rounded-lg shadow-lg text-white">
             <div className="text-center">
               <h4 className="text-sm font-medium opacity-90">Total Effectif</h4>
               <p className="text-3xl font-bold">{riders.length}</p>
             </div>
           </div>
-          
-                      <div className="bg-gradient-to-r from-green-500 to-green-600 p-4 rounded-lg shadow-lg text-white">
-              <div className="text-center">
-                <h4 className="text-sm font-medium opacity-90">Elite/Hero (70+ pts)</h4>
-                <p className="text-3xl font-bold">
-                  {riders.filter(r => {
-                    const profile = calculateCogganProfileScore(r);
-                    return profile.generalScore >= 70;
-                  }).length}
-                </p>
-              </div>
-            </div>
-            
-            <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 p-4 rounded-lg shadow-lg text-white">
-              <div className="text-center">
-                <h4 className="text-sm font-medium opacity-90">Pro (50-69)</h4>
-                <p className="text-3xl font-bold">
-                  {riders.filter(r => {
-                    const profile = calculateCogganProfileScore(r);
-                    return profile.generalScore >= 50 && profile.generalScore < 70;
-                  }).length}
-                </p>
-              </div>
-            </div>
           
           <div className="bg-gradient-to-r from-purple-500 to-purple-600 p-4 rounded-lg shadow-lg text-white">
             <div className="text-center">

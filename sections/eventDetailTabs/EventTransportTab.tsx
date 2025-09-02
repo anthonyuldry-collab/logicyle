@@ -759,7 +759,277 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
             className="space-y-4 max-h-[85vh] overflow-y-auto p-2 -m-2"
           >
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {/* Contenu du formulaire */}
+              {/* Direction */}
+              <div>
+                <label htmlFor="direction" className="block text-sm font-medium text-gray-700">
+                  Direction
+                </label>
+                <select
+                  name="direction"
+                  id="direction"
+                  value={(currentTransportLeg as EventTransportLeg).direction}
+                  onChange={handleInputChange}
+                  className={lightSelectClasses}
+                >
+                  {(Object.values(TransportDirection) as TransportDirection[]).map((dir) => (
+                    <option key={dir} value={dir}>
+                      {dir}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Mode de transport */}
+              <div>
+                <label htmlFor="mode" className="block text-sm font-medium text-gray-700">
+                  Mode de transport
+                </label>
+                <select
+                  name="mode"
+                  id="mode"
+                  value={(currentTransportLeg as EventTransportLeg).mode}
+                  onChange={handleInputChange}
+                  className={lightSelectClasses}
+                >
+                  {(Object.values(TransportMode) as TransportMode[]).map((mode) => (
+                    <option key={mode} value={mode}>
+                      {mode}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            {/* Véhicule assigné */}
+            <div>
+              <label htmlFor="assignedVehicleId" className="block text-sm font-medium text-gray-700">
+                Véhicule assigné
+              </label>
+              <select
+                name="assignedVehicleId"
+                id="assignedVehicleId"
+                value={(currentTransportLeg as EventTransportLeg).assignedVehicleId || ""}
+                onChange={handleInputChange}
+                className={lightSelectClasses}
+              >
+                <option value="">Sélectionner un véhicule...</option>
+                <option value="perso">Véhicule personnel</option>
+                {appState.vehicles.map((vehicle) => {
+                  const availability = checkVehicleAvailability(
+                    vehicle,
+                    (currentTransportLeg as EventTransportLeg).departureDate,
+                    (currentTransportLeg as EventTransportLeg).arrivalDate,
+                    appState.eventTransportLegs,
+                    (currentTransportLeg as EventTransportLeg).id
+                  );
+                  return (
+                    <option
+                      key={vehicle.id}
+                      value={vehicle.id}
+                      disabled={availability.status !== "available"}
+                    >
+                      {vehicle.name} {availability.reason}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+
+            {/* Dates et lieux */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Départ
+                </label>
+                <input
+                  type="date"
+                  name="departureDate"
+                  value={(currentTransportLeg as EventTransportLeg).departureDate || ""}
+                  onChange={handleInputChange}
+                  className={lightInputClasses}
+                />
+                <input
+                  type="time"
+                  name="departureTime"
+                  value={(currentTransportLeg as EventTransportLeg).departureTime || ""}
+                  onChange={handleInputChange}
+                  className={lightInputClasses}
+                />
+                <input
+                  type="text"
+                  name="departureLocation"
+                  value={(currentTransportLeg as EventTransportLeg).departureLocation || ""}
+                  onChange={handleInputChange}
+                  placeholder="Lieu de départ"
+                  className={lightInputClasses}
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Arrivée
+                </label>
+                <input
+                  type="date"
+                  name="arrivalDate"
+                  value={(currentTransportLeg as EventTransportLeg).arrivalDate || ""}
+                  onChange={handleInputChange}
+                  className={lightInputClasses}
+                />
+                <input
+                  type="time"
+                  name="arrivalTime"
+                  value={(currentTransportLeg as EventTransportLeg).arrivalTime || ""}
+                  onChange={handleInputChange}
+                  className={lightInputClasses}
+                />
+                <input
+                  type="text"
+                  name="arrivalLocation"
+                  value={(currentTransportLeg as EventTransportLeg).arrivalLocation || ""}
+                  onChange={handleInputChange}
+                  placeholder="Lieu d'arrivée"
+                  className={lightInputClasses}
+                />
+              </div>
+            </div>
+
+            {/* Sélection des occupants */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Occupants
+              </label>
+              <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-md p-3 bg-gray-50">
+                <div className="space-y-2">
+                  {allAvailablePeople.map((person) => (
+                    <label
+                      key={`${person.id}-${person.type}`}
+                      className="flex items-center space-x-2 text-sm"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={(currentTransportLeg as EventTransportLeg).occupants?.some(
+                          (occ) => occ.id === person.id && occ.type === person.type
+                        ) || false}
+                        onChange={() => handleOccupantChange(person.id, person.type)}
+                        className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                      <span className={person.isParticipant ? "font-semibold text-blue-700" : "text-gray-600"}>
+                        {person.name} ({person.type === "rider" ? "Coureur" : "Staff"})
+                        {person.isParticipant && " - Participant"}
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Étapes intermédiaires */}
+            <div>
+              <div className="flex justify-between items-center mb-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Étapes intermédiaires
+                </label>
+                <ActionButton
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={handleAddStop}
+                >
+                  Ajouter une étape
+                </ActionButton>
+              </div>
+              <div className="space-y-2">
+                {(currentTransportLeg as EventTransportLeg).intermediateStops?.map((stop, index) => (
+                  <div key={stop.id} className="border border-gray-300 rounded-md p-3 bg-gray-50">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
+                      <input
+                        type="text"
+                        value={stop.location}
+                        onChange={(e) => handleStopChange(index, "location", e.target.value)}
+                        placeholder="Lieu"
+                        className={lightInputClasses}
+                      />
+                      <input
+                        type="date"
+                        value={stop.date}
+                        onChange={(e) => handleStopChange(index, "date", e.target.value)}
+                        className={lightInputClasses}
+                      />
+                      <input
+                        type="time"
+                        value={stop.time}
+                        onChange={(e) => handleStopChange(index, "time", e.target.value)}
+                        className={lightInputClasses}
+                      />
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <select
+                        value={stop.stopType}
+                        onChange={(e) => handleStopChange(index, "stopType", e.target.value)}
+                        className={lightSelectClasses}
+                      >
+                        <option value="waypoint">Étape</option>
+                        <option value="pickup">Prise en charge</option>
+                        <option value="dropoff">Dépose</option>
+                      </select>
+                      <ActionButton
+                        type="button"
+                        variant="danger"
+                        size="sm"
+                        onClick={() => handleRemoveStop(stop.id)}
+                      >
+                        Supprimer
+                      </ActionButton>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Détails */}
+            <div>
+              <label htmlFor="details" className="block text-sm font-medium text-gray-700">
+                Détails (N° vol, répartition, prix, etc.)
+              </label>
+              <textarea
+                name="details"
+                id="details"
+                value={(currentTransportLeg as EventTransportLeg).details || ""}
+                onChange={handleInputChange}
+                rows={3}
+                className={lightInputClasses}
+              />
+            </div>
+
+            {/* Vol spécial Aurore */}
+            {(currentTransportLeg as EventTransportLeg).mode === TransportMode.VOL && (
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  name="isAuroreFlight"
+                  id="isAuroreFlight"
+                  checked={(currentTransportLeg as EventTransportLeg).isAuroreFlight || false}
+                  onChange={handleInputChange}
+                  className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                />
+                <label htmlFor="isAuroreFlight" className="ml-2 block text-sm text-gray-900">
+                  Ceci est le vol spécial d'Aurore (nécessite infos retour/prix)
+                </label>
+              </div>
+            )}
+
+            {/* Boutons d'action */}
+            <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200">
+              <ActionButton
+                type="button"
+                variant="secondary"
+                onClick={() => setIsModalOpen(false)}
+              >
+                Annuler
+              </ActionButton>
+              <ActionButton type="submit">
+                {isEditing ? "Sauvegarder" : "Ajouter"}
+              </ActionButton>
             </div>
           </form>
         </Modal>
