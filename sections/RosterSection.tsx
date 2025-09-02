@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   UserCircleIcon, 
   PencilIcon, 
@@ -58,6 +58,11 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
   const [planningSortDirection, setPlanningSortDirection] = useState<'asc' | 'desc'>('asc');
   const [planningExpanded, setPlanningExpanded] = useState(true);
   const [localRaceEvents, setLocalRaceEvents] = useState(appState.raceEvents || []);
+
+  // Synchroniser l'état local avec l'état global
+  useEffect(() => {
+    setLocalRaceEvents(appState.raceEvents || []);
+  }, [appState.raceEvents]);
   
   // États pour la gestion des modales
   const [selectedRider, setSelectedRider] = useState<Rider | null>(null);
@@ -683,6 +688,16 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
     // Fonction pour ajouter automatiquement un athlète à un événement avec un statut
     const addRiderToEvent = async (eventId: string, riderId: string, status: RiderEventStatus = RiderEventStatus.TITULAIRE) => {
       try {
+        // Vérifier si l'athlète est déjà sélectionné pour cet événement
+        const existingSelection = appState.riderEventSelections?.find(
+          sel => sel.eventId === eventId && sel.riderId === riderId
+        );
+        
+        if (existingSelection) {
+          console.log(`⚠️ Athlète ${riderId} déjà sélectionné pour l'événement ${eventId}`);
+          return;
+        }
+
         const newSelection: RiderEventSelection = {
           id: `${eventId}_${riderId}_${Date.now()}`,
           eventId: eventId,
@@ -706,8 +721,12 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
           console.warn('⚠️ Aucun teamId actif, sauvegarde locale uniquement');
         }
 
-        // Mettre à jour l'état local
+        // Mettre à jour l'état local des sélections
         const updatedSelections = [...(appState.riderEventSelections || []), newSelection];
+        // Mettre à jour l'état global des sélections
+        if (appState.setRiderEventSelections) {
+          appState.setRiderEventSelections(updatedSelections);
+        }
         // Mettre à jour l'événement seulement si c'est un titulaire
         if (status === RiderEventStatus.TITULAIRE) {
           const event = localRaceEvents.find(e => e.id === eventId);
@@ -750,6 +769,14 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
             console.log('✅ Statut de sélection mis à jour dans Firebase');
           } else {
             console.warn('⚠️ Aucun teamId actif, sauvegarde locale uniquement');
+          }
+
+          // Mettre à jour l'état global des sélections
+          const updatedSelections = appState.riderEventSelections?.map(sel =>
+            sel.id === existingSelection.id ? updatedSelection : sel
+          ) || [];
+          if (appState.setRiderEventSelections) {
+            appState.setRiderEventSelections(updatedSelections);
           }
 
           // Mettre à jour l'événement selon le nouveau statut
@@ -803,6 +830,14 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
             console.log('✅ Sélection d\'athlète supprimée de Firebase');
           } else {
             console.warn('⚠️ Aucun teamId actif, suppression locale uniquement');
+          }
+
+          // Mettre à jour l'état global des sélections
+          const updatedSelections = appState.riderEventSelections?.filter(
+            sel => sel.id !== existingSelection.id
+          ) || [];
+          if (appState.setRiderEventSelections) {
+            appState.setRiderEventSelections(updatedSelections);
           }
 
           // Mettre à jour l'événement en retirant l'athlète seulement s'il était titulaire
@@ -899,8 +934,8 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                   getRiderEventStatus(event.id, rider.id) === RiderEventStatus.REMPLACANT
                 );
                 const totalSelections = titulaires.length + remplacants.length;
-
-                return (
+              
+              return (
                   <div key={event.id} className="p-4 bg-gray-50 rounded-lg border border-gray-200">
                     <div className="flex justify-between items-start mb-3">
                       <div>
@@ -916,11 +951,11 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                       <div className="text-right">
                         <div className="text-sm font-semibold text-gray-700">
                           {totalSelections} sélectionné{totalSelections > 1 ? 's' : ''}
-                        </div>
+                    </div>
                         <div className="text-xs text-gray-500">
                           {titulaires.length} titulaire{titulaires.length > 1 ? 's' : ''} • {remplacants.length} remplaçant{remplacants.length > 1 ? 's' : ''}
                         </div>
-                      </div>
+                    </div>
                     </div>
                     
                     <div className="space-y-3">
@@ -942,9 +977,14 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                                       // Si l'athlète était remplaçant, on le retire d'abord
                                       if (isRemplacant) {
                                         removeRiderFromEvent(event.id, rider.id);
+                                        // Attendre un peu pour que la suppression soit terminée
+                                        setTimeout(() => {
+                                          addRiderToEvent(event.id, rider.id, RiderEventStatus.TITULAIRE);
+                                        }, 100);
+                                      } else {
+                                        // Ajouter directement comme titulaire
+                                        addRiderToEvent(event.id, rider.id, RiderEventStatus.TITULAIRE);
                                       }
-                                      // Puis on l'ajoute comme titulaire
-                                      addRiderToEvent(event.id, rider.id, RiderEventStatus.TITULAIRE);
                                     } else {
                                       // Si on décoche, on retire l'athlète
                                       if (isTitulaire || isRemplacant) {
@@ -958,10 +998,10 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                                   {rider.firstName} {rider.lastName}
                                 </span>
                               </label>
-                            );
-                          })}
+              );
+            })}
                         </div>
-                      </div>
+      </div>
 
                       {/* Remplaçants */}
                       <div>
@@ -981,9 +1021,14 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                                       // Si l'athlète était titulaire, on le retire d'abord
                                       if (isTitulaire) {
                                         removeRiderFromEvent(event.id, rider.id);
+                                        // Attendre un peu pour que la suppression soit terminée
+                                        setTimeout(() => {
+                                          addRiderToEvent(event.id, rider.id, RiderEventStatus.REMPLACANT);
+                                        }, 100);
+                                      } else {
+                                        // Ajouter directement comme remplaçant
+                                        addRiderToEvent(event.id, rider.id, RiderEventStatus.REMPLACANT);
                                       }
-                                      // Puis on l'ajoute comme remplaçant
-                                      addRiderToEvent(event.id, rider.id, RiderEventStatus.REMPLACANT);
                                     } else {
                                       // Si on décoche, on retire l'athlète
                                       if (isTitulaire || isRemplacant) {
@@ -999,16 +1044,16 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                               </label>
                             );
                           })}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+            </div>
+            </div>
+            </div>
+          </div>
                 );
               })
             ) : (
               <p className="text-center text-gray-500 italic py-8">Aucun événement à venir.</p>
             )}
-            </div>
+        </div>
           ) : (
             // Vue réduite - seulement nom et date
             <div className="space-y-2">
@@ -1035,16 +1080,16 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                             year: 'numeric' 
                           })}
                         </p>
-                      </div>
+                </div>
                       <div className="text-right">
                         <div className="text-sm font-semibold text-gray-700">
                           {totalSelections} sélectionné{totalSelections > 1 ? 's' : ''}
-                        </div>
+          </div>
                         <div className="text-xs text-gray-500">
                           {titulaires.length}T • {remplacants.length}R
-                        </div>
-                      </div>
-                    </div>
+        </div>
+          </div>
+        </div>
                   );
                 })
               ) : (
@@ -1052,9 +1097,9 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
               )}
             </div>
           )}
-        </div>
       </div>
-    );
+    </div>
+  );
   };
 
   // Algorithme de profilage Coggan Expert - Note générale = moyenne simple de toutes les données
