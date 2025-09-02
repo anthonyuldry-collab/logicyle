@@ -536,26 +536,29 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
         console.warn('⚠️ Aucun teamId actif, sauvegarde locale uniquement');
       }
 
-      // Mettre à jour l'état local
-    setEventTransportLegs((prevLegs) => {
-      const otherLegs = prevLegs.filter((leg) => leg.eventId !== eventId);
-      const legsForThisEvent = prevLegs.filter(
-        (leg) => leg.eventId === eventId
-      );
-      let updatedLegsForEvent;
+      // Mettre à jour l'état local APRÈS la sauvegarde réussie
+      setEventTransportLegs((prevLegs) => {
       if (isEditing) {
-        updatedLegsForEvent = legsForThisEvent.map((leg) =>
+          // Mode édition : remplacer le trajet existant
+          return prevLegs.map((leg) =>
           leg.id === legToSave.id ? legToSave : leg
         );
       } else {
-        updatedLegsForEvent = [...legsForThisEvent, legToSave];
+          // Mode création : ajouter le nouveau trajet
+          return [...prevLegs, legToSave];
       }
+      });
 
       // Update budget items after the state update
-      setTimeout(() => updateCostsForEvent(updatedLegsForEvent), 0);
-
-      return [...otherLegs, ...updatedLegsForEvent];
-    });
+      setTimeout(() => {
+        const legsForThisEvent = appState.eventTransportLegs.filter(
+          (leg) => leg.eventId === eventId
+        );
+        const updatedLegsForEvent = isEditing 
+          ? legsForThisEvent.map((leg) => leg.id === legToSave.id ? legToSave : leg)
+          : [...legsForThisEvent, legToSave];
+        updateCostsForEvent(updatedLegsForEvent);
+      }, 0);
 
     setIsModalOpen(false);
     } catch (error) {
@@ -893,106 +896,7 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
         </ActionButton>
       </div>
 
-      {/* Vue d'ensemble stratégique - Centre de pilotage */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6 mb-6">
-        <h4 className="text-lg font-semibold text-blue-800 mb-4 flex items-center">
-          🎯 Centre de Pilotage Stratégique
-        </h4>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-          {/* Statistiques générales */}
-          <div className="bg-white p-4 rounded-lg border border-blue-100">
-            <h5 className="font-semibold text-gray-800 mb-2">📊 Statistiques</h5>
-            <div className="space-y-1 text-sm">
-              <div className="flex justify-between">
-                <span>Trajets aller:</span>
-                <span className="font-medium">{allerLegs.length}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Trajets retour:</span>
-                <span className="font-medium">{retourLegs.length}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Trajets jour J:</span>
-                <span className="font-medium">{jourJLegs.length}</span>
-              </div>
-            </div>
-          </div>
 
-          {/* Alertes critiques */}
-          <div className="bg-white p-4 rounded-lg border border-red-100">
-            <h5 className="font-semibold text-red-800 mb-2">🚨 Alertes Critiques</h5>
-            <div className="space-y-1 text-sm">
-              {transportLegsForEvent.some(leg => 
-                leg.intermediateStops?.some(stop => stop.isTimingCritical)
-              ) ? (
-                <div className="text-red-600">⏰ Horaires critiques détectés</div>
-              ) : (
-                <div className="text-green-600">✅ Aucun horaire critique</div>
-              )}
-              {transportLegsForEvent.some(leg => 
-                leg.intermediateStops?.some(stop => stop.isPickupRequired)
-              ) ? (
-                <div className="text-orange-600">🚨 Récupérations obligatoires</div>
-              ) : (
-                <div className="text-gray-500">Aucune récupération obligatoire</div>
-              )}
-            </div>
-          </div>
-
-          {/* Récapitulatif des étapes */}
-          <div className="bg-white p-4 rounded-lg border border-green-100">
-            <h5 className="font-semibold text-green-800 mb-2">📍 Étapes Planifiées</h5>
-            <div className="space-y-1 text-sm">
-              {transportLegsForEvent.reduce((total, leg) => 
-                total + (leg.intermediateStops?.length || 0), 0
-              ) > 0 ? (
-                <div className="text-green-600">
-                  ✅ {transportLegsForEvent.reduce((total, leg) => 
-                    total + (leg.intermediateStops?.length || 0), 0
-                  )} étape(s) planifiée(s)
-                </div>
-              ) : (
-                <div className="text-gray-500">Aucune étape planifiée</div>
-              )}
-              {transportLegsForEvent.some(leg => 
-                leg.intermediateStops?.some(stop => stop.reminderMinutes && stop.reminderMinutes > 0)
-              ) && (
-                <div className="text-blue-600">🔔 Rappels configurés</div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Liste des récupérations/déposes obligatoires */}
-        {transportLegsForEvent.some(leg => 
-          leg.intermediateStops?.some(stop => stop.isPickupRequired || stop.isDropoffRequired)
-        ) && (
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-            <h5 className="font-semibold text-yellow-800 mb-2">⚠️ Actions Obligatoires</h5>
-            <div className="space-y-2">
-              {transportLegsForEvent.map(leg => 
-                leg.intermediateStops?.map(stop => 
-                  (stop.isPickupRequired || stop.isDropoffRequired) && (
-                    <div key={stop.id} className="flex items-center gap-2 text-sm">
-                      <span className={`px-2 py-1 rounded text-xs ${
-                        stop.isPickupRequired ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
-                      }`}>
-                        {stop.isPickupRequired ? '🚨 RÉCUPÉRATION' : '🚨 DÉPOSE'}
-                      </span>
-                      <span className="font-medium">{stop.location}</span>
-                      <span className="text-gray-500">- {stop.time}</span>
-                      {stop.contactPerson && (
-                        <span className="text-blue-600">({stop.contactPerson})</span>
-                      )}
-                    </div>
-                  )
-                )
-              )}
-            </div>
-          </div>
-        )}
-      </div>
 
       {renderTransportTable(allerLegs, "Trajets Aller")}
       {renderTransportTable(jourJLegs, "Transport Jour J")}

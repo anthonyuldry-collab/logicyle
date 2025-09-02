@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { RaceEvent, RaceInformation, EventRadioEquipment, EventRadioAssignment, EventType, Discipline } from '../../types';
+import { RaceEvent, RaceInformation, EventRadioEquipment, EventRadioAssignment, EventType, Discipline, AppState } from '../../types';
+import { saveData, deleteData } from '../../services/firebaseService';
 import ActionButton from '../../components/ActionButton';
 import Modal from '../../components/Modal'; 
 import PlusCircleIcon from '../../components/icons/PlusCircleIcon';
@@ -15,6 +16,7 @@ interface EventInfoTabProps {
   setRadioEquipment: (equipment: EventRadioEquipment | ((prev: EventRadioEquipment | undefined) => EventRadioEquipment)) => void;
   radioAssignments: EventRadioAssignment[];
   setRadioAssignments: React.Dispatch<React.SetStateAction<EventRadioAssignment[]>>;
+  appState: AppState;
 }
 
 const initialAssignmentFormStateFactory = (eventId: string): Omit<EventRadioAssignment, 'id'> => ({
@@ -32,11 +34,12 @@ const getCategoryLabel = (id: string = ''): string => {
 const EventInfoTab: React.FC<EventInfoTabProps> = ({ 
     event, 
     updateEvent, 
-    eventId, 
+    eventId,
     radioEquipment: initialRadioEquipment, // Renamed for clarity
     setRadioEquipment, 
     radioAssignments, 
-    setRadioAssignments 
+    setRadioAssignments,
+    appState
 }) => {
   const [formData, setFormData] = useState<RaceEvent>(event);
   const [isEditing, setIsEditing] = useState(false);
@@ -84,7 +87,7 @@ const EventInfoTab: React.FC<EventInfoTabProps> = ({
     }
   };
 
-  const handleRadioEquipmentChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleRadioEquipmentChange = async (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value, type } = e.target;
     const checked = (e.target as HTMLInputElement).checked;
     
@@ -99,11 +102,28 @@ const EventInfoTab: React.FC<EventInfoTabProps> = ({
         id: localRadioEquipment.id || `${eventId}_radioequip_${Date.now()}` // Ensure id exists
     };
 
-    // Update the local state
-    setLocalRadioEquipment(updatedEquip);
+    try {
+      // Sauvegarder l'équipement radio dans Firebase si on a un teamId
+      if (appState.activeTeamId) {
+        await saveData(
+          appState.activeTeamId,
+          "eventRadioEquipment",
+          updatedEquip
+        );
+        console.log('✅ Équipement radio sauvegardé dans Firebase pour l\'événement:', eventId);
+      } else {
+        console.warn('⚠️ Aucun teamId actif, sauvegarde locale uniquement');
+      }
 
-    // Then, update the parent state (which will update appState)
-    setRadioEquipment(updatedEquip);
+      // Update the local state
+      setLocalRadioEquipment(updatedEquip);
+
+      // Then, update the parent state (which will update appState)
+      setRadioEquipment(updatedEquip);
+    } catch (error) {
+      console.error('❌ Erreur lors de la sauvegarde de l\'équipement radio:', error);
+      alert('Erreur lors de la sauvegarde de l\'équipement radio. Veuillez réessayer.');
+    }
   };
   
   const handleAssignmentInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -111,7 +131,7 @@ const EventInfoTab: React.FC<EventInfoTabProps> = ({
     setCurrentAssignment(prev => ({ ...prev, [name]: value, eventId }));
   };
 
-  const handleAssignmentSubmit = (e: React.FormEvent) => {
+  const handleAssignmentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const assignmentToSave : EventRadioAssignment = {
         ...(currentAssignment as Omit<EventRadioAssignment, 'id'>),
@@ -119,16 +139,35 @@ const EventInfoTab: React.FC<EventInfoTabProps> = ({
         id: (currentAssignment as EventRadioAssignment).id || Date.now().toString() + Math.random().toString(36).substring(2,9),
     };
 
-    setRadioAssignments(prevAssignments => { 
-        if (isEditingAssignment) {
-            return prevAssignments.map(a => a.id === assignmentToSave.id ? assignmentToSave : a);
-        } else {
-            return [...prevAssignments, assignmentToSave];
-        }
-    });
-    setIsAssignmentModalOpen(false);
-    setCurrentAssignment(initialAssignmentFormStateFactory(eventId));
-    setIsEditingAssignment(false);
+    try {
+      // Sauvegarder l'assignation radio dans Firebase si on a un teamId
+      if (appState.activeTeamId) {
+        const savedId = await saveData(
+          appState.activeTeamId,
+          "eventRadioAssignments",
+          assignmentToSave
+        );
+        assignmentToSave.id = savedId;
+        console.log('✅ Assignation radio sauvegardée dans Firebase avec l\'ID:', savedId);
+      } else {
+        console.warn('⚠️ Aucun teamId actif, sauvegarde locale uniquement');
+      }
+
+      // Mettre à jour l'état local APRÈS la sauvegarde réussie
+      setRadioAssignments(prevAssignments => { 
+          if (isEditingAssignment) {
+              return prevAssignments.map(a => a.id === assignmentToSave.id ? assignmentToSave : a);
+          } else {
+              return [...prevAssignments, assignmentToSave];
+          }
+      });
+      setIsAssignmentModalOpen(false);
+      setCurrentAssignment(initialAssignmentFormStateFactory(eventId));
+      setIsEditingAssignment(false);
+    } catch (error) {
+      console.error('❌ Erreur lors de la sauvegarde de l\'assignation radio:', error);
+      alert('Erreur lors de la sauvegarde de l\'assignation radio. Veuillez réessayer.');
+    }
   };
 
   const openAddAssignmentModal = () => {
@@ -143,18 +182,58 @@ const EventInfoTab: React.FC<EventInfoTabProps> = ({
     setIsAssignmentModalOpen(true);
   };
 
-  const handleDeleteAssignment = (assignmentId: string) => {
+  const handleDeleteAssignment = async (assignmentId: string) => {
     if (window.confirm("Êtes-vous sûr de vouloir supprimer cette assignation radio ?")) {
-      setRadioAssignments(prevAssignments => prevAssignments.filter(a => a.id !== assignmentId));
+      try {
+        // Supprimer de Firebase si on a un teamId
+        if (appState.activeTeamId) {
+          await deleteData(
+            appState.activeTeamId,
+            "eventRadioAssignments",
+            assignmentId
+          );
+          console.log('✅ Assignation radio supprimée de Firebase avec l\'ID:', assignmentId);
+        } else {
+          console.warn('⚠️ Aucun teamId actif, suppression locale uniquement');
+        }
+
+        // Mettre à jour l'état local APRÈS la suppression réussie
+        setRadioAssignments(prevAssignments => prevAssignments.filter(a => a.id !== assignmentId));
+      } catch (error) {
+        console.error('❌ Erreur lors de la suppression de l\'assignation radio:', error);
+        alert('Erreur lors de la suppression de l\'assignation radio. Veuillez réessayer.');
+      }
     }
   };
 
 
-  const handleSaveAll = () => {
-    updateEvent(formData); 
-    // Radio equipment is already saved by its own handler.
-    // Radio assignments are saved by their modal.
-    setIsEditing(false);
+  const handleSaveAll = async () => {
+    try {
+      // Sauvegarder les informations de course dans Firebase si on a un teamId
+      if (appState.activeTeamId) {
+        const eventToSave = {
+          ...formData,
+          id: eventId
+        };
+        await saveData(
+          appState.activeTeamId,
+          "raceEvents",
+          eventToSave
+        );
+        console.log('✅ Informations de course sauvegardées dans Firebase pour l\'événement:', eventId);
+      } else {
+        console.warn('⚠️ Aucun teamId actif, sauvegarde locale uniquement');
+      }
+
+      // Mettre à jour l'état local APRÈS la sauvegarde réussie
+      updateEvent(formData); 
+      // Radio equipment is already saved by its own handler.
+      // Radio assignments are saved by their modal.
+      setIsEditing(false);
+    } catch (error) {
+      console.error('❌ Erreur lors de la sauvegarde des informations de course:', error);
+      alert('Erreur lors de la sauvegarde des informations de course. Veuillez réessayer.');
+    }
   };
 
   const handleCancelAll = () => {
