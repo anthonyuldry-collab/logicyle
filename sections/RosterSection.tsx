@@ -58,6 +58,7 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
   const [planningSortDirection, setPlanningSortDirection] = useState<'asc' | 'desc'>('asc');
   const [planningExpanded, setPlanningExpanded] = useState(true);
   const [localRaceEvents, setLocalRaceEvents] = useState(appState.raceEvents || []);
+  const [includeScouts, setIncludeScouts] = useState(false);
 
   // Synchroniser l'état local avec l'état global
   useEffect(() => {
@@ -227,6 +228,25 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
     }
   };
 
+  // Fonction pour calculer le nombre de jours de course d'un athlète depuis le début de saison
+  const getRiderRaceDays = (riderId: string) => {
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    
+    // Début de saison (1er janvier de l'année en cours)
+    const seasonStart = new Date(currentYear, 0, 1);
+    
+    // Filtrer les événements de la saison en cours où l'athlète était sélectionné
+    const seasonEvents = (appState.raceEvents || []).filter(event => {
+      const eventDate = new Date(event.date);
+      return eventDate >= seasonStart && 
+             eventDate <= currentDate && 
+             event.selectedRiderIds?.includes(riderId);
+    });
+    
+    return seasonEvents.length;
+  };
+
   // Calcul des coureurs triés et filtrés pour l'effectif
   const sortedRidersForAdmin = useMemo(() => {
     // Debug: Afficher tous les coureurs et leurs données
@@ -371,7 +391,24 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
 
   // Fonction pour obtenir les coureurs triés selon la qualité
   const getSortedRidersForQuality = () => {
-    return [...riders].sort((a, b) => {
+    let allRiders = [...riders];
+    
+    // Inclure les scouts si la case est cochée
+    if (includeScouts && appState.scoutingProfiles) {
+      const scouts = appState.scoutingProfiles.map(scout => ({
+        id: scout.id,
+        firstName: scout.firstName,
+        lastName: scout.lastName,
+        birthDate: scout.birthDate,
+        sex: scout.sex,
+        email: scout.email,
+        photoUrl: scout.photoUrl,
+        isScout: true // Marquer comme scout
+      }));
+      allRiders = [...allRiders, ...scouts];
+    }
+    
+    return allRiders.sort((a, b) => {
       const profileA = calculateCogganProfileScore(a);
       const profileB = calculateCogganProfileScore(b);
       
@@ -491,59 +528,7 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
             Nom {rosterSortBy === 'name' && (rosterSortDirection === 'asc' ? '↑' : '↓')}
           </button>
           
-          {/* Bouton de diagnostic pour l'onglet Effectif */}
-          <button
-            onClick={() => {
-              console.log('=== DIAGNOSTIC ONGLET EFFECTIF ===');
-              console.log('Total coureurs:', riders.length);
-              console.log('Filtres actifs:', {
-                searchTerm,
-                genderFilter,
-                ageCategoryFilter,
-                minAgeFilter,
-                maxAgeFilter
-              });
-              
-              // Recherche spécifique du coureur mmisyurina@gmail.com
-              const coureurRecherche = riders.find(rider => rider.email === 'mmisyurina@gmail.com');
-              if (coureurRecherche) {
-                console.log('🎯 COUREUR TROUVÉ:', coureurRecherche);
-                const { age, category } = getAgeCategory(coureurRecherche.birthDate);
-                console.log('📊 ANALYSE DU COUREUR:', {
-                  id: coureurRecherche.id,
-                  nom: `${coureurRecherche.firstName} ${coureurRecherche.lastName}`,
-                  email: coureurRecherche.email,
-                  sex: coureurRecherche.sex,
-                  birthDate: coureurRecherche.birthDate,
-                  age,
-                  category
-                });
-                
-                // Vérification de la visibilité dans l'onglet Effectif
-                const isVisibleInRoster = sortedRidersForAdmin.some(rider => rider.id === coureurRecherche.id);
-                console.log('🎯 VISIBILITÉ DANS EFFECTIF:', isVisibleInRoster ? '✅ VISIBLE' : '❌ MASQUÉ');
-                
-                if (!isVisibleInRoster) {
-                  console.log('🚨 RAISONS DU MASQUAGE:');
-                  console.log('- Filtre recherche:', searchTerm);
-                  console.log('- Filtre genre:', genderFilter);
-                  console.log('- Filtre âge:', `${minAgeFilter}-${maxAgeFilter}`);
-                  console.log('- Filtre catégorie:', ageCategoryFilter);
-                }
-              } else {
-                console.log('❌ COUREUR mmisyurina@gmail.com NON TROUVÉ dans riders');
-              }
-              
-              // Affichage des coureurs filtrés
-              console.log('Coureurs filtrés:', sortedRidersForAdmin.length);
-              console.log('Coureurs visibles:', sortedRidersForAdmin.map(r => `${r.firstName} ${r.lastName}`));
-              
-              console.log('=== FIN DIAGNOSTIC EFFECTIF ===');
-            }}
-            className="px-3 py-1 text-sm rounded-md bg-yellow-100 text-yellow-700 border border-yellow-300 hover:bg-yellow-200"
-          >
-            🔍 Diagnostic Effectif
-          </button>
+
           <button
             onClick={() => handleRosterSort('age')}
             className={`px-3 py-1 text-sm rounded-md transition-colors ${
@@ -575,6 +560,7 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Coureur</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Catégorie</th>
+                <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Jours de course</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
               </tr>
             </thead>
@@ -601,6 +587,13 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                         {category}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-center">
+                      <div className="flex items-center justify-center">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                          🏁 {getRiderRaceDays(rider.id)}
+                        </span>
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <div className="flex space-x-2">
@@ -677,6 +670,9 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
 
   // Rendu de l'onglet Planning de Saison - Version avec monitoring de groupe
   const renderSeasonPlanningTab = () => {
+    console.log('🎯 Rendu du planning - Sélections actuelles:', appState.riderEventSelections?.length || 0);
+    console.log('🎯 Événements locaux:', localRaceEvents.length);
+    
     // Filtrer les événements futurs uniquement
     const futureEvents = localRaceEvents.filter(event => {
       const eventDate = new Date(event.date);
@@ -687,6 +683,7 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
 
     // Fonction pour ajouter automatiquement un athlète à un événement avec un statut
     const addRiderToEvent = async (eventId: string, riderId: string, status: RiderEventStatus = RiderEventStatus.TITULAIRE) => {
+      console.log(`🔄 Tentative d'ajout: ${riderId} à ${eventId} avec statut ${status}`);
       try {
         // Vérifier si l'athlète est déjà sélectionné pour cet événement
         const existingSelection = appState.riderEventSelections?.find(
@@ -694,7 +691,9 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
         );
         
         if (existingSelection) {
-          console.log(`⚠️ Athlète ${riderId} déjà sélectionné pour l'événement ${eventId}`);
+          console.log(`📝 Sélection existante trouvée, mise à jour du statut vers ${status}`);
+          // Mettre à jour le statut existant au lieu de créer un nouveau
+          await updateRiderEventStatus(eventId, riderId, status);
           return;
         }
 
@@ -743,6 +742,7 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
         }
 
         console.log(`✅ Athlète ${riderId} ajouté à l'événement ${eventId} avec le statut ${status}`);
+        console.log('📊 État des sélections après ajout:', appState.riderEventSelections?.length || 0);
       } catch (error) {
         console.error('❌ Erreur lors de l\'ajout de l\'athlète:', error);
         alert('Erreur lors de l\'ajout de l\'athlète. Veuillez réessayer.');
@@ -814,6 +814,7 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
 
     // Fonction pour retirer un athlète d'un événement
     const removeRiderFromEvent = async (eventId: string, riderId: string) => {
+      console.log(`🗑️ Tentative de retrait: ${riderId} de ${eventId}`);
       try {
         const existingSelection = appState.riderEventSelections.find(
           sel => sel.eventId === eventId && sel.riderId === riderId
@@ -856,6 +857,7 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
           }
 
           console.log(`✅ Athlète ${riderId} retiré de l'événement ${eventId}`);
+          console.log('📊 État des sélections après retrait:', appState.riderEventSelections?.length || 0);
         }
       } catch (error) {
         console.error('❌ Erreur lors du retrait de l\'athlète:', error);
@@ -974,17 +976,8 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                                   checked={isTitulaire}
                                   onChange={(e) => {
                                     if (e.target.checked) {
-                                      // Si l'athlète était remplaçant, on le retire d'abord
-                                      if (isRemplacant) {
-                                        removeRiderFromEvent(event.id, rider.id);
-                                        // Attendre un peu pour que la suppression soit terminée
-                                        setTimeout(() => {
-                                          addRiderToEvent(event.id, rider.id, RiderEventStatus.TITULAIRE);
-                                        }, 100);
-                                      } else {
-                                        // Ajouter directement comme titulaire
-                                        addRiderToEvent(event.id, rider.id, RiderEventStatus.TITULAIRE);
-                                      }
+                                      // Ajouter comme titulaire (la fonction gère les doublons)
+                                      addRiderToEvent(event.id, rider.id, RiderEventStatus.TITULAIRE);
                                     } else {
                                       // Si on décoche, on retire l'athlète
                                       if (isTitulaire || isRemplacant) {
@@ -1018,17 +1011,8 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                                   checked={isRemplacant}
                                   onChange={(e) => {
                                     if (e.target.checked) {
-                                      // Si l'athlète était titulaire, on le retire d'abord
-                                      if (isTitulaire) {
-                                        removeRiderFromEvent(event.id, rider.id);
-                                        // Attendre un peu pour que la suppression soit terminée
-                                        setTimeout(() => {
-                                          addRiderToEvent(event.id, rider.id, RiderEventStatus.REMPLACANT);
-                                        }, 100);
-                                      } else {
-                                        // Ajouter directement comme remplaçant
-                                        addRiderToEvent(event.id, rider.id, RiderEventStatus.REMPLACANT);
-                                      }
+                                      // Ajouter comme remplaçant (la fonction gère les doublons)
+                                      addRiderToEvent(event.id, rider.id, RiderEventStatus.REMPLACANT);
                                     } else {
                                       // Si on décoche, on retire l'athlète
                                       if (isTitulaire || isRemplacant) {
@@ -1329,10 +1313,20 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
         {/* Tableau de pilotage style Pro Cycling Manager */}
         <div className="bg-gray-900 rounded-lg shadow-lg border border-gray-700">
                       <div className="px-6 py-4 border-b border-gray-700 bg-gradient-to-r from-gray-800 to-gray-900">
+              <div className="flex items-center justify-between">
               <h3 className="text-xl font-bold text-white">
                 Qualité d'Effectif
               </h3>
-              <p className="text-sm text-gray-300 mt-1">Note générale = moyenne simple de toutes les données de puissance</p>
+                <label className="flex items-center space-x-2 text-sm text-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={includeScouts}
+                    onChange={(e) => setIncludeScouts(e.target.checked)}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span>Inclure les scouts</span>
+                </label>
+              </div>
             </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-700">
@@ -1436,7 +1430,14 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                             <UserCircleIcon className="w-10 h-10 text-gray-400 mr-4"/>
                           )}
                           <div>
-                            <div className="text-sm font-medium text-white">{rider.firstName} {rider.lastName}</div>
+                            <div className="flex items-center space-x-2">
+                              <span className="text-sm font-medium text-white">{rider.firstName} {rider.lastName}</span>
+                              {(rider as any).isScout && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                  SCOUT
+                                </span>
+                              )}
+                            </div>
                             <div className="text-sm text-gray-400">{category}</div>
                           </div>
                         </div>
@@ -1455,12 +1456,7 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                           }`}>
                             {cogganProfile.generalScore}
                           </div>
-                          {cogganProfile.pprNotes.general > 0 && (
-                            <div className="text-xs text-purple-400 flex items-center justify-center">
-                              <span className="w-2 h-2 bg-purple-400 rounded-full mr-1"></span>
-                              PPR
-                            </div>
-                          )}
+
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -1474,11 +1470,7 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                           }`}>
                             {cogganProfile.sprintScore}
                           </div>
-                          {cogganProfile.pprNotes.sprint > 0 && (
-                            <div className="text-xs text-purple-400">
-                              PPR: {cogganProfile.pprNotes.sprint}
-                            </div>
-                          )}
+
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -1492,11 +1484,7 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                           }`}>
                             {cogganProfile.montagneScore}
                           </div>
-                          {cogganProfile.pprNotes.climbing > 0 && (
-                            <div className="text-xs text-purple-400">
-                              PPR: {cogganProfile.pprNotes.climbing}
-                            </div>
-                          )}
+
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -1510,11 +1498,7 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                           }`}>
                             {cogganProfile.puncheurScore}
                           </div>
-                          {cogganProfile.pprNotes.puncher > 0 && (
-                            <div className="text-xs text-purple-400">
-                              PPR: {cogganProfile.pprNotes.puncher}
-                            </div>
-                          )}
+
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -1528,11 +1512,7 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                           }`}>
                             {cogganProfile.rouleurScore}
                           </div>
-                          {cogganProfile.pprNotes.rouleur > 0 && (
-                            <div className="text-xs text-purple-400">
-                              PPR: {cogganProfile.pprNotes.rouleur}
-                            </div>
-                          )}
+
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
@@ -1546,11 +1526,7 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                           }`}>
                             {cogganProfile.resistanceScore}
                           </div>
-                          {cogganProfile.pprNotes.fatigue > 0 && (
-                            <div className="text-xs text-purple-400">
-                              PPR: {cogganProfile.pprNotes.fatigue}
-                            </div>
-                          )}
+
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -1583,22 +1559,7 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
           </div>
         </div>
 
-        {/* Légende des catégories */}
-        <div className="bg-gray-800 p-4 rounded-lg border border-gray-600">
-          <h4 className="text-sm font-semibold text-white mb-3">Légende des Catégories</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs text-gray-300">
-            <div>
-              <p><strong className="text-green-400">MOY :</strong> Note générale (moyenne de toutes les puissances)</p>
-              <p><strong className="text-green-400">SPR :</strong> Sprint (1s + 5s) - Puissance anaérobie</p>
-              <p><strong className="text-green-400">MON :</strong> Montagne (5min + 12min + 20min) - Endurance</p>
-            </div>
-            <div>
-              <p><strong className="text-green-400">PUN :</strong> Puncheur (30s + 1min + 3min) - Puissance critique</p>
-              <p><strong className="text-green-400">ROU :</strong> Rouleur (12min + 20min + CP) - FTP</p>
-              <p><strong className="text-green-400">RES :</strong> Résistance (20min + CP) - Fatigue</p>
-            </div>
-          </div>
-        </div>
+
       </div>
     );
   };
