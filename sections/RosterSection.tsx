@@ -12,7 +12,7 @@ import SectionWrapper from '../components/SectionWrapper';
 import ActionButton from '../components/ActionButton';
 import { RiderDetailModal } from '../components/RiderDetailModal';
 import ConfirmationModal from '../components/ConfirmationModal';
-import { Rider, RaceEvent, RiderEventSelection, FormeStatus, Sex, RiderQualitativeProfile, MoralStatus, HealthCondition } from '../types';
+import { Rider, RaceEvent, RiderEventSelection, FormeStatus, Sex, RiderQualitativeProfile, MoralStatus, HealthCondition, RiderEventStatus } from '../types';
 import { getAgeCategory } from '../utils/ageUtils';
 
 interface RosterSectionProps {
@@ -656,81 +656,108 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
 
   // Rendu de l'onglet Planning de Saison - Version avec monitoring de groupe
   const renderSeasonPlanningTab = () => {
+    // Filtrer les événements futurs uniquement
+    const futureEvents = raceEvents.filter(event => {
+      const eventDate = new Date(event.date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      return eventDate >= today;
+    });
+
+    // Fonction pour ajouter automatiquement un athlète à un événement avec un statut
+    const addRiderToEvent = (eventId: string, riderId: string, status: RiderEventStatus = RiderEventStatus.TITULAIRE) => {
+      // Ici vous pouvez ajouter la logique pour sauvegarder la sélection
+      console.log(`Ajout de l'athlète ${riderId} à l'événement ${eventId} avec le statut ${status}`);
+      // TODO: Implémenter la sauvegarde via Firebase
+    };
+
+    // Fonction pour changer le statut d'un athlète pour un événement
+    const updateRiderEventStatus = (eventId: string, riderId: string, newStatus: RiderEventStatus) => {
+      console.log(`Changement de statut de l'athlète ${riderId} pour l'événement ${eventId} vers ${newStatus}`);
+      // TODO: Implémenter la mise à jour via Firebase
+    };
+
+    // Fonction pour retirer un athlète d'un événement
+    const removeRiderFromEvent = (eventId: string, riderId: string) => {
+      console.log(`Retrait de l'athlète ${riderId} de l'événement ${eventId}`);
+      // TODO: Implémenter la suppression via Firebase
+    };
+
+    // Fonction pour obtenir le statut d'un athlète pour un événement
+    const getRiderEventStatus = (eventId: string, riderId: string): RiderEventStatus | null => {
+      const selection = riderEventSelections.find(
+        sel => sel.eventId === eventId && sel.riderId === riderId
+      );
+      return selection ? selection.status : null;
+    };
 
     return (
       <div className="space-y-6">
         {/* En-tête avec contrôles */}
         <div className="bg-white p-6 rounded-lg shadow-md">
           <div className="flex justify-between items-center mb-6">
-            <h3 className="text-xl font-semibold text-gray-800">Monitoring de Groupe - Planning Saison</h3>
+            <h3 className="text-xl font-semibold text-gray-800">Planning Saison - Gestion des Athlètes</h3>
             <div className="flex gap-2">
-              <button
-                onClick={() => handlePlanningSort('name')}
+        <button
+          onClick={() => handlePlanningSort('name')}
                 className={`px-3 py-2 text-sm rounded-lg transition-colors ${
-                  planningSortBy === 'name' 
+            planningSortBy === 'name' 
                     ? 'bg-blue-500 text-white shadow-md' 
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                Nom {planningSortBy === 'name' && (planningSortDirection === 'asc' ? '↑' : '↓')}
-              </button>
-              <button
-                onClick={() => handlePlanningSort('raceDays')}
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
+          Nom {planningSortBy === 'name' && (planningSortDirection === 'asc' ? '↑' : '↓')}
+        </button>
+        <button
+          onClick={() => handlePlanningSort('raceDays')}
                 className={`px-3 py-2 text-sm rounded-lg transition-colors ${
-                  planningSortBy === 'raceDays' 
+            planningSortBy === 'raceDays' 
                     ? 'bg-blue-500 text-white shadow-md' 
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
+              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+          }`}
+        >
                 Charge {planningSortBy === 'raceDays' && (planningSortDirection === 'asc' ? '↑' : '↓')}
-              </button>
+        </button>
             </div>
-          </div>
+      </div>
 
           {/* Vue d'ensemble des sélections */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
-              <div className="text-2xl font-bold text-blue-600">{raceEvents.length}</div>
-              <p className="text-sm text-blue-700 font-medium">Événements planifiés</p>
-              <p className="text-xs text-blue-600">Total de la saison</p>
-            </div>
-            <div className="bg-gradient-to-r from-green-50 to-green-100 p-4 rounded-lg border border-green-200">
-              <div className="text-2xl font-bold text-green-600">{groupMonitoringData.courseBlocks.length}</div>
-              <p className="text-sm text-green-700 font-medium">Blocs de course</p>
-              <p className="text-xs text-green-600">Périodes concentrées</p>
+              <div className="text-2xl font-bold text-blue-600">{futureEvents.length}</div>
+              <p className="text-sm text-blue-700 font-medium">Événements à venir</p>
+              <p className="text-xs text-blue-600">Prochaines compétitions</p>
             </div>
             <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
               <div className="text-2xl font-bold text-purple-600">
-                {Math.round(riders.length > 0 ? (raceEvents.reduce((total, event) => total + (event.selectedRiderIds?.length || 0), 0) / raceEvents.length) : 0)}
+                {Math.round(futureEvents.length > 0 ? (futureEvents.reduce((total, event) => total + (event.selectedRiderIds?.length || 0), 0) / futureEvents.length) : 0)}
               </div>
               <p className="text-sm text-purple-700 font-medium">Sélection moyenne</p>
-              <p className="text-xs text-purple-600">Coureurs par événement</p>
+              <p className="text-xs text-purple-600">Athlètes par événement</p>
             </div>
           </div>
         </div>
 
-        {/* Calendrier des sélections */}
+                {/* Calendrier des sélections */}
         <div className="bg-white p-6 rounded-lg shadow-md">
-          <h4 className="text-lg font-semibold text-gray-800 mb-4">Calendrier des Sélections</h4>
-          <div className="overflow-x-auto">
+          <h4 className="text-lg font-semibold text-gray-800 mb-4">Gestion des Sélections d'Athlètes</h4>
+      <div className="overflow-x-auto">
             <table className="min-w-full">
               <thead>
                 <tr className="border-b border-gray-200">
                   <th className="text-left py-3 px-4 font-medium text-gray-700">Événement</th>
                   <th className="text-left py-3 px-4 font-medium text-gray-700">Date</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-700">Coureurs sélectionnés</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-700">Staff sélectionné</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-700">Bloc</th>
-                </tr>
-              </thead>
+                  <th className="text-left py-3 px-4 font-medium text-gray-700">Athlètes sélectionnés</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
+            </tr>
+          </thead>
               <tbody>
-                {groupMonitoringData.eventSelections.map(({ event, selectedRiders, selectedStaff }) => {
-                  const blockIndex = groupMonitoringData.courseBlocks.findIndex(block => 
-                    block.some(blockEvent => blockEvent.id === event.id)
+                {futureEvents.map(event => {
+                  const selectedRiders = riders.filter(rider => 
+                    event.selectedRiderIds?.includes(rider.id)
                   );
-                  const blockNumber = blockIndex + 1;
-                  
-                  return (
+              
+              return (
                     <tr key={event.id} className="border-b border-gray-100 hover:bg-gray-50">
                       <td className="py-3 px-4">
                         <div className="font-medium text-gray-900">{event.name}</div>
@@ -740,57 +767,63 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                         <div className="text-sm text-gray-900">
                           {new Date(event.date).toLocaleDateString('fr-FR', { 
                             day: '2-digit', 
-                            month: 'short' 
+                            month: 'short',
+                            year: 'numeric'
                           })}
-                        </div>
+                      </div>
                         {event.endDate && event.endDate !== event.date && (
                           <div className="text-xs text-gray-500">
                             au {new Date(event.endDate).toLocaleDateString('fr-FR', { 
                               day: '2-digit', 
                               month: 'short' 
                             })}
-                          </div>
+                    </div>
                         )}
-                      </td>
+                  </td>
                       <td className="py-3 px-4">
                         <div className="flex flex-wrap gap-1">
-                          {selectedRiders.slice(0, 3).map(rider => (
-                            <span key={rider.id} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-md">
+                          {selectedRiders.slice(0, 4).map(rider => (
+                            <span key={rider.id} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-md flex items-center gap-1">
                               {rider.firstName} {rider.lastName.charAt(0)}.
-                            </span>
+                              <button
+                                onClick={() => removeRiderFromEvent(event.id, rider.id)}
+                                className="text-blue-500 hover:text-blue-700 ml-1"
+                                title="Retirer de l'événement"
+                              >
+                                ×
+                              </button>
+                    </span>
                           ))}
-                          {selectedRiders.length > 3 && (
-                            <span className="text-xs text-blue-600 font-medium">+{selectedRiders.length - 3}</span>
+                          {selectedRiders.length > 4 && (
+                            <span className="text-xs text-blue-600 font-medium">+{selectedRiders.length - 4}</span>
                           )}
                           {selectedRiders.length === 0 && (
                             <span className="text-xs text-gray-400 italic">Aucune sélection</span>
                           )}
                         </div>
-                      </td>
+                  </td>
                       <td className="py-3 px-4">
-                        <div className="flex flex-wrap gap-1">
-                          {selectedStaff.slice(0, 2).map(staffMember => (
-                            <span key={staffMember.id} className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-md">
-                              {staffMember.firstName} {staffMember.lastName.charAt(0)}.
-                            </span>
-                          ))}
-                          {selectedStaff.length > 2 && (
-                            <span className="text-xs text-green-600 font-medium">+{selectedStaff.length - 2}</span>
-                          )}
-                          {selectedStaff.length === 0 && (
-                            <span className="text-xs text-gray-400 italic">Aucune sélection</span>
-                          )}
+                        <div className="flex gap-2">
+                          <select
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                addRiderToEvent(event.id, e.target.value);
+                                e.target.value = '';
+                              }
+                            }}
+                            className="text-xs border border-gray-300 rounded px-2 py-1 bg-white"
+                            defaultValue=""
+                          >
+                            <option value="">Ajouter un athlète</option>
+                            {riders
+                              .filter(rider => !event.selectedRiderIds?.includes(rider.id))
+                              .map(rider => (
+                                <option key={rider.id} value={rider.id}>
+                                  {rider.firstName} {rider.lastName}
+                                </option>
+                              ))}
+                          </select>
                         </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                          blockNumber === 1 ? 'bg-red-100 text-red-700' :
-                          blockNumber === 2 ? 'bg-yellow-100 text-yellow-700' :
-                          blockNumber === 3 ? 'bg-green-100 text-green-700' :
-                          'bg-purple-100 text-purple-700'
-                        }`}>
-                          Bloc {blockNumber}
-                        </span>
                       </td>
                     </tr>
                   );
@@ -800,78 +833,7 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
           </div>
         </div>
 
-        {/* Vue des blocs de course */}
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h4 className="text-lg font-semibold text-gray-800 mb-4">Répartition des Blocs de Course</h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {groupMonitoringData.courseBlocks.map((block, blockIndex) => {
-              const blockNumber = blockIndex + 1;
-              const totalDays = block.reduce((total, event) => {
-                const startDate = new Date(event.date);
-                const endDate = new Date(event.endDate || event.date);
-                return total + Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-              }, 0);
-              
-              const uniqueRiders = new Set();
-              const uniqueStaff = new Set();
-              block.forEach(event => {
-                event.selectedRiderIds?.forEach(id => uniqueRiders.add(id));
-                event.selectedStaffIds?.forEach(id => uniqueStaff.add(id));
-              });
 
-              return (
-                <div key={blockIndex} className="border border-gray-200 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <h5 className="font-semibold text-gray-800">Bloc {blockNumber}</h5>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      blockNumber === 1 ? 'bg-red-100 text-red-700' :
-                      blockNumber === 2 ? 'bg-yellow-100 text-yellow-700' :
-                      blockNumber === 3 ? 'bg-green-100 text-green-700' :
-                      'bg-purple-100 text-purple-700'
-                    }`}>
-                      {block.length} événement{block.length > 1 ? 's' : ''}
-                    </span>
-                  </div>
-                  
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Période:</span>
-                      <span className="font-medium">
-                        {new Date(block[0].date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
-                        {block.length > 1 && (
-                          <> - {new Date(block[block.length - 1].endDate || block[block.length - 1].date).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}</>
-                        )}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Durée:</span>
-                      <span className="font-medium">{totalDays} jour{totalDays > 1 ? 's' : ''}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Coureurs uniques:</span>
-                      <span className="font-medium">{uniqueRiders.size}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Staff unique:</span>
-                      <span className="font-medium">{uniqueStaff.size}</span>
-                    </div>
-                  </div>
-
-                  <div className="mt-3 pt-3 border-t border-gray-100">
-                    <div className="text-xs text-gray-500 mb-1">Événements:</div>
-                    <div className="space-y-1">
-                      {block.map(event => (
-                        <div key={event.id} className="text-xs bg-gray-50 px-2 py-1 rounded">
-                          {event.name}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
 
         {/* Vue individuelle des coureurs avec monitoring */}
         <div className="bg-white p-6 rounded-lg shadow-md">
@@ -888,16 +850,13 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                                 raceDays <= 2 ? 'Légère' : 
                                 raceDays <= 5 ? 'Modérée' : 'Élevée';
               
-              // Calcul des blocs de course pour ce coureur
-              const riderBlocks = groupMonitoringData.courseBlocks.filter(block => 
-                block.some(event => event.selectedRiderIds?.includes(rider.id))
-              );
+
               
               return (
                 <div key={rider.id} className="bg-gradient-to-br from-white to-gray-50 border border-gray-200 rounded-xl p-4 hover:shadow-lg transition-all duration-200">
                   {/* En-tête du coureur */}
                   <div className="flex items-center mb-3">
-                    {rider.photoUrl ? (
+                      {rider.photoUrl ? (
                       <img src={rider.photoUrl} alt={rider.firstName} className="w-10 h-10 rounded-full mr-3 border-2 border-gray-200"/>
                     ) : (
                       <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center mr-3">
@@ -907,8 +866,8 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                     <div className="flex-1">
                       <h4 className="font-semibold text-gray-900 text-sm">{rider.firstName} {rider.lastName}</h4>
                       <p className="text-xs text-gray-500">{category} • {age !== null ? `${age} ans` : 'Âge inconnu'}</p>
+                      </div>
                     </div>
-                  </div>
 
                   {/* Projections principales */}
                   <div className="space-y-3">
@@ -922,14 +881,10 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                         'bg-red-100 text-red-700'
                       }`}>
                         {chargeLevel} ({raceDays}j)
-                      </span>
-                    </div>
+                    </span>
+                        </div>
 
-                    {/* Blocs de course */}
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs font-medium text-gray-600">Blocs de course:</span>
-                      <span className="text-xs font-medium text-blue-600">{riderBlocks.length}</span>
-                    </div>
+
 
                     {/* Événements planifiés */}
                     <div>
@@ -939,14 +894,14 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                           <span key={event.id} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-md">
                             {event.name.length > 15 ? event.name.substring(0, 15) + '...' : event.name}
                           </span>
-                        ))}
-                        {events.length > 2 && (
+                      ))}
+                      {events.length > 2 && (
                           <span className="text-xs text-blue-600 font-medium">+{events.length - 2}</span>
                         )}
                         {events.length === 0 && (
                           <span className="text-xs text-gray-400 italic">Aucun événement</span>
-                        )}
-                      </div>
+                      )}
+                    </div>
                     </div>
 
                     {/* Forme actuelle */}
@@ -958,40 +913,40 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                         forme === 'Moyenne' ? 'bg-yellow-100 text-yellow-700' :
                         forme === 'Faible' ? 'bg-red-100 text-red-700' :
                         'bg-gray-100 text-gray-600'
-                      }`}>
-                        {forme}
-                      </span>
+                    }`}>
+                      {forme}
+                    </span>
                     </div>
                   </div>
 
                   {/* Actions rapides */}
                   <div className="flex justify-end gap-1 mt-4 pt-3 border-t border-gray-100">
-                    <ActionButton 
-                      onClick={() => openViewModal(rider)} 
-                      variant="info" 
-                      size="sm" 
+                      <ActionButton 
+                        onClick={() => openViewModal(rider)} 
+                        variant="info" 
+                        size="sm" 
                       icon={<EyeIcon className="w-3 h-3"/>} 
                       title="Voir détails"
                     />
-                    <ActionButton 
-                      onClick={() => openEditModal(rider)} 
-                      variant="warning" 
-                      size="sm" 
+                      <ActionButton 
+                        onClick={() => openEditModal(rider)} 
+                        variant="warning" 
+                        size="sm" 
                       icon={<PencilIcon className="w-3 h-3"/>} 
-                      title="Modifier"
+                        title="Modifier"
                     />
-                  </div>
+                    </div>
                 </div>
               );
             })}
-          </div>
+      </div>
 
           {/* Statistiques de projection simplifiées */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
               <div className="text-2xl font-bold text-blue-600">
                 {sortedRidersForPlanning.filter(r => r.raceDays <= 2).length}
-              </div>
+            </div>
               <p className="text-sm text-blue-700 font-medium">Charge légère</p>
               <p className="text-xs text-blue-600">0-2 événements</p>
             </div>
@@ -999,30 +954,30 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
             <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 p-4 rounded-lg border border-yellow-200">
               <div className="text-2xl font-bold text-yellow-600">
                 {sortedRidersForPlanning.filter(r => r.raceDays >= 3 && r.raceDays <= 5).length}
-              </div>
+            </div>
               <p className="text-sm text-yellow-700 font-medium">Charge modérée</p>
               <p className="text-xs text-yellow-600">3-5 événements</p>
-            </div>
+        </div>
 
             <div className="bg-gradient-to-r from-red-50 to-red-100 p-4 rounded-lg border border-red-200">
               <div className="text-2xl font-bold text-red-600">
                 {sortedRidersForPlanning.filter(r => r.raceDays >= 6).length}
-              </div>
+                </div>
               <p className="text-sm text-red-700 font-medium">Charge élevée</p>
               <p className="text-xs text-red-600">6+ événements</p>
-            </div>
+        </div>
 
             <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
-              <div className="text-2xl font-bold text-purple-600">
-                {sortedRidersForPlanning.reduce((total, r) => total + r.events.length, 0)}
-              </div>
+          <div className="text-2xl font-bold text-purple-600">
+            {sortedRidersForPlanning.reduce((total, r) => total + r.events.length, 0)}
+          </div>
               <p className="text-sm text-purple-700 font-medium">Total événements</p>
               <p className="text-xs text-purple-600">Planifiés</p>
             </div>
-          </div>
         </div>
       </div>
-    );
+    </div>
+  );
   };
 
   // Algorithme de profilage Coggan Expert - Note générale = moyenne simple de toutes les données
