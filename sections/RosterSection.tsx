@@ -1120,24 +1120,109 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
         const powerProfile = scoutingProfile.powerProfileFresh || {};
         const weight = scoutingProfile.weightKg || 70;
         
-        // Calculer les scores pour les scouts
-        const power1s = powerProfile.power1s || 0;
-        const power5s = powerProfile.power5s || 0;
-        const power30s = powerProfile.power30s || 0;
-        const power1min = powerProfile.power1min || 0;
-        const power3min = powerProfile.power3min || 0;
-        const power5min = powerProfile.power5min || 0;
-        const power12min = powerProfile.power12min || 0;
-        const power20min = powerProfile.power20min || 0;
-        const criticalPower = powerProfile.criticalPower || 0;
+        // Calcul des puissances relatives (W/kg) pour chaque durée - MÊME ALGORITHME QUE LES RIDERS
+        const power1s = (powerProfile.power1s || 0) / weight;
+        const power5s = (powerProfile.power5s || 0) / weight;
+        const power30s = (powerProfile.power30s || 0) / weight;
+        const power1min = (powerProfile.power1min || 0) / weight;
+        const power3min = (powerProfile.power3min || 0) / weight;
+        const power5min = (powerProfile.power5min || 0) / weight;
+        const power12min = (powerProfile.power12min || 0) / weight;
+        const power20min = (powerProfile.power20min || 0) / weight;
+        const criticalPower = (powerProfile.criticalPower || 0) / weight;
         
-        // Calculer les scores (même logique que pour les riders)
-        const sprintScore = Math.round((power1s + power5s) / 2);
-        const montagneScore = Math.round((power5min + power12min + power20min) / 3);
-        const puncheurScore = Math.round((power30s + power1min + power3min) / 3);
-        const rouleurScore = Math.round((power12min + power20min + criticalPower) / 3);
-        const resistanceScore = Math.round((power20min + criticalPower) / 2);
-        const generalScore = Math.round((sprintScore + montagneScore + puncheurScore + rouleurScore + resistanceScore) / 5);
+        // Références Coggan pour un athlète "ultime" (100/100) - MÊMES RÉFÉRENCES
+        const cogganUltimate = {
+          power1s: 19.42,   // 19.42 W/kg - Sprint ultime (Elite/Hero)
+          power5s: 19.42,   // 19.42 W/kg - Anaérobie ultime (Elite/Hero)
+          power30s: 13.69,  // 13.69 W/kg - Puissance critique ultime (Pro)
+          power1min: 8.92,  // 8.92 W/kg - Endurance anaérobie ultime (Elite/Hero)
+          power3min: 7.0,   // 7.0 W/kg - Seuil anaérobie ultime
+          power5min: 6.35,  // 6.35 W/kg - Seuil fonctionnel ultime (Elite/Hero)
+          power12min: 5.88, // 5.88 W/kg - FTP ultime (Elite/Hero)
+          power20min: 5.88, // 5.88 W/kg - Endurance critique ultime (Elite/Hero)
+          criticalPower: 5.35 // 5.35 W/kg - CP ultime (Elite/Hero)
+        };
+        
+        // Calcul des scores par durée (0-100) - MÊME FONCTION
+        const getDurationScore = (actual: number, ultimate: number, isFatigueData: boolean = false) => {
+          if (actual >= ultimate) return 100;
+          
+          // Données de fatigue (20min et CP) ont un bonus de 10%
+          const fatigueBonus = isFatigueData ? 1.1 : 1.0;
+          
+          // Notation calibrée : 70% de la puissance ultime = 70 points (pour correspondre à l'échelle Elite/Hero)
+          const score = Math.max(0, Math.round((actual / ultimate) * 70 * fatigueBonus));
+          return Math.min(100, score); // Limiter à 100
+        };
+        
+        // Calcul des scores automatiques basés sur les données de puissance - MÊME LOGIQUE
+        const automaticScores = {
+          power1s: getDurationScore(power1s, cogganUltimate.power1s),
+          power5s: getDurationScore(power5s, cogganUltimate.power5s),
+          power30s: getDurationScore(power30s, cogganUltimate.power30s),
+          power1min: getDurationScore(power1min, cogganUltimate.power1min),
+          power3min: getDurationScore(power3min, cogganUltimate.power3min),
+          power5min: getDurationScore(power5min, cogganUltimate.power5min),
+          power12min: getDurationScore(power12min, cogganUltimate.power12min),
+          power20min: getDurationScore(power20min, cogganUltimate.power20min),
+          criticalPower: getDurationScore(criticalPower, cogganUltimate.criticalPower)
+        };
+        
+        // Calcul des scores selon l'algorithme - MÊME LOGIQUE QUE LES RIDERS
+        const sprintScore = Math.round((automaticScores.power1s + automaticScores.power5s) / 2);
+        const montagneScore = Math.round((automaticScores.power5min + automaticScores.power12min + automaticScores.power20min) / 3);
+        const puncheurScore = Math.round((automaticScores.power30s + automaticScores.power1min + automaticScores.power3min) / 3);
+        const rouleurScore = Math.round((automaticScores.power12min + automaticScores.power20min + automaticScores.criticalPower) / 3);
+        
+        // Calcul de la résistance selon l'algorithme - MÊME LOGIQUE
+        const calculateResistanceScore = () => {
+          const power20minWkg = power20min;
+          const criticalPowerWkg = criticalPower;
+          
+          if (!power20minWkg && !criticalPowerWkg) {
+            return 0; // Pas de données de résistance
+          }
+          
+          let resistanceScore = 0;
+          let dataPoints = 0;
+          
+          if (power20minWkg) {
+            const power20minRatio = power20minWkg / cogganUltimate.power20min;
+            const power20minScore = Math.round(power20minRatio * 100);
+            resistanceScore += power20minScore * 0.6;
+            dataPoints++;
+          }
+          
+          if (criticalPowerWkg) {
+            const criticalPowerRatio = criticalPowerWkg / cogganUltimate.criticalPower;
+            const criticalPowerScore = Math.round(criticalPowerRatio * 100);
+            resistanceScore += criticalPowerScore * 0.4;
+            dataPoints++;
+          }
+          
+          if (dataPoints === 1) {
+            resistanceScore = Math.round(resistanceScore / (dataPoints === 1 ? 0.6 : 0.4));
+          }
+          
+          if (dataPoints === 2) {
+            const consistencyBonus = Math.abs(power20minWkg - criticalPowerWkg) < 0.5 ? 5 : 0;
+            resistanceScore += consistencyBonus;
+          }
+          
+          if (resistanceScore >= 80 && dataPoints === 2) {
+            resistanceScore += 3; // Bonus élite
+          }
+          
+          return Math.min(100, Math.max(0, resistanceScore));
+        };
+        
+        const resistanceScore = calculateResistanceScore();
+        
+        // Note générale : moyenne de tous les scores automatiques - MÊME LOGIQUE
+        const generalScore = Math.round(
+          Object.values(automaticScores).reduce((sum, score) => sum + score, 0) / Object.values(automaticScores).length
+        );
         
         return {
           generalScore,
@@ -1146,12 +1231,13 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
           puncheurScore,
           rouleurScore,
           resistanceScore,
+          automaticScores, // Scores calculés automatiquement
           pprNotes: { general: 0, sprint: 0, climbing: 0, puncher: 0, rouleur: 0, fatigue: 0 },
-          isHybrid: false,
-          rawData: {
+          powerProfile: {
             power1s, power5s, power30s, power1min, power3min, 
             power5min, power12min, power20min, criticalPower
-          }
+          },
+          isHybrid: false
         };
       }
     }
