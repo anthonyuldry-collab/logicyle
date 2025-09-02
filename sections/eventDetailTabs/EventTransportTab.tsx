@@ -6,7 +6,7 @@ import PencilIcon from "../../components/icons/PencilIcon";
 import PlusCircleIcon from "../../components/icons/PlusCircleIcon";
 import TrashIcon from "../../components/icons/TrashIcon";
 import TransportDebug from "../../components/TransportDebug";
-import { firebaseService } from "../../services/firebaseService";
+import { saveData, deleteData } from "../../services/firebaseService";
 import {
   AppState,
   BudgetItemCategory,
@@ -522,7 +522,7 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
     try {
       // Sauvegarder dans Firebase si on a un teamId
       if (appState.activeTeamId) {
-        const savedId = await firebaseService.saveData(
+        const savedId = await saveData(
           appState.activeTeamId,
           "eventTransportLegs",
           legToSave
@@ -578,7 +578,7 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
       try {
         // Supprimer de Firebase si on a un teamId
         if (appState.activeTeamId) {
-          await firebaseService.deleteData(
+          await deleteData(
             appState.activeTeamId,
             "eventTransportLegs",
             legId
