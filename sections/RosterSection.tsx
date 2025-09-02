@@ -12,6 +12,7 @@ import SectionWrapper from '../components/SectionWrapper';
 import ActionButton from '../components/ActionButton';
 import { RiderDetailModal } from '../components/RiderDetailModal';
 import ConfirmationModal from '../components/ConfirmationModal';
+import { saveData, deleteData } from '../services/firebaseService';
 import { Rider, RaceEvent, RiderEventSelection, FormeStatus, Sex, RiderQualitativeProfile, MoralStatus, HealthCondition, RiderEventStatus } from '../types';
 import { getAgeCategory } from '../utils/ageUtils';
 
@@ -665,22 +666,130 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
     });
 
     // Fonction pour ajouter automatiquement un athlète à un événement avec un statut
-    const addRiderToEvent = (eventId: string, riderId: string, status: RiderEventStatus = RiderEventStatus.TITULAIRE) => {
-      // Ici vous pouvez ajouter la logique pour sauvegarder la sélection
-      console.log(`Ajout de l'athlète ${riderId} à l'événement ${eventId} avec le statut ${status}`);
-      // TODO: Implémenter la sauvegarde via Firebase
+    const addRiderToEvent = async (eventId: string, riderId: string, status: RiderEventStatus = RiderEventStatus.TITULAIRE) => {
+      try {
+        const newSelection: RiderEventSelection = {
+          id: `${eventId}_${riderId}_${Date.now()}`,
+          eventId: eventId,
+          riderId: riderId,
+          status: status,
+          riderPreference: undefined,
+          riderObjectives: undefined,
+          notes: undefined
+        };
+
+        // Sauvegarder dans Firebase si on a un teamId
+        if (appState.activeTeamId) {
+          const savedId = await saveData(
+            appState.activeTeamId,
+            "riderEventSelections",
+            newSelection
+          );
+          newSelection.id = savedId;
+          console.log('✅ Sélection d\'athlète sauvegardée dans Firebase avec l\'ID:', savedId);
+        } else {
+          console.warn('⚠️ Aucun teamId actif, sauvegarde locale uniquement');
+        }
+
+        // Mettre à jour l'état local
+        const updatedSelections = [...appState.riderEventSelections, newSelection];
+        appState.setRiderEventSelections?.(updatedSelections);
+
+        // Mettre à jour l'événement avec le nouvel athlète sélectionné
+        const event = raceEvents.find(e => e.id === eventId);
+        if (event) {
+          const updatedEvent = {
+            ...event,
+            selectedRiderIds: [...(event.selectedRiderIds || []), riderId]
+          };
+          appState.setRaceEvents?.(updatedEvent);
+        }
+
+        console.log(`✅ Athlète ${riderId} ajouté à l'événement ${eventId} avec le statut ${status}`);
+      } catch (error) {
+        console.error('❌ Erreur lors de l\'ajout de l\'athlète:', error);
+        alert('Erreur lors de l\'ajout de l\'athlète. Veuillez réessayer.');
+      }
     };
 
     // Fonction pour changer le statut d'un athlète pour un événement
-    const updateRiderEventStatus = (eventId: string, riderId: string, newStatus: RiderEventStatus) => {
-      console.log(`Changement de statut de l'athlète ${riderId} pour l'événement ${eventId} vers ${newStatus}`);
-      // TODO: Implémenter la mise à jour via Firebase
+    const updateRiderEventStatus = async (eventId: string, riderId: string, newStatus: RiderEventStatus) => {
+      try {
+        const existingSelection = appState.riderEventSelections.find(
+          sel => sel.eventId === eventId && sel.riderId === riderId
+        );
+
+        if (existingSelection) {
+          const updatedSelection = { ...existingSelection, status: newStatus };
+
+          // Sauvegarder dans Firebase si on a un teamId
+          if (appState.activeTeamId) {
+            await saveData(
+              appState.activeTeamId,
+              "riderEventSelections",
+              updatedSelection
+            );
+            console.log('✅ Statut de sélection mis à jour dans Firebase');
+          } else {
+            console.warn('⚠️ Aucun teamId actif, sauvegarde locale uniquement');
+          }
+
+          // Mettre à jour l'état local
+          const updatedSelections = appState.riderEventSelections.map(sel =>
+            sel.id === existingSelection.id ? updatedSelection : sel
+          );
+          appState.setRiderEventSelections?.(updatedSelections);
+
+          console.log(`✅ Statut de l'athlète ${riderId} mis à jour vers ${newStatus}`);
+        }
+      } catch (error) {
+        console.error('❌ Erreur lors de la mise à jour du statut:', error);
+        alert('Erreur lors de la mise à jour du statut. Veuillez réessayer.');
+      }
     };
 
     // Fonction pour retirer un athlète d'un événement
-    const removeRiderFromEvent = (eventId: string, riderId: string) => {
-      console.log(`Retrait de l'athlète ${riderId} de l'événement ${eventId}`);
-      // TODO: Implémenter la suppression via Firebase
+    const removeRiderFromEvent = async (eventId: string, riderId: string) => {
+      try {
+        const existingSelection = appState.riderEventSelections.find(
+          sel => sel.eventId === eventId && sel.riderId === riderId
+        );
+
+        if (existingSelection) {
+          // Supprimer de Firebase si on a un teamId
+          if (appState.activeTeamId) {
+            await deleteData(
+              appState.activeTeamId,
+              "riderEventSelections",
+              existingSelection.id
+            );
+            console.log('✅ Sélection d\'athlète supprimée de Firebase');
+          } else {
+            console.warn('⚠️ Aucun teamId actif, suppression locale uniquement');
+          }
+
+          // Mettre à jour l'état local
+          const updatedSelections = appState.riderEventSelections.filter(
+            sel => sel.id !== existingSelection.id
+          );
+          appState.setRiderEventSelections?.(updatedSelections);
+
+          // Mettre à jour l'événement en retirant l'athlète
+          const event = raceEvents.find(e => e.id === eventId);
+          if (event) {
+            const updatedEvent = {
+              ...event,
+              selectedRiderIds: (event.selectedRiderIds || []).filter(id => id !== riderId)
+            };
+            appState.setRaceEvents?.(updatedEvent);
+          }
+
+          console.log(`✅ Athlète ${riderId} retiré de l'événement ${eventId}`);
+        }
+      } catch (error) {
+        console.error('❌ Erreur lors du retrait de l\'athlète:', error);
+        alert('Erreur lors du retrait de l\'athlète. Veuillez réessayer.');
+      }
     };
 
     // Fonction pour obtenir le statut d'un athlète pour un événement
@@ -781,22 +890,43 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                         )}
                   </td>
                       <td className="py-3 px-4">
-                        <div className="flex flex-wrap gap-1">
-                          {selectedRiders.slice(0, 4).map(rider => (
-                            <span key={rider.id} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-md flex items-center gap-1">
-                              {rider.firstName} {rider.lastName.charAt(0)}.
-                              <button
-                                onClick={() => removeRiderFromEvent(event.id, rider.id)}
-                                className="text-blue-500 hover:text-blue-700 ml-1"
-                                title="Retirer de l'événement"
-                              >
-                                ×
-                              </button>
-                    </span>
-                          ))}
-                          {selectedRiders.length > 4 && (
-                            <span className="text-xs text-blue-600 font-medium">+{selectedRiders.length - 4}</span>
-                          )}
+                        <div className="space-y-2">
+                          {selectedRiders.map(rider => {
+                            const status = getRiderEventStatus(event.id, rider.id);
+                            const statusColor = status === RiderEventStatus.TITULAIRE ? 'bg-green-100 text-green-800' :
+                                              status === RiderEventStatus.REMPLACANT ? 'bg-yellow-100 text-yellow-800' :
+                                              status === RiderEventStatus.NON_RETENU ? 'bg-red-100 text-red-800' :
+                                              'bg-gray-100 text-gray-800';
+                            
+                            return (
+                              <div key={rider.id} className="flex items-center gap-2">
+                                <span className={`text-xs px-2 py-1 rounded-md flex items-center gap-1 ${statusColor}`}>
+                                  {rider.firstName} {rider.lastName.charAt(0)}.
+                                  <span className="text-xs font-medium">({status || 'Non défini'})</span>
+                                </span>
+                                <select
+                                  value={status || ''}
+                                  onChange={(e) => {
+                                    if (e.target.value) {
+                                      updateRiderEventStatus(event.id, rider.id, e.target.value as RiderEventStatus);
+                                    }
+                                  }}
+                                  className="text-xs border border-gray-300 rounded px-1 py-0.5 bg-white"
+                                >
+                                  <option value={RiderEventStatus.TITULAIRE}>Titulaire</option>
+                                  <option value={RiderEventStatus.REMPLACANT}>Remplaçant</option>
+                                  <option value={RiderEventStatus.NON_RETENU}>Non retenu</option>
+                                </select>
+                                <button
+                                  onClick={() => removeRiderFromEvent(event.id, rider.id)}
+                                  className="text-red-500 hover:text-red-700 text-xs"
+                                  title="Retirer de l'événement"
+                                >
+                                  ×
+                                </button>
+                              </div>
+                            );
+                          })}
                           {selectedRiders.length === 0 && (
                             <span className="text-xs text-gray-400 italic">Aucune sélection</span>
                           )}
@@ -807,7 +937,8 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                           <select
                             onChange={(e) => {
                               if (e.target.value) {
-                                addRiderToEvent(event.id, e.target.value);
+                                const [riderId, status] = e.target.value.split('|');
+                                addRiderToEvent(event.id, riderId, status as RiderEventStatus);
                                 e.target.value = '';
                               }
                             }}
@@ -818,9 +949,14 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                             {riders
                               .filter(rider => !event.selectedRiderIds?.includes(rider.id))
                               .map(rider => (
-                                <option key={rider.id} value={rider.id}>
-                                  {rider.firstName} {rider.lastName}
-                                </option>
+                                <React.Fragment key={rider.id}>
+                                  <option value={`${rider.id}|${RiderEventStatus.TITULAIRE}`}>
+                                    {rider.firstName} {rider.lastName} (Titulaire)
+                                  </option>
+                                  <option value={`${rider.id}|${RiderEventStatus.REMPLACANT}`}>
+                                    {rider.firstName} {rider.lastName} (Remplaçant)
+                                  </option>
+                                </React.Fragment>
                               ))}
                           </select>
                         </div>
@@ -837,7 +973,7 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
 
         {/* Vue individuelle des coureurs avec monitoring */}
         <div className="bg-white p-6 rounded-lg shadow-md">
-          <h4 className="text-lg font-semibold text-gray-800 mb-4">Monitoring Individuel des Coureurs</h4>
+          <h4 className="text-lg font-semibold text-gray-800 mb-4">Projections de Charge de Travail</h4>
           
           {/* Vue simplifiée - Cartes au lieu de tableau */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
@@ -890,11 +1026,18 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                     <div>
                       <span className="text-xs font-medium text-gray-600 block mb-1">Événements:</span>
                       <div className="flex flex-wrap gap-1">
-                        {events.slice(0, 2).map(event => (
-                          <span key={event.id} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-md">
-                            {event.name.length > 15 ? event.name.substring(0, 15) + '...' : event.name}
-                          </span>
-                      ))}
+                        {events.slice(0, 2).map(event => {
+                          const status = getRiderEventStatus(event.id, rider.id);
+                          const statusColor = status === RiderEventStatus.TITULAIRE ? 'bg-green-100 text-green-700' :
+                                            status === RiderEventStatus.REMPLACANT ? 'bg-yellow-100 text-yellow-700' :
+                                            'bg-blue-100 text-blue-700';
+                          return (
+                            <span key={event.id} className={`text-xs px-2 py-1 rounded-md ${statusColor}`}>
+                              {event.name.length > 15 ? event.name.substring(0, 15) + '...' : event.name}
+                              {status && <span className="ml-1">({status.charAt(0)})</span>}
+                            </span>
+                          );
+                        })}
                       {events.length > 2 && (
                           <span className="text-xs text-blue-600 font-medium">+{events.length - 2}</span>
                         )}
