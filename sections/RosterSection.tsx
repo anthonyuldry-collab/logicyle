@@ -622,39 +622,40 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
     </div>
   );
 
-  // Rendu de l'onglet Planning de Saison - Version avec monitoring de groupe
-  const renderSeasonPlanningTab = () => {
-    // Calcul des données de monitoring de groupe
-    const groupMonitoringData = useMemo(() => {
-      const eventSelections = raceEvents.map(event => ({
-        event,
-        selectedRiders: riders.filter(rider => event.selectedRiderIds?.includes(rider.id)),
-        selectedStaff: appState.staff.filter(staffMember => event.selectedStaffIds?.includes(staffMember.id))
-      }));
+  // Calcul des données de monitoring de groupe (au niveau du composant)
+  const groupMonitoringData = useMemo(() => {
+    const eventSelections = raceEvents.map(event => ({
+      event,
+      selectedRiders: riders.filter(rider => event.selectedRiderIds?.includes(rider.id)),
+      selectedStaff: appState.staff.filter(staffMember => event.selectedStaffIds?.includes(staffMember.id))
+    }));
 
-      // Calcul des blocs de course (événements consécutifs)
-      const courseBlocks = [];
-      const sortedEvents = [...raceEvents].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    // Calcul des blocs de course (événements consécutifs)
+    const courseBlocks = [];
+    const sortedEvents = [...raceEvents].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    
+    let currentBlock = [];
+    for (let i = 0; i < sortedEvents.length; i++) {
+      const currentEvent = sortedEvents[i];
+      const nextEvent = sortedEvents[i + 1];
       
-      let currentBlock = [];
-      for (let i = 0; i < sortedEvents.length; i++) {
-        const currentEvent = sortedEvents[i];
-        const nextEvent = sortedEvents[i + 1];
-        
-        currentBlock.push(currentEvent);
-        
-        // Si c'est le dernier événement ou s'il y a plus de 7 jours entre les événements
-        if (!nextEvent || 
-            (new Date(nextEvent.date).getTime() - new Date(currentEvent.endDate || currentEvent.date).getTime()) > 7 * 24 * 60 * 60 * 1000) {
-          if (currentBlock.length > 0) {
-            courseBlocks.push([...currentBlock]);
-            currentBlock = [];
-          }
+      currentBlock.push(currentEvent);
+      
+      // Si c'est le dernier événement ou s'il y a plus de 7 jours entre les événements
+      if (!nextEvent || 
+          (new Date(nextEvent.date).getTime() - new Date(currentEvent.endDate || currentEvent.date).getTime()) > 7 * 24 * 60 * 60 * 1000) {
+        if (currentBlock.length > 0) {
+          courseBlocks.push([...currentBlock]);
+          currentBlock = [];
         }
       }
+    }
 
-      return { eventSelections, courseBlocks };
-    }, [raceEvents, riders, appState.staff]);
+    return { eventSelections, courseBlocks };
+  }, [raceEvents, riders, appState.staff]);
+
+  // Rendu de l'onglet Planning de Saison - Version avec monitoring de groupe
+  const renderSeasonPlanningTab = () => {
 
     return (
       <div className="space-y-6">

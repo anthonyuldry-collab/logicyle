@@ -6,6 +6,7 @@ import PencilIcon from "../../components/icons/PencilIcon";
 import PlusCircleIcon from "../../components/icons/PlusCircleIcon";
 import TrashIcon from "../../components/icons/TrashIcon";
 import TransportDebug from "../../components/TransportDebug";
+import { firebaseService } from "../../services/firebaseService";
 import {
   AppState,
   BudgetItemCategory,
@@ -349,6 +350,37 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
         }
       }
 
+      // Vérifier la capacité du nouveau véhicule
+      const currentOccupants = (currentTransportLeg as EventTransportLeg).occupants?.length || 0;
+      let maxCapacity = Infinity;
+      
+      if (vehicle && vehicle.seats) {
+        maxCapacity = vehicle.seats;
+      } else if (vehicleId === "perso") {
+        maxCapacity = 5;
+      }
+      
+      // Si le nouveau véhicule a une capacité insuffisante, demander confirmation
+      if (maxCapacity !== Infinity && currentOccupants > maxCapacity) {
+        const confirmMessage = `Le véhicule sélectionné a une capacité de ${maxCapacity} personne${maxCapacity > 1 ? 's' : ''}, mais ${currentOccupants} occupant${currentOccupants > 1 ? 's' : ''} ${currentOccupants > 1 ? 'sont' : 'est'} déjà sélectionné${currentOccupants > 1 ? 's' : ''}. Voulez-vous continuer et ajuster les occupants ?`;
+        
+        if (!window.confirm(confirmMessage)) {
+          return; // Annuler le changement de véhicule
+        }
+        
+        // Réduire le nombre d'occupants à la capacité maximale
+        const updatedOccupants = (currentTransportLeg as EventTransportLeg).occupants?.slice(0, maxCapacity) || [];
+        
+        setCurrentTransportLeg((prev) => ({
+          ...(prev as EventTransportLeg),
+          mode: newMode,
+          assignedVehicleId: value === "" ? undefined : value,
+          driverId: vehicle?.driverId || undefined,
+          occupants: updatedOccupants,
+        }));
+        return;
+      }
+
       setCurrentTransportLeg((prev) => ({
         ...(prev as EventTransportLeg),
         mode: newMode,
@@ -376,10 +408,30 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
       );
 
       if (isSelected) {
+        // Retirer l'occupant
         updated.occupants = updated.occupants.filter(
           (occ) => !(occ.id === personId && occ.type === personType)
         );
       } else {
+        // Vérifier la capacité du véhicule avant d'ajouter
+        const vehicle = updated.assignedVehicleId 
+          ? appState.vehicles.find(v => v.id === updated.assignedVehicleId)
+          : null;
+        
+        let maxCapacity = Infinity; // Capacité illimitée par défaut
+        
+        if (vehicle && vehicle.seats) {
+          maxCapacity = vehicle.seats;
+        } else if (updated.assignedVehicleId === "perso") {
+          maxCapacity = 5; // Capacité par défaut pour véhicule personnel
+        }
+        
+        // Vérifier si on peut ajouter un occupant
+        if (updated.occupants.length >= maxCapacity) {
+          alert(`Impossible d'ajouter plus d'occupants. Capacité maximale du véhicule : ${maxCapacity} personne${maxCapacity > 1 ? 's' : ''}.`);
+          return prev; // Ne pas modifier l'état
+        }
+        
         updated.occupants.push({ id: personId, type: personType });
       }
       return updated;
@@ -453,7 +505,7 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     let legData = { ...currentTransportLeg };
 
@@ -467,6 +519,21 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
       id: (legData as EventTransportLeg).id || generateId(),
     };
 
+    try {
+      // Sauvegarder dans Firebase si on a un teamId
+      if (appState.activeTeamId) {
+        const savedId = await firebaseService.saveData(
+          appState.activeTeamId,
+          "eventTransportLegs",
+          legToSave
+        );
+        legToSave.id = savedId;
+        console.log('✅ Trajet sauvegardé dans Firebase avec l\'ID:', savedId);
+      } else {
+        console.warn('⚠️ Aucun teamId actif, sauvegarde locale uniquement');
+      }
+
+      // Mettre à jour l'état local
     setEventTransportLegs((prevLegs) => {
       const otherLegs = prevLegs.filter((leg) => leg.eventId !== eventId);
       const legsForThisEvent = prevLegs.filter(
@@ -488,6 +555,10 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
     });
 
     setIsModalOpen(false);
+    } catch (error) {
+      console.error('❌ Erreur lors de la sauvegarde du trajet:', error);
+      alert('Erreur lors de la sauvegarde du trajet. Veuillez réessayer.');
+    }
   };
 
   const openAddModal = () => {
@@ -502,8 +573,22 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
     setIsModalOpen(true);
   };
 
-  const handleDelete = (legId: string) => {
+  const handleDelete = async (legId: string) => {
     if (window.confirm("Êtes-vous sûr de vouloir supprimer ce trajet ?")) {
+      try {
+        // Supprimer de Firebase si on a un teamId
+        if (appState.activeTeamId) {
+          await firebaseService.deleteData(
+            appState.activeTeamId,
+            "eventTransportLegs",
+            legId
+          );
+          console.log('✅ Trajet supprimé de Firebase avec l\'ID:', legId);
+        } else {
+          console.warn('⚠️ Aucun teamId actif, suppression locale uniquement');
+        }
+
+        // Mettre à jour l'état local
       setEventTransportLegs((prevLegs) => {
         const updatedLegs = prevLegs.filter((leg) => leg.id !== legId);
         const legsForThisEvent = updatedLegs.filter(
@@ -512,6 +597,10 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
         updateCostsForEvent(legsForThisEvent);
         return updatedLegs;
       });
+      } catch (error) {
+        console.error('❌ Erreur lors de la suppression du trajet:', error);
+        alert('Erreur lors de la suppression du trajet. Veuillez réessayer.');
+      }
     }
   };
 
@@ -895,30 +984,81 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
 
             {/* Sélection des occupants */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Occupants
-              </label>
+              <div className="flex justify-between items-center mb-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Occupants
+                </label>
+                {(() => {
+                  const vehicle = (currentTransportLeg as EventTransportLeg).assignedVehicleId 
+                    ? appState.vehicles.find(v => v.id === (currentTransportLeg as EventTransportLeg).assignedVehicleId)
+                    : null;
+                  const currentOccupants = (currentTransportLeg as EventTransportLeg).occupants?.length || 0;
+                  let maxCapacity = Infinity;
+                  
+                  if (vehicle && vehicle.seats) {
+                    maxCapacity = vehicle.seats;
+                  } else if ((currentTransportLeg as EventTransportLeg).assignedVehicleId === "perso") {
+                    maxCapacity = 5;
+                  }
+                  
+                  return (
+                    <div className="text-xs text-gray-600">
+                      <span className={`font-medium ${currentOccupants >= maxCapacity ? 'text-red-600' : 'text-gray-600'}`}>
+                        {currentOccupants}
+                      </span>
+                      {maxCapacity !== Infinity && (
+                        <span className="text-gray-500"> / {maxCapacity}</span>
+                      )}
+                      {maxCapacity !== Infinity && currentOccupants >= maxCapacity && (
+                        <span className="text-red-600 font-medium ml-1">(Plein)</span>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
               <div className="max-h-40 overflow-y-auto border border-gray-300 rounded-md p-3 bg-gray-50">
                 <div className="space-y-2">
-                  {allAvailablePeople.map((person) => (
-                    <label
-                      key={`${person.id}-${person.type}`}
-                      className="flex items-center space-x-2 text-sm"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={(currentTransportLeg as EventTransportLeg).occupants?.some(
-                          (occ) => occ.id === person.id && occ.type === person.type
-                        ) || false}
-                        onChange={() => handleOccupantChange(person.id, person.type)}
-                        className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                      />
-                      <span className={person.isParticipant ? "font-semibold text-blue-700" : "text-gray-600"}>
-                        {person.name} ({person.type === "rider" ? "Coureur" : "Staff"})
-                        {person.isParticipant && " - Participant"}
-                      </span>
-                    </label>
-                  ))}
+                  {allAvailablePeople.map((person) => {
+                    const isSelected = (currentTransportLeg as EventTransportLeg).occupants?.some(
+                      (occ) => occ.id === person.id && occ.type === person.type
+                    ) || false;
+                    
+                    const vehicle = (currentTransportLeg as EventTransportLeg).assignedVehicleId 
+                      ? appState.vehicles.find(v => v.id === (currentTransportLeg as EventTransportLeg).assignedVehicleId)
+                      : null;
+                    const currentOccupants = (currentTransportLeg as EventTransportLeg).occupants?.length || 0;
+                    let maxCapacity = Infinity;
+                    
+                    if (vehicle && vehicle.seats) {
+                      maxCapacity = vehicle.seats;
+                    } else if ((currentTransportLeg as EventTransportLeg).assignedVehicleId === "perso") {
+                      maxCapacity = 5;
+                    }
+                    
+                    const isDisabled = !isSelected && currentOccupants >= maxCapacity;
+                    
+                    return (
+                      <label
+                        key={`${person.id}-${person.type}`}
+                        className={`flex items-center space-x-2 text-sm ${isDisabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => handleOccupantChange(person.id, person.type)}
+                          disabled={isDisabled}
+                          className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-50"
+                        />
+                        <span className={`${person.isParticipant ? "font-semibold text-blue-700" : "text-gray-600"} ${isDisabled ? 'text-gray-400' : ''}`}>
+                          {person.name} ({person.type === "rider" ? "Coureur" : "Staff"})
+                          {person.isParticipant && " - Participant"}
+                          {isDisabled && !isSelected && (
+                            <span className="text-red-500 text-xs ml-1">(Véhicule plein)</span>
+                          )}
+                        </span>
+                      </label>
+                    );
+                  })}
                 </div>
               </div>
             </div>

@@ -20,6 +20,7 @@ import CakeIcon from '../components/icons/CakeIcon';
 import { getAgeCategory } from '../utils/ageUtils';
 import { getRiderCharacteristicSafe } from '../utils/riderUtils';
 import { RiderComparisonChart, RiderRadarChart, PerformanceTrendsChart, RiderComparisonRadarChart, RiderComparisonSelector } from '../components/PerformanceCharts';
+import PowerAnalysisTable from '../components/PowerAnalysisTable';
 
 // Type definitions for the new section
 type PerformancePoleTab = 'global' | 'powerAnalysis' | 'charts' | 'comparison' | 'nutritionProducts' | 'planning';
@@ -126,54 +127,154 @@ const getPerformanceLabel = (value: number, duration: PowerDuration, mode: Power
 };
 
 // Composant principal du tableau de synthèse des performances
-const PowerPerformanceTable: React.FC<{ riders: Rider[] }> = ({ riders }) => {
-  const [displayMode, setDisplayMode] = useState<PowerDisplayMode>('wattsPerKg');
-  const [sortBy, setSortBy] = useState<PowerDuration>('cp');
+const PowerPerformanceTable: React.FC<{ riders: Rider[], scoutingProfiles?: ScoutingProfile[] }> = ({ riders, scoutingProfiles = [] }) => {
+  const [displayMode, setDisplayMode] = useState<'watts' | 'wattsPerKg'>('wattsPerKg');
+  const [sortBy, setSortBy] = useState<string>('cp');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [genderFilter, setGenderFilter] = useState<'all' | Sex>('all');
-  const [ageFilter, setAgeFilter] = useState<'all' | string>('all');
-  const [selectedDurations, setSelectedDurations] = useState<PowerDuration[]>(['1s']);
+  const [categoryFilter, setCategoryFilter] = useState<'all' | string>('all');
+  const [levelFilter, setLevelFilter] = useState<'all' | string>('all');
+  const [includeScouts, setIncludeScouts] = useState<boolean>(false);
+  const [fatigueProfile, setFatigueProfile] = useState<'fresh' | '15kj' | '30kj' | '45kj'>('fresh');
+  const [selectedDurations, setSelectedDurations] = useState<string[]>(['1s', '5s', '30s', '1min', '3min', '5min', '12min', '20min', 'cp']);
 
-  // Filtrage des riders
-  const filteredRiders = useMemo(() => {
-    return riders.filter(rider => {
+  // Configuration des durées de puissance
+  const powerDurations = [
+    { key: '1s', label: '1s', field: 'power1s' },
+    { key: '5s', label: '5s', field: 'power5s' },
+    { key: '30s', label: '30s', field: 'power30s' },
+    { key: '1min', label: '1min', field: 'power1min' },
+    { key: '3min', label: '3min', field: 'power3min' },
+    { key: '5min', label: '5min', field: 'power5min' },
+    { key: '12min', label: '12min', field: 'power12min' },
+    { key: '20min', label: '20min', field: 'power20min' },
+    { key: 'cp', label: 'CP', field: 'criticalPower' }
+  ];
+
+  // Fonction pour obtenir la valeur de puissance selon le profil de fatigue
+  const getPowerValue = (rider: Rider | ScoutingProfile, duration: string, mode: 'watts' | 'wattsPerKg'): number => {
+    let powerProfile;
+    
+    if ('powerProfileFresh' in rider) {
+      // C'est un Rider
+      switch (fatigueProfile) {
+        case 'fresh':
+          powerProfile = rider.powerProfileFresh;
+          break;
+        case '15kj':
+          powerProfile = rider.powerProfile15kj;
+          break;
+        case '30kj':
+          powerProfile = rider.powerProfile30kj;
+          break;
+        case '45kj':
+          powerProfile = rider.powerProfile45kj;
+          break;
+        default:
+          powerProfile = rider.powerProfileFresh;
+      }
+    } else {
+      // C'est un ScoutingProfile
+      powerProfile = rider.powerProfileFresh;
+    }
+
+    if (!powerProfile) return 0;
+
+    const durationConfig = powerDurations.find(d => d.key === duration);
+    if (!durationConfig) return 0;
+
+    const powerValue = (powerProfile as any)[durationConfig.field] || 0;
+    
+    if (mode === 'watts') {
+      return powerValue;
+    } else {
+      // Mode W/kg
+      const weight = ('weightKg' in rider ? rider.weightKg : rider.weight) || 70;
+      return weight > 0 ? powerValue / weight : 0;
+    }
+  };
+
+  // Filtrage des riders et scouts
+  const filteredData = useMemo(() => {
+    const filteredRiders = riders.filter(rider => {
       const genderMatch = genderFilter === 'all' || rider.sex === genderFilter;
       const { category } = getAgeCategory(rider.birthDate);
-      const ageMatch = ageFilter === 'all' || category === ageFilter;
-      return genderMatch && ageMatch;
+      const categoryMatch = categoryFilter === 'all' || category === categoryFilter;
+      
+      // Filtre par niveau (si disponible)
+      const levelMatch = levelFilter === 'all' || 
+        (rider.level && rider.level === levelFilter) ||
+        (rider.qualitativeProfile && rider.qualitativeProfile === levelFilter);
+      
+      return genderMatch && categoryMatch && levelMatch;
     });
-  }, [riders, genderFilter, ageFilter]);
 
-  // Tri des riders par performance
-  const sortedRiders = useMemo(() => {
-    return [...filteredRiders].sort((a, b) => {
-      const aValue = getRiderPowerValue(a, sortBy, displayMode);
-      const bValue = getRiderPowerValue(b, sortBy, displayMode);
+    const filteredScouts = includeScouts ? scoutingProfiles.filter(scout => {
+      const genderMatch = genderFilter === 'all' || scout.sex === genderFilter;
+      const { category } = getAgeCategory(scout.birthDate);
+      const categoryMatch = categoryFilter === 'all' || category === categoryFilter;
+      
+      const levelMatch = levelFilter === 'all' || 
+        (scout.level && scout.level === levelFilter) ||
+        (scout.qualitativeProfile && scout.qualitativeProfile === levelFilter);
+      
+      return genderMatch && categoryMatch && levelMatch;
+    }) : [];
+
+    return [...filteredRiders, ...filteredScouts];
+  }, [riders, scoutingProfiles, genderFilter, categoryFilter, levelFilter, includeScouts]);
+
+  // Tri des données par performance
+  const sortedData = useMemo(() => {
+    return [...filteredData].sort((a, b) => {
+      const aValue = getPowerValue(a, sortBy, displayMode);
+      const bValue = getPowerValue(b, sortBy, displayMode);
       
       if (sortDirection === 'desc') {
         return bValue - aValue;
       }
       return aValue - bValue;
     });
-  }, [filteredRiders, sortBy, sortDirection, displayMode]);
+  }, [filteredData, sortBy, sortDirection, displayMode, fatigueProfile]);
 
   // Gestion du tri
-  const handleSort = (duration: PowerDuration) => {
+  const handleSort = (duration: string) => {
     if (sortBy === duration) {
       setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
     } else {
       setSortBy(duration);
       setSortDirection('desc');
     }
-};
+  };
+
+  // Fonction pour obtenir le nom d'affichage
+  const getDisplayName = (item: Rider | ScoutingProfile): string => {
+    if ('firstName' in item && 'lastName' in item) {
+      return `${item.firstName} ${item.lastName}`;
+    }
+    return 'Inconnu';
+  };
+
+  // Fonction pour obtenir le type (Rider ou Scout)
+  const getItemType = (item: Rider | ScoutingProfile): string => {
+    return 'powerProfileFresh' in item ? 'Coureur' : 'Scout';
+  };
+
+  // Fonction pour obtenir la catégorie d'âge
+  const getItemAgeCategory = (item: Rider | ScoutingProfile): string => {
+    const { category } = getAgeCategory(item.birthDate);
+    return category;
+  };
 
   // Rendu du tableau
-    return (
+  return (
     <div className="bg-white rounded-lg shadow-lg overflow-hidden">
       {/* En-tête avec contrôles */}
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-4 text-white">
-        <h2 className="text-xl font-bold mb-2">Centre Stratégique des Performances</h2>
-        <div className="flex flex-wrap gap-4 items-center">
+        <h2 className="text-xl font-bold mb-4">Analyse des Puissances</h2>
+        
+        {/* Contrôles principaux */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
           {/* Mode d'affichage */}
           <div className="flex items-center space-x-2">
             <span className="text-sm font-medium">Affichage:</span>
@@ -197,7 +298,44 @@ const PowerPerformanceTable: React.FC<{ riders: Rider[] }> = ({ riders }) => {
             </div>
           </div>
 
-          {/* Filtres */}
+          {/* Profil de fatigue */}
+          <div className="flex items-center space-x-2">
+            <span className="text-sm font-medium">Fatigue:</span>
+            <select
+              value={fatigueProfile}
+              onChange={(e) => setFatigueProfile(e.target.value as any)}
+              className="px-2 py-1 rounded text-sm text-gray-800"
+            >
+              <option value="fresh">Frais</option>
+              <option value="15kj">15 kJ/kg</option>
+              <option value="30kj">30 kJ/kg</option>
+              <option value="45kj">45 kJ/kg</option>
+            </select>
+          </div>
+
+          {/* Inclure les scouts */}
+          <div className="flex items-center space-x-2">
+            <input
+              type="checkbox"
+              id="includeScouts"
+              checked={includeScouts}
+              onChange={(e) => setIncludeScouts(e.target.checked)}
+              className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            />
+            <label htmlFor="includeScouts" className="text-sm font-medium">
+              Inclure scouts
+            </label>
+          </div>
+
+          {/* Statistiques */}
+          <div className="text-sm">
+            <span className="font-medium">{sortedData.length}</span> coureurs affichés
+          </div>
+        </div>
+
+        {/* Filtres */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Filtre par sexe */}
           <div className="flex items-center space-x-2">
             <span className="text-sm font-medium">Sexe:</span>
             <select
@@ -211,11 +349,12 @@ const PowerPerformanceTable: React.FC<{ riders: Rider[] }> = ({ riders }) => {
             </select>
           </div>
 
+          {/* Filtre par catégorie d'âge */}
           <div className="flex items-center space-x-2">
             <span className="text-sm font-medium">Catégorie:</span>
             <select
-              value={ageFilter}
-              onChange={(e) => setAgeFilter(e.target.value)}
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
               className="px-2 py-1 rounded text-sm text-gray-800"
             >
               <option value="all">Toutes</option>
@@ -225,7 +364,25 @@ const PowerPerformanceTable: React.FC<{ riders: Rider[] }> = ({ riders }) => {
               <option value="U23">U23</option>
               <option value="Senior">Senior</option>
             </select>
-                    </div>
+          </div>
+
+          {/* Filtre par niveau */}
+          <div className="flex items-center space-x-2">
+            <span className="text-sm font-medium">Niveau:</span>
+            <select
+              value={levelFilter}
+              onChange={(e) => setLevelFilter(e.target.value)}
+              className="px-2 py-1 rounded text-sm text-gray-800"
+            >
+              <option value="all">Tous</option>
+              <option value="Elite">Elite</option>
+              <option value="National">National</option>
+              <option value="Regional">Régional</option>
+              <option value="Amateur">Amateur</option>
+            </select>
+          </div>
+        </div>
+      </div>
 
           {/* Sélection des durées - Une seule à la fois */}
           <div className="flex items-center space-x-2">
@@ -591,7 +748,7 @@ export const PerformanceSection: React.FC<{ appState: AppState }> = ({ appState 
               </p>
             </div>
             
-            <PowerPerformanceTable riders={riders} />
+            <PowerAnalysisTable riders={riders} scoutingProfiles={scoutingProfiles} />
           </div>
         )}
 
