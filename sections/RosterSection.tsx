@@ -15,6 +15,7 @@ import ConfirmationModal from '../components/ConfirmationModal';
 import { saveData, deleteData } from '../services/firebaseService';
 import { Rider, RaceEvent, RiderEventSelection, FormeStatus, Sex, RiderQualitativeProfile, MoralStatus, HealthCondition, RiderEventStatus } from '../types';
 import { getAgeCategory } from '../utils/ageUtils';
+import { calculateRiderCharacteristics } from '../utils/performanceCalculations';
 
 interface RosterSectionProps {
   appState: any;
@@ -66,6 +67,15 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
     setLocalRaceEvents(appState.raceEvents || []);
     setLocalRiderEventSelections(appState.riderEventSelections || []);
   }, [appState.raceEvents, appState.riderEventSelections]);
+
+  // Synchronisation automatique au chargement
+  useEffect(() => {
+    if (localRaceEvents.length > 0 && localRiderEventSelections.length > 0) {
+      console.log('🔄 Synchronisation automatique au chargement...');
+      // Synchroniser les sélections depuis les événements vers le planning
+      // Note: Les fonctions de synchronisation sont définies plus bas dans le composant
+    }
+  }, [localRaceEvents.length, localRiderEventSelections.length]);
   
   // États pour la gestion des modales
   const [selectedRider, setSelectedRider] = useState<Rider | null>(null);
@@ -766,6 +776,11 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
             const updatedEvents = localRaceEvents.map(e => e.id === eventId ? updatedEvent : e);
             // Forcer le re-render en mettant à jour l'état local
             setLocalRaceEvents(updatedEvents);
+            
+            // Synchroniser avec l'état global des événements
+            if (appState.setRaceEvents) {
+              appState.setRaceEvents(updatedEvents);
+            }
           }
         }
 
@@ -839,6 +854,11 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
               };
               const updatedEvents = localRaceEvents.map(e => e.id === eventId ? updatedEvent : e);
               setLocalRaceEvents(updatedEvents);
+              
+              // Synchroniser avec l'état global des événements
+              if (appState.setRaceEvents) {
+                appState.setRaceEvents(updatedEvents);
+              }
             } else if (!shouldBeInEvent && isCurrentlyInEvent) {
               // Retirer de l'événement si n'est plus titulaire
               const updatedEvent = {
@@ -847,6 +867,11 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
               };
               const updatedEvents = localRaceEvents.map(e => e.id === eventId ? updatedEvent : e);
               setLocalRaceEvents(updatedEvents);
+              
+              // Synchroniser avec l'état global des événements
+              if (appState.setRaceEvents) {
+                appState.setRaceEvents(updatedEvents);
+              }
             }
           }
 
@@ -858,13 +883,122 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
       }
     };
 
+    // Fonction pour synchroniser les sélections depuis les événements vers le planning
+    const syncSelectionsFromEvents = () => {
+      console.log('🔄 Synchronisation des sélections depuis les événements...');
+      
+      const newSelections: RiderEventSelection[] = [];
+      
+      // Parcourir tous les événements
+      localRaceEvents.forEach(event => {
+        // Ajouter les titulaires (ceux dans selectedRiderIds)
+        if (event.selectedRiderIds) {
+          event.selectedRiderIds.forEach(riderId => {
+            // Vérifier si cette sélection n'existe pas déjà
+            const existingSelection = localRiderEventSelections.find(
+              sel => sel.eventId === event.id && sel.riderId === riderId
+            );
+            
+            if (!existingSelection) {
+              newSelections.push({
+                id: `${event.id}_${riderId}_${Date.now()}`,
+                eventId: event.id,
+                riderId: riderId,
+                status: RiderEventStatus.TITULAIRE,
+                riderPreference: undefined,
+                riderObjectives: undefined,
+                notes: undefined
+              });
+            }
+          });
+        }
+      });
+      
+      if (newSelections.length > 0) {
+        console.log('✅ Nouvelles sélections synchronisées:', newSelections.length);
+        const updatedSelections = [...localRiderEventSelections, ...newSelections];
+        setLocalRiderEventSelections(updatedSelections);
+        
+        // Mettre à jour l'état global
+        if (appState.setRiderEventSelections) {
+          appState.setRiderEventSelections(updatedSelections);
+        } else if (appState.riderEventSelections) {
+          appState.riderEventSelections.length = 0;
+          appState.riderEventSelections.push(...updatedSelections);
+        }
+      }
+    };
+
+    // Fonction pour synchroniser les sélections depuis le planning vers les événements
+    const syncSelectionsToEvents = () => {
+      console.log('🔄 Synchronisation des sélections vers les événements...');
+      
+      const updatedEvents = localRaceEvents.map(event => {
+        // Récupérer tous les titulaires pour cet événement
+        const titulaires = localRiderEventSelections
+          .filter(sel => sel.eventId === event.id && sel.status === RiderEventStatus.TITULAIRE)
+          .map(sel => sel.riderId);
+        
+        return {
+          ...event,
+          selectedRiderIds: titulaires
+        };
+      });
+      
+      setLocalRaceEvents(updatedEvents);
+      console.log('✅ Événements mis à jour avec les sélections du planning');
+    };
+
+    // Fonction pour sauvegarder toutes les sélections
+    const saveAllSelections = async () => {
+      try {
+        console.log('💾 Sauvegarde de toutes les sélections...');
+        
+        if (!appState.activeTeamId) {
+          alert('Aucun teamId actif. Impossible de sauvegarder.');
+          return;
+        }
+
+        let savedCount = 0;
+        let errorCount = 0;
+
+        for (const selection of localRiderEventSelections) {
+          try {
+            await saveData(
+              appState.activeTeamId,
+              "riderEventSelections",
+              selection
+            );
+            savedCount++;
+          } catch (error) {
+            console.error('❌ Erreur lors de la sauvegarde de la sélection:', selection.id, error);
+            errorCount++;
+          }
+        }
+
+        if (errorCount === 0) {
+          alert(`✅ Toutes les sélections ont été sauvegardées (${savedCount} sélections)`);
+        } else {
+          alert(`⚠️ Sauvegarde partielle: ${savedCount} réussies, ${errorCount} échecs`);
+        }
+
+        console.log(`💾 Sauvegarde terminée: ${savedCount} réussies, ${errorCount} échecs`);
+      } catch (error) {
+        console.error('❌ Erreur lors de la sauvegarde globale:', error);
+        alert('Erreur lors de la sauvegarde. Veuillez réessayer.');
+      }
+    };
+
     // Fonction pour retirer un athlète d'un événement
     const removeRiderFromEvent = async (eventId: string, riderId: string) => {
       console.log(`🗑️ Tentative de retrait: ${riderId} de ${eventId}`);
+      console.log('🔍 Sélections locales actuelles:', localRiderEventSelections.length);
+      console.log('🔍 Détail des sélections:', localRiderEventSelections);
       try {
         const existingSelection = localRiderEventSelections.find(
           sel => sel.eventId === eventId && sel.riderId === riderId
         );
+        console.log('🔍 Sélection existante trouvée:', existingSelection);
 
         if (existingSelection) {
           // Supprimer de Firebase si on a un teamId
@@ -917,6 +1051,11 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
               const updatedEvents = localRaceEvents.map(e => e.id === eventId ? updatedEvent : e);
               // Forcer le re-render en mettant à jour l'état local
               setLocalRaceEvents(updatedEvents);
+              
+              // Synchroniser avec l'état global des événements
+              if (appState.setRaceEvents) {
+                appState.setRaceEvents(updatedEvents);
+              }
             }
           }
 
@@ -945,6 +1084,35 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-xl font-semibold text-gray-800">Planning Saison - Gestion des Athlètes</h3>
             <div className="flex gap-2">
+              <button
+                onClick={syncSelectionsFromEvents}
+                className="px-3 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center gap-2"
+                title="Synchroniser depuis les événements"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Sync ←
+              </button>
+              <button
+                onClick={syncSelectionsToEvents}
+                className="px-3 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 transition-colors flex items-center gap-2"
+                title="Synchroniser vers les événements"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                Sync →
+              </button>
+              <button
+                onClick={saveAllSelections}
+                className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                Sauvegarder
+              </button>
         <button
           onClick={() => handlePlanningSort('name')}
                 className={`px-3 py-2 text-sm rounded-lg transition-colors ${
@@ -1028,14 +1196,19 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                     <div className="space-y-3">
                       {/* Titulaires */}
                       <div>
-                        <h6 className="text-sm font-medium text-green-700 mb-2">Titulaires</h6>
+                        <h6 className="text-sm font-medium text-green-700 mb-2 flex items-center gap-2">
+                          <span className="w-3 h-3 bg-green-500 rounded-full"></span>
+                          Titulaires ({titulaires.length})
+                        </h6>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                           {riders.map(rider => {
                             const isTitulaire = event.selectedRiderIds?.includes(rider.id);
                             const isRemplacant = getRiderEventStatus(event.id, rider.id) === RiderEventStatus.REMPLACANT;
                             
                             return (
-                              <label key={rider.id} className="flex items-center space-x-2 text-sm cursor-pointer">
+                              <label key={rider.id} className={`flex items-center space-x-2 text-sm cursor-pointer p-2 rounded-lg transition-colors ${
+                                isTitulaire ? 'bg-green-50 border border-green-200' : 'hover:bg-gray-50'
+                              }`}>
                                 <input
                                   type="checkbox"
                                   checked={isTitulaire}
@@ -1055,32 +1228,44 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                                 />
                                 <span className={`${isTitulaire ? 'text-green-700 font-medium' : 'text-gray-600'}`}>
                                   {rider.firstName} {rider.lastName}
-                                </span>
+                    </span>
+                                {isTitulaire && (
+                                  <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">
+                                    TITULAIRE
+                                  </span>
+                                )}
                               </label>
               );
             })}
-                        </div>
+                    </div>
       </div>
 
-                      {/* Remplaçants */}
+                                            {/* Remplaçants */}
                       <div>
-                        <h6 className="text-sm font-medium text-yellow-700 mb-2">Remplaçants</h6>
+                        <h6 className="text-sm font-medium text-yellow-700 mb-2 flex items-center gap-2">
+                          <span className="w-3 h-3 bg-yellow-500 rounded-full"></span>
+                          Remplaçants ({remplacants.length})
+                        </h6>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                           {riders.map(rider => {
                             const isTitulaire = event.selectedRiderIds?.includes(rider.id);
                             const isRemplacant = getRiderEventStatus(event.id, rider.id) === RiderEventStatus.REMPLACANT;
                             
                             return (
-                              <label key={rider.id} className="flex items-center space-x-2 text-sm cursor-pointer">
+                              <label key={rider.id} className={`flex items-center space-x-2 text-sm cursor-pointer p-2 rounded-lg transition-colors ${
+                                isRemplacant ? 'bg-yellow-50 border border-yellow-200' : 'hover:bg-gray-50'
+                              }`}>
                                 <input
                                   type="checkbox"
                                   checked={isRemplacant}
                                   onChange={(e) => {
+                                    console.log('🔄 Clic sur case remplaçant:', rider.firstName, rider.lastName, 'checked:', e.target.checked, 'isRemplacant:', isRemplacant, 'isTitulaire:', isTitulaire);
                                     if (e.target.checked) {
                                       // Ajouter comme remplaçant (la fonction gère les doublons)
                                       addRiderToEvent(event.id, rider.id, RiderEventStatus.REMPLACANT);
                                     } else {
                                       // Si on décoche, on retire l'athlète
+                                      console.log('🗑️ Tentative de décochage remplaçant:', rider.firstName, rider.lastName);
                                       if (isTitulaire || isRemplacant) {
                                         removeRiderFromEvent(event.id, rider.id);
                                       }
@@ -1090,20 +1275,25 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                                 />
                                 <span className={`${isRemplacant ? 'text-yellow-700 font-medium' : 'text-gray-600'}`}>
                                   {rider.firstName} {rider.lastName}
-                                </span>
+                    </span>
+                                {isRemplacant && (
+                                  <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full">
+                                    REMPLAÇANT
+                                  </span>
+                                )}
                               </label>
-                            );
-                          })}
+              );
+            })}
+      </div>
             </div>
             </div>
             </div>
-          </div>
                 );
               })
             ) : (
               <p className="text-center text-gray-500 italic py-8">Aucun événement à venir.</p>
             )}
-        </div>
+          </div>
           ) : (
             // Vue réduite - seulement nom et date
             <div className="space-y-2">
@@ -1153,7 +1343,7 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
   };
 
   // Algorithme de profilage Coggan Expert - Note générale = moyenne simple de toutes les données
-  const calculateCogganProfileScore = (rider: any) => {
+    const calculateCogganProfileScore = (rider: any) => {
     // Vérifier si c'est un scout
     if (rider.isScout) {
       console.log('🔍 Calcul des scores pour scout:', rider.firstName, rider.lastName);
@@ -1161,125 +1351,35 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
       const scoutingProfile = appState.scoutingProfiles?.find(s => s.id === rider.id);
       console.log('🔍 Profil de scouting trouvé:', scoutingProfile);
       if (scoutingProfile) {
-        const powerProfile = scoutingProfile.powerProfileFresh || {};
-        const weight = scoutingProfile.weightKg || 70;
-        
-        // Calcul des puissances relatives (W/kg) pour chaque durée - MÊME ALGORITHME QUE LES RIDERS
-        const power1s = (powerProfile.power1s || 0) / weight;
-        const power5s = (powerProfile.power5s || 0) / weight;
-        const power30s = (powerProfile.power30s || 0) / weight;
-        const power1min = (powerProfile.power1min || 0) / weight;
-        const power3min = (powerProfile.power3min || 0) / weight;
-        const power5min = (powerProfile.power5min || 0) / weight;
-        const power12min = (powerProfile.power12min || 0) / weight;
-        const power20min = (powerProfile.power20min || 0) / weight;
-        const criticalPower = (powerProfile.criticalPower || 0) / weight;
-        
-        // Références Coggan pour un athlète "ultime" (100/100) - MÊMES RÉFÉRENCES
-        const cogganUltimate = {
-          power1s: 19.42,   // 19.42 W/kg - Sprint ultime (Elite/Hero)
-          power5s: 19.42,   // 19.42 W/kg - Anaérobie ultime (Elite/Hero)
-          power30s: 13.69,  // 13.69 W/kg - Puissance critique ultime (Pro)
-          power1min: 8.92,  // 8.92 W/kg - Endurance anaérobie ultime (Elite/Hero)
-          power3min: 7.0,   // 7.0 W/kg - Seuil anaérobie ultime
-          power5min: 6.35,  // 6.35 W/kg - Seuil fonctionnel ultime (Elite/Hero)
-          power12min: 5.88, // 5.88 W/kg - FTP ultime (Elite/Hero)
-          power20min: 5.88, // 5.88 W/kg - Endurance critique ultime (Elite/Hero)
-          criticalPower: 5.35 // 5.35 W/kg - CP ultime (Elite/Hero)
-        };
-        
-        // Calcul des scores par durée (0-100) - MÊME FONCTION
-        const getDurationScore = (actual: number, ultimate: number, isFatigueData: boolean = false) => {
-          if (actual >= ultimate) return 100;
-          
-          // Données de fatigue (20min et CP) ont un bonus de 10%
-          const fatigueBonus = isFatigueData ? 1.1 : 1.0;
-          
-          // Notation calibrée : 70% de la puissance ultime = 70 points (pour correspondre à l'échelle Elite/Hero)
-          const score = Math.max(0, Math.round((actual / ultimate) * 70 * fatigueBonus));
-          return Math.min(100, score); // Limiter à 100
-        };
-        
-        // Calcul des scores automatiques basés sur les données de puissance - MÊME LOGIQUE
-        const automaticScores = {
-          power1s: getDurationScore(power1s, cogganUltimate.power1s),
-          power5s: getDurationScore(power5s, cogganUltimate.power5s),
-          power30s: getDurationScore(power30s, cogganUltimate.power30s),
-          power1min: getDurationScore(power1min, cogganUltimate.power1min),
-          power3min: getDurationScore(power3min, cogganUltimate.power3min),
-          power5min: getDurationScore(power5min, cogganUltimate.power5min),
-          power12min: getDurationScore(power12min, cogganUltimate.power12min),
-          power20min: getDurationScore(power20min, cogganUltimate.power20min),
-          criticalPower: getDurationScore(criticalPower, cogganUltimate.criticalPower)
-        };
-        
-        // Calcul des scores selon l'algorithme - MÊME LOGIQUE QUE LES RIDERS
-        const sprintScore = Math.round((automaticScores.power1s + automaticScores.power5s) / 2);
-        const montagneScore = Math.round((automaticScores.power5min + automaticScores.power12min + automaticScores.power20min) / 3);
-        const puncheurScore = Math.round((automaticScores.power30s + automaticScores.power1min + automaticScores.power3min) / 3);
-        const rouleurScore = Math.round((automaticScores.power12min + automaticScores.power20min + automaticScores.criticalPower) / 3);
-        
-        // Calcul de la résistance selon l'algorithme - MÊME LOGIQUE
-        const calculateResistanceScore = () => {
-          const power20minWkg = power20min;
-          const criticalPowerWkg = criticalPower;
-          
-          if (!power20minWkg && !criticalPowerWkg) {
-            return 0; // Pas de données de résistance
-          }
-          
-          let resistanceScore = 0;
-          let dataPoints = 0;
-          
-          if (power20minWkg) {
-            const power20minRatio = power20minWkg / cogganUltimate.power20min;
-            const power20minScore = Math.round(power20minRatio * 100);
-            resistanceScore += power20minScore * 0.6;
-            dataPoints++;
-          }
-          
-          if (criticalPowerWkg) {
-            const criticalPowerRatio = criticalPowerWkg / cogganUltimate.criticalPower;
-            const criticalPowerScore = Math.round(criticalPowerRatio * 100);
-            resistanceScore += criticalPowerScore * 0.4;
-            dataPoints++;
-          }
-          
-          if (dataPoints === 1) {
-            resistanceScore = Math.round(resistanceScore / (dataPoints === 1 ? 0.6 : 0.4));
-          }
-          
-          if (dataPoints === 2) {
-            const consistencyBonus = Math.abs(power20minWkg - criticalPowerWkg) < 0.5 ? 5 : 0;
-            resistanceScore += consistencyBonus;
-          }
-          
-          if (resistanceScore >= 80 && dataPoints === 2) {
-            resistanceScore += 3; // Bonus élite
-          }
-          
-          return Math.min(100, Math.max(0, resistanceScore));
-        };
-        
-        const resistanceScore = calculateResistanceScore();
-        
-        // Note générale : moyenne de tous les scores automatiques - MÊME LOGIQUE
-        const generalScore = Math.round(
-          Object.values(automaticScores).reduce((sum, score) => sum + score, 0) / Object.values(automaticScores).length
-        );
-        
+        // Utiliser la même fonction que dans la section scouting pour avoir les mêmes notes
+        const calculatedCharacteristics = calculateRiderCharacteristics({
+          powerProfileFresh: scoutingProfile.powerProfileFresh,
+          powerProfile15KJ: scoutingProfile.powerProfile15KJ,
+          powerProfile30KJ: scoutingProfile.powerProfile30KJ,
+          powerProfile45KJ: scoutingProfile.powerProfile45KJ,
+          weightKg: scoutingProfile.weightKg,
+          sex: scoutingProfile.sex,
+          qualitativeProfile: scoutingProfile.qualitativeProfile
+        });
+
+        console.log('🔍 Caractéristiques calculées pour scout:', calculatedCharacteristics);
+
+        // Mapper les caractéristiques calculées vers le format attendu
         return {
-          generalScore,
-          sprintScore,
-          montagneScore,
-          puncheurScore,
-          rouleurScore,
-          resistanceScore,
-          automaticScores, // Scores calculés automatiquement
+          generalScore: calculatedCharacteristics.generalPerformanceScore,
+          sprintScore: calculatedCharacteristics.charSprint,
+          montagneScore: calculatedCharacteristics.charClimbing,
+          puncheurScore: calculatedCharacteristics.charPuncher,
+          rouleurScore: calculatedCharacteristics.charRouleur,
+          resistanceScore: calculatedCharacteristics.fatigueResistanceScore,
+          automaticScores: {
+            power1s: 0, power5s: 0, power30s: 0, power1min: 0, power3min: 0,
+            power5min: 0, power12min: 0, power20min: 0, criticalPower: 0
+          },
           pprNotes: { general: 0, sprint: 0, climbing: 0, puncher: 0, rouleur: 0, fatigue: 0 },
           powerProfile: {
-            power1s, power5s, power30s, power1min, power3min, 
-            power5min, power12min, power20min, criticalPower
+            power1s: 0, power5s: 0, power30s: 0, power1min: 0, power3min: 0,
+            power5min: 0, power12min: 0, power20min: 0, criticalPower: 0
           },
           isHybrid: false
         };
