@@ -675,9 +675,12 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
     console.log('🎯 Rendu du planning - Sélections actuelles:', appState.riderEventSelections?.length || 0);
     console.log('🎯 Événements locaux:', localRaceEvents.length);
     console.log('🎯 Détail des sélections:', appState.riderEventSelections);
+    console.log('🎯 Sélections locales:', localRiderEventSelections.length);
+    console.log('🎯 Détail des sélections locales:', localRiderEventSelections);
     console.log('🎯 Scouts disponibles:', appState.scoutingProfiles?.length || 0);
     console.log('🎯 Détail des scouts:', appState.scoutingProfiles);
     console.log('🎯 Riders disponibles:', riders.length);
+    console.log('🎯 TeamId actif:', appState.activeTeamId);
     
     // Filtrer les événements futurs uniquement
     const futureEvents = localRaceEvents.filter(event => {
@@ -714,14 +717,21 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
         };
 
         // Sauvegarder dans Firebase si on a un teamId
+        console.log('🔍 TeamId actif:', appState.activeTeamId);
         if (appState.activeTeamId) {
-          const savedId = await saveData(
-            appState.activeTeamId,
-            "riderEventSelections",
-            newSelection
-          );
-          newSelection.id = savedId;
-          console.log('✅ Sélection d\'athlète sauvegardée dans Firebase avec l\'ID:', savedId);
+          try {
+            const savedId = await saveData(
+              appState.activeTeamId,
+              "riderEventSelections",
+              newSelection
+            );
+            newSelection.id = savedId;
+            console.log('✅ Sélection d\'athlète sauvegardée dans Firebase avec l\'ID:', savedId);
+          } catch (error) {
+            console.error('❌ Erreur lors de la sauvegarde Firebase:', error);
+            alert('Erreur lors de la sauvegarde. Veuillez réessayer.');
+            return;
+          }
         } else {
           console.warn('⚠️ Aucun teamId actif, sauvegarde locale uniquement');
         }
@@ -737,6 +747,12 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
           console.log('✅ État global des sélections mis à jour:', updatedSelections.length);
         } else {
           console.warn('⚠️ setRiderEventSelections non disponible dans appState');
+          // Forcer la mise à jour en modifiant directement l'objet appState
+          if (appState.riderEventSelections) {
+            appState.riderEventSelections.length = 0;
+            appState.riderEventSelections.push(...updatedSelections);
+            console.log('✅ État global forcé mis à jour:', appState.riderEventSelections.length);
+          }
         }
         // Mettre à jour l'événement seulement si c'est un titulaire
         if (status === RiderEventStatus.TITULAIRE) {
@@ -771,17 +787,24 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
         if (existingSelection) {
           const updatedSelection = { ...existingSelection, status: newStatus };
 
-          // Sauvegarder dans Firebase si on a un teamId
-          if (appState.activeTeamId) {
+                  // Sauvegarder dans Firebase si on a un teamId
+        console.log('🔍 TeamId actif pour mise à jour:', appState.activeTeamId);
+        if (appState.activeTeamId) {
+          try {
             await saveData(
               appState.activeTeamId,
               "riderEventSelections",
               updatedSelection
             );
             console.log('✅ Statut de sélection mis à jour dans Firebase');
-          } else {
-            console.warn('⚠️ Aucun teamId actif, sauvegarde locale uniquement');
+          } catch (error) {
+            console.error('❌ Erreur lors de la mise à jour Firebase:', error);
+            alert('Erreur lors de la mise à jour. Veuillez réessayer.');
+            return;
           }
+        } else {
+          console.warn('⚠️ Aucun teamId actif, sauvegarde locale uniquement');
+        }
 
           // Mettre à jour l'état local des sélections
           const updatedSelections = localRiderEventSelections.map(sel =>
@@ -793,6 +816,13 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
           // Mettre à jour l'état global des sélections si disponible
           if (appState.setRiderEventSelections) {
             appState.setRiderEventSelections(updatedSelections);
+          } else {
+            // Forcer la mise à jour en modifiant directement l'objet appState
+            if (appState.riderEventSelections) {
+              appState.riderEventSelections.length = 0;
+              appState.riderEventSelections.push(...updatedSelections);
+              console.log('✅ État global forcé mis à jour après modification:', appState.riderEventSelections.length);
+            }
           }
 
           // Mettre à jour l'événement selon le nouveau statut
@@ -838,13 +868,20 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
 
         if (existingSelection) {
           // Supprimer de Firebase si on a un teamId
+          console.log('🔍 TeamId actif pour suppression:', appState.activeTeamId);
           if (appState.activeTeamId) {
-            await deleteData(
-              appState.activeTeamId,
-              "riderEventSelections",
-              existingSelection.id
-            );
-            console.log('✅ Sélection d\'athlète supprimée de Firebase');
+            try {
+              await deleteData(
+                appState.activeTeamId,
+                "riderEventSelections",
+                existingSelection.id
+              );
+              console.log('✅ Sélection d\'athlète supprimée de Firebase');
+            } catch (error) {
+              console.error('❌ Erreur lors de la suppression Firebase:', error);
+              alert('Erreur lors de la suppression. Veuillez réessayer.');
+              return;
+            }
           } else {
             console.warn('⚠️ Aucun teamId actif, suppression locale uniquement');
           }
@@ -859,6 +896,13 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
           // Mettre à jour l'état global des sélections si disponible
           if (appState.setRiderEventSelections) {
             appState.setRiderEventSelections(updatedSelections);
+          } else {
+            // Forcer la mise à jour en modifiant directement l'objet appState
+            if (appState.riderEventSelections) {
+              appState.riderEventSelections.length = 0;
+              appState.riderEventSelections.push(...updatedSelections);
+              console.log('✅ État global forcé mis à jour après suppression:', appState.riderEventSelections.length);
+            }
           }
 
           // Mettre à jour l'événement en retirant l'athlète seulement s'il était titulaire
