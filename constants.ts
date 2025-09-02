@@ -6,7 +6,7 @@ import {
     EventRadioEquipment, PerformanceEntry, ScoutingProfile, TeamProduct,
     TeamLevel, StaffRole, ChecklistRole, StaffStatus, ContractType, AvailabilityStatus,
     TransportDirection, TransportMode, AccommodationStatus, MealDay, DocumentStatus,
-    BudgetItemCategory, ChecklistItemStatus, EventType, RiderEventStatus,
+    BudgetItemCategory, ChecklistItemStatus, EventType, RiderEventStatus, RiderEventPreference,
     FormeStatus, MoralStatus, HealthCondition, RiderQualitativeProfile, VehicleType,
     ClothingType, EquipmentType, EquipmentStatus, PredefinedAllergen,
     DisciplinePracticed, IncomeCategory, AllergySeverity, ScoutingStatus, Discipline,
@@ -475,6 +475,14 @@ export const RIDER_EVENT_STATUS_COLORS: Record<RiderEventStatus, string> = {
   [RiderEventStatus.EN_ATTENTE]: 'bg-orange-100 text-orange-800',
   [RiderEventStatus.NE_PAS_ENGAGER]: 'bg-red-200 text-red-900 font-bold',
   [RiderEventStatus.INFO]: 'bg-cyan-100 text-cyan-800'
+};
+
+export const RIDER_EVENT_PREFERENCE_COLORS: Record<RiderEventPreference, string> = {
+  [RiderEventPreference.VEUT_PARTICIPER]: 'bg-green-100 text-green-800',
+  [RiderEventPreference.OBJECTIFS_SPECIFIQUES]: 'bg-blue-100 text-blue-800',
+  [RiderEventPreference.ABSENT]: 'bg-red-100 text-red-800',
+  [RiderEventPreference.NE_VEUT_PAS]: 'bg-gray-100 text-gray-800',
+  [RiderEventPreference.EN_ATTENTE]: 'bg-yellow-100 text-yellow-800'
 };
 
 export const STAFF_ROLE_COLORS: Record<StaffRole, string> = {
