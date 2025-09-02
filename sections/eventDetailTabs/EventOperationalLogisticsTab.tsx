@@ -689,8 +689,9 @@ const EventOperationalLogisticsTab: React.FC<EventOperationalLogisticsTabProps> 
               </ul>
             </div>
           ))
-        ) : <p className="text-gray-500 italic">Aucune logistique opérationnelle définie.</p>
-          )}
+        ) : (
+          <p className="text-gray-500 italic">Aucune logistique opérationnelle définie.</p>
+        )}
         </>
       )}
 
