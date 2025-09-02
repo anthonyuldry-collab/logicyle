@@ -56,6 +56,7 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
   const [rosterSortDirection, setRosterSortDirection] = useState<'asc' | 'desc'>('asc');
   const [planningSortBy, setPlanningSortBy] = useState<'name' | 'raceDays'>('name');
   const [planningSortDirection, setPlanningSortDirection] = useState<'asc' | 'desc'>('asc');
+  const [planningExpanded, setPlanningExpanded] = useState(true);
   
   // États pour la gestion des modales
   const [selectedRider, setSelectedRider] = useState<Rider | null>(null);
@@ -854,8 +855,17 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
 
         {/* Planning de saison simplifié */}
         <div className="bg-white p-6 rounded-lg shadow-md">
-          <h4 className="text-lg font-semibold text-gray-800 mb-4">Planning de Saison - Sélections d'Athlètes</h4>
-          <div className="max-h-[70vh] overflow-y-auto space-y-3 pr-2">
+          <div className="flex justify-between items-center mb-4">
+            <h4 className="text-lg font-semibold text-gray-800">Planning de Saison - Sélections d'Athlètes</h4>
+            <button
+              onClick={() => setPlanningExpanded(!planningExpanded)}
+              className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+            >
+              {planningExpanded ? 'Réduire' : 'Développer'}
+            </button>
+          </div>
+          {planningExpanded && (
+            <div className="max-h-[70vh] overflow-y-auto space-y-3 pr-2">
             {futureEvents.length > 0 ? (
               futureEvents.map(event => {
                 const selectedRiders = riders.filter(rider => 
@@ -907,12 +917,14 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                                   checked={isTitulaire}
                                   onChange={(e) => {
                                     if (e.target.checked) {
-                                      if (!isSelected) {
-                                        addRiderToEvent(event.id, rider.id, RiderEventStatus.TITULAIRE);
-                                      } else {
-                                        updateRiderEventStatus(event.id, rider.id, RiderEventStatus.TITULAIRE);
+                                      // Si l'athlète était déjà sélectionné (remplaçant), on le retire d'abord
+                                      if (isSelected) {
+                                        removeRiderFromEvent(event.id, rider.id);
                                       }
+                                      // Puis on l'ajoute comme titulaire
+                                      addRiderToEvent(event.id, rider.id, RiderEventStatus.TITULAIRE);
                                     } else {
+                                      // Si on décoche, on retire l'athlète
                                       if (isSelected) {
                                         removeRiderFromEvent(event.id, rider.id);
                                       }
@@ -944,12 +956,14 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                                   checked={isRemplacant}
                                   onChange={(e) => {
                                     if (e.target.checked) {
-                                      if (!isSelected) {
-                                        addRiderToEvent(event.id, rider.id, RiderEventStatus.REMPLACANT);
-                                      } else {
-                                        updateRiderEventStatus(event.id, rider.id, RiderEventStatus.REMPLACANT);
+                                      // Si l'athlète était déjà sélectionné (titulaire), on le retire d'abord
+                                      if (isSelected) {
+                                        removeRiderFromEvent(event.id, rider.id);
                                       }
+                                      // Puis on l'ajoute comme remplaçant
+                                      addRiderToEvent(event.id, rider.id, RiderEventStatus.REMPLACANT);
                                     } else {
+                                      // Si on décoche, on retire l'athlète
                                       if (isSelected) {
                                         removeRiderFromEvent(event.id, rider.id);
                                       }
@@ -972,7 +986,8 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
             ) : (
               <p className="text-center text-gray-500 italic py-8">Aucun événement à venir.</p>
             )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     );
