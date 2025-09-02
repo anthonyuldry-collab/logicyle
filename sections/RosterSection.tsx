@@ -672,6 +672,7 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
   const renderSeasonPlanningTab = () => {
     console.log('🎯 Rendu du planning - Sélections actuelles:', appState.riderEventSelections?.length || 0);
     console.log('🎯 Événements locaux:', localRaceEvents.length);
+    console.log('🎯 Détail des sélections:', appState.riderEventSelections);
     
     // Filtrer les événements futurs uniquement
     const futureEvents = localRaceEvents.filter(event => {
@@ -725,6 +726,9 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
         // Mettre à jour l'état global des sélections
         if (appState.setRiderEventSelections) {
           appState.setRiderEventSelections(updatedSelections);
+          console.log('✅ État global des sélections mis à jour:', updatedSelections.length);
+        } else {
+          console.warn('⚠️ setRiderEventSelections non disponible dans appState');
         }
         // Mettre à jour l'événement seulement si c'est un titulaire
         if (status === RiderEventStatus.TITULAIRE) {
@@ -867,9 +871,10 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
 
     // Fonction pour obtenir le statut d'un athlète pour un événement
     const getRiderEventStatus = (eventId: string, riderId: string): RiderEventStatus | null => {
-      const selection = riderEventSelections.find(
+      const selection = appState.riderEventSelections?.find(
         sel => sel.eventId === eventId && sel.riderId === riderId
       );
+      console.log(`🔍 getRiderEventStatus(${eventId}, ${riderId}):`, selection ? selection.status : 'null');
       return selection ? selection.status : null;
     };
 
@@ -1087,7 +1092,52 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
   };
 
   // Algorithme de profilage Coggan Expert - Note générale = moyenne simple de toutes les données
-  const calculateCogganProfileScore = (rider: Rider) => {
+  const calculateCogganProfileScore = (rider: any) => {
+    // Vérifier si c'est un scout
+    if (rider.isScout) {
+      // Utiliser les données de scouting
+      const scoutingProfile = appState.scoutingProfiles?.find(s => s.id === rider.id);
+      if (scoutingProfile) {
+        const powerProfile = scoutingProfile.powerProfileFresh || {};
+        const weight = scoutingProfile.weightKg || 70;
+        
+        // Calculer les scores pour les scouts
+        const power1s = powerProfile.power1s || 0;
+        const power5s = powerProfile.power5s || 0;
+        const power30s = powerProfile.power30s || 0;
+        const power1min = powerProfile.power1min || 0;
+        const power3min = powerProfile.power3min || 0;
+        const power5min = powerProfile.power5min || 0;
+        const power12min = powerProfile.power12min || 0;
+        const power20min = powerProfile.power20min || 0;
+        const criticalPower = powerProfile.criticalPower || 0;
+        
+        // Calculer les scores (même logique que pour les riders)
+        const sprintScore = Math.round((power1s + power5s) / 2);
+        const montagneScore = Math.round((power5min + power12min + power20min) / 3);
+        const puncheurScore = Math.round((power30s + power1min + power3min) / 3);
+        const rouleurScore = Math.round((power12min + power20min + criticalPower) / 3);
+        const resistanceScore = Math.round((power20min + criticalPower) / 2);
+        const generalScore = Math.round((sprintScore + montagneScore + puncheurScore + rouleurScore + resistanceScore) / 5);
+        
+        return {
+          generalScore,
+          sprintScore,
+          montagneScore,
+          puncheurScore,
+          rouleurScore,
+          resistanceScore,
+          pprNotes: { general: 0, sprint: 0, climbing: 0, puncher: 0, rouleur: 0, fatigue: 0 },
+          isHybrid: false,
+          rawData: {
+            power1s, power5s, power30s, power1min, power3min, 
+            power5min, power12min, power20min, criticalPower
+          }
+        };
+      }
+    }
+    
+    // Logique normale pour les riders
     const powerProfile = (rider as any).powerProfileFresh || {};
     const weight = (rider as any).weightKg || 70; // Poids par défaut si non défini
     
