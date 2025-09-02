@@ -248,13 +248,16 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
     // Début de saison (1er janvier de l'année en cours)
     const seasonStart = new Date(currentYear, 0, 1);
     
-    // Filtrer les événements de la saison en cours où l'athlète était sélectionné
-    const seasonEvents = (appState.raceEvents || []).filter(event => {
+    // Utiliser localRaceEvents pour avoir les données les plus récentes
+    const seasonEvents = localRaceEvents.filter(event => {
       const eventDate = new Date(event.date);
       return eventDate >= seasonStart && 
              eventDate <= currentDate && 
              event.selectedRiderIds?.includes(riderId);
     });
+    
+    console.log(`🏁 Jours de course pour ${riderId}:`, seasonEvents.length, 'événements');
+    console.log('🏁 Événements trouvés:', seasonEvents.map(e => ({ name: e.name, date: e.date })));
     
     return seasonEvents.length;
   };
@@ -264,6 +267,12 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
     // Debug: Afficher tous les coureurs et leurs données
     console.log('=== DEBUG EFFECTIF ===');
     console.log('Total coureurs:', riders.length);
+    console.log('Événements locaux:', localRaceEvents.length);
+    console.log('Détail des événements:', localRaceEvents.map(e => ({ 
+      name: e.name, 
+      date: e.date, 
+      selectedRiderIds: e.selectedRiderIds?.length || 0 
+    })));
     console.log('Filtres actifs:', { searchTerm, genderFilter, ageCategoryFilter, minAgeFilter, maxAgeFilter });
     
     riders.forEach((rider, index) => {
@@ -603,7 +612,11 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                     <td className="px-6 py-4 whitespace-nowrap text-center">
                       <div className="flex items-center justify-center">
                         <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          🏁 {getRiderRaceDays(rider.id)}
+                          🏁 {(() => {
+                            const raceDays = getRiderRaceDays(rider.id);
+                            console.log(`🏁 Affichage jours de course pour ${rider.firstName} ${rider.lastName}:`, raceDays);
+                            return raceDays;
+                          })()}
                         </span>
                       </div>
                     </td>
@@ -781,6 +794,12 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
             if (appState.setRaceEvents) {
               appState.setRaceEvents(updatedEvents);
             }
+            
+            console.log('🏁 Événement mis à jour avec titulaire:', {
+              eventName: event.name,
+              riderId: riderId,
+              selectedRiderIds: updatedEvent.selectedRiderIds
+            });
           }
         }
 
@@ -859,6 +878,12 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
               if (appState.setRaceEvents) {
                 appState.setRaceEvents(updatedEvents);
               }
+              
+              console.log('🏁 Événement mis à jour après ajout (statut):', {
+                eventName: event.name,
+                riderId: riderId,
+                selectedRiderIds: updatedEvent.selectedRiderIds
+              });
             } else if (!shouldBeInEvent && isCurrentlyInEvent) {
               // Retirer de l'événement si n'est plus titulaire
               const updatedEvent = {
@@ -872,6 +897,12 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
               if (appState.setRaceEvents) {
                 appState.setRaceEvents(updatedEvents);
               }
+              
+              console.log('🏁 Événement mis à jour après retrait (statut):', {
+                eventName: event.name,
+                riderId: riderId,
+                selectedRiderIds: updatedEvent.selectedRiderIds
+              });
             }
           }
 
@@ -1056,6 +1087,12 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
               if (appState.setRaceEvents) {
                 appState.setRaceEvents(updatedEvents);
               }
+              
+              console.log('🏁 Événement mis à jour après retrait:', {
+                eventName: event.name,
+                riderId: riderId,
+                selectedRiderIds: updatedEvent.selectedRiderIds
+              });
             }
           }
 
