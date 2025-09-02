@@ -18,6 +18,7 @@ import {
   TransportDirection,
   TransportMode,
   TransportStop,
+  TransportStopType,
   Vehicle,
   VehicleType,
 } from "../../types";
@@ -444,9 +445,11 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
       location: "",
       date: event.date,
       time: "",
-      stopType: "waypoint",
+      stopType: TransportStopType.WAYPOINT,
       persons: [],
       notes: "",
+      isTimingCritical: false,
+      estimatedDuration: 0,
     };
     setCurrentTransportLeg((prev) => {
       const updated = structuredClone(prev);
@@ -773,11 +776,68 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
                               <h5 className="font-semibold mb-1">
                                 Étapes & Notes
                               </h5>
-                              <p>
-                                <strong>Étapes:</strong>{" "}
-                                {leg.intermediateStops?.length || 0}
-                              </p>
-                              <p>
+                              {leg.intermediateStops && leg.intermediateStops.length > 0 ? (
+                                <div className="space-y-1 mb-2">
+                                  {leg.intermediateStops.map((stop, index) => (
+                                    <div key={stop.id} className="text-xs bg-gray-100 p-2 rounded">
+                                      <div className="flex items-center gap-2 flex-wrap">
+                                        <span className={`px-1 py-0.5 rounded text-xs ${
+                                          stop.stopType === TransportStopType.AIRPORT_ARRIVAL ? 'bg-purple-100 text-purple-800' :
+                                          stop.stopType === TransportStopType.AIRPORT_DEPARTURE ? 'bg-purple-200 text-purple-900' :
+                                          stop.stopType === TransportStopType.TRAIN_STATION_ARRIVAL ? 'bg-orange-100 text-orange-800' :
+                                          stop.stopType === TransportStopType.TRAIN_STATION_DEPARTURE ? 'bg-orange-200 text-orange-900' :
+                                          stop.stopType === TransportStopType.MEETING_POINT ? 'bg-yellow-100 text-yellow-800' :
+                                          stop.stopType === TransportStopType.HOME_PICKUP ? 'bg-teal-100 text-teal-800' :
+                                          stop.stopType === TransportStopType.HOME_DROPOFF ? 'bg-teal-200 text-teal-900' :
+                                          stop.stopType === TransportStopType.PICKUP ? 'bg-blue-100 text-blue-800' :
+                                          stop.stopType === TransportStopType.DROPOFF ? 'bg-green-100 text-green-800' :
+                                          'bg-gray-100 text-gray-800'
+                                        }`}>
+                                          {stop.stopType}
+                                        </span>
+                                        {stop.isTimingCritical && (
+                                          <span className="text-red-600 text-xs">⏰ Critique</span>
+                                        )}
+                                        {stop.isPickupRequired && (
+                                          <span className="text-green-600 text-xs">🚨 Récupération</span>
+                                        )}
+                                        {stop.isDropoffRequired && (
+                                          <span className="text-red-600 text-xs">🚨 Dépose</span>
+                                        )}
+                                        {stop.reminderMinutes && stop.reminderMinutes > 0 && (
+                                          <span className="text-blue-600 text-xs">🔔 -{stop.reminderMinutes}min</span>
+                                        )}
+                                      </div>
+                                      <div className="text-gray-600">
+                                        <div className="font-medium">{stop.location}</div>
+                                        {stop.address && (
+                                          <div className="text-xs text-gray-500">{stop.address}</div>
+                                        )}
+                                        <div className="text-sm">
+                                          {stop.time}
+                                          {stop.estimatedDuration && stop.estimatedDuration > 0 && (
+                                            <span className="text-gray-500"> ({stop.estimatedDuration}min)</span>
+                                          )}
+                                        </div>
+                                        {stop.contactPerson && (
+                                          <div className="text-xs text-gray-500">
+                                            Contact: {stop.contactPerson}
+                                            {stop.contactPhone && ` - ${stop.contactPhone}`}
+                                          </div>
+                                        )}
+                                      </div>
+                                      {stop.notes && (
+                                        <div className="text-gray-500 italic text-xs">
+                                          {stop.notes}
+                                        </div>
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <p className="text-sm text-gray-500">Aucune étape</p>
+                              )}
+                              <p className="text-sm">
                                 <strong>Notes:</strong>{" "}
                                 {leg.details || "Aucune"}
                               </p>
@@ -831,6 +891,107 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
         >
           Ajouter un Trajet
         </ActionButton>
+      </div>
+
+      {/* Vue d'ensemble stratégique - Centre de pilotage */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-6 mb-6">
+        <h4 className="text-lg font-semibold text-blue-800 mb-4 flex items-center">
+          🎯 Centre de Pilotage Stratégique
+        </h4>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          {/* Statistiques générales */}
+          <div className="bg-white p-4 rounded-lg border border-blue-100">
+            <h5 className="font-semibold text-gray-800 mb-2">📊 Statistiques</h5>
+            <div className="space-y-1 text-sm">
+              <div className="flex justify-between">
+                <span>Trajets aller:</span>
+                <span className="font-medium">{allerLegs.length}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Trajets retour:</span>
+                <span className="font-medium">{retourLegs.length}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Trajets jour J:</span>
+                <span className="font-medium">{jourJLegs.length}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Alertes critiques */}
+          <div className="bg-white p-4 rounded-lg border border-red-100">
+            <h5 className="font-semibold text-red-800 mb-2">🚨 Alertes Critiques</h5>
+            <div className="space-y-1 text-sm">
+              {transportLegsForEvent.some(leg => 
+                leg.intermediateStops?.some(stop => stop.isTimingCritical)
+              ) ? (
+                <div className="text-red-600">⏰ Horaires critiques détectés</div>
+              ) : (
+                <div className="text-green-600">✅ Aucun horaire critique</div>
+              )}
+              {transportLegsForEvent.some(leg => 
+                leg.intermediateStops?.some(stop => stop.isPickupRequired)
+              ) ? (
+                <div className="text-orange-600">🚨 Récupérations obligatoires</div>
+              ) : (
+                <div className="text-gray-500">Aucune récupération obligatoire</div>
+              )}
+            </div>
+          </div>
+
+          {/* Récapitulatif des étapes */}
+          <div className="bg-white p-4 rounded-lg border border-green-100">
+            <h5 className="font-semibold text-green-800 mb-2">📍 Étapes Planifiées</h5>
+            <div className="space-y-1 text-sm">
+              {transportLegsForEvent.reduce((total, leg) => 
+                total + (leg.intermediateStops?.length || 0), 0
+              ) > 0 ? (
+                <div className="text-green-600">
+                  ✅ {transportLegsForEvent.reduce((total, leg) => 
+                    total + (leg.intermediateStops?.length || 0), 0
+                  )} étape(s) planifiée(s)
+                </div>
+              ) : (
+                <div className="text-gray-500">Aucune étape planifiée</div>
+              )}
+              {transportLegsForEvent.some(leg => 
+                leg.intermediateStops?.some(stop => stop.reminderMinutes && stop.reminderMinutes > 0)
+              ) && (
+                <div className="text-blue-600">🔔 Rappels configurés</div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Liste des récupérations/déposes obligatoires */}
+        {transportLegsForEvent.some(leg => 
+          leg.intermediateStops?.some(stop => stop.isPickupRequired || stop.isDropoffRequired)
+        ) && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+            <h5 className="font-semibold text-yellow-800 mb-2">⚠️ Actions Obligatoires</h5>
+            <div className="space-y-2">
+              {transportLegsForEvent.map(leg => 
+                leg.intermediateStops?.map(stop => 
+                  (stop.isPickupRequired || stop.isDropoffRequired) && (
+                    <div key={stop.id} className="flex items-center gap-2 text-sm">
+                      <span className={`px-2 py-1 rounded text-xs ${
+                        stop.isPickupRequired ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                      }`}>
+                        {stop.isPickupRequired ? '🚨 RÉCUPÉRATION' : '🚨 DÉPOSE'}
+                      </span>
+                      <span className="font-medium">{stop.location}</span>
+                      <span className="text-gray-500">- {stop.time}</span>
+                      {stop.contactPerson && (
+                        <span className="text-blue-600">({stop.contactPerson})</span>
+                      )}
+                    </div>
+                  )
+                )
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       {renderTransportTable(allerLegs, "Trajets Aller")}
@@ -1069,24 +1230,140 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
                 <label className="block text-sm font-medium text-gray-700">
                   Étapes intermédiaires
                 </label>
-                <ActionButton
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={handleAddStop}
-                >
-                  Ajouter une étape
-                </ActionButton>
+                <div className="flex flex-wrap gap-2">
+                  <ActionButton
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      const newStop: TransportStop = {
+                        id: generateId(),
+                        location: "",
+                        date: event.date,
+                        time: "",
+                        stopType: TransportStopType.AIRPORT_ARRIVAL,
+                        persons: [],
+                        notes: "",
+                        isTimingCritical: true,
+                        estimatedDuration: 30,
+                        isPickupRequired: true,
+                        reminderMinutes: 15,
+                      };
+                      setCurrentTransportLeg((prev) => {
+                        const updated = structuredClone(prev);
+                        if (!updated.intermediateStops) updated.intermediateStops = [];
+                        updated.intermediateStops.push(newStop);
+                        return updated;
+                      });
+                    }}
+                  >
+                    ✈️ Arrivée aéroport
+                  </ActionButton>
+                  <ActionButton
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      const newStop: TransportStop = {
+                        id: generateId(),
+                        location: "",
+                        date: event.date,
+                        time: "",
+                        stopType: TransportStopType.TRAIN_STATION_ARRIVAL,
+                        persons: [],
+                        notes: "",
+                        isTimingCritical: true,
+                        estimatedDuration: 20,
+                        isPickupRequired: true,
+                        reminderMinutes: 10,
+                      };
+                      setCurrentTransportLeg((prev) => {
+                        const updated = structuredClone(prev);
+                        if (!updated.intermediateStops) updated.intermediateStops = [];
+                        updated.intermediateStops.push(newStop);
+                        return updated;
+                      });
+                    }}
+                  >
+                    🚂 Arrivée gare
+                  </ActionButton>
+                  <ActionButton
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      const newStop: TransportStop = {
+                        id: generateId(),
+                        location: "",
+                        address: "",
+                        date: event.date,
+                        time: "",
+                        stopType: TransportStopType.MEETING_POINT,
+                        persons: [],
+                        notes: "",
+                        isTimingCritical: false,
+                        estimatedDuration: 10,
+                        isPickupRequired: true,
+                        reminderMinutes: 5,
+                      };
+                      setCurrentTransportLeg((prev) => {
+                        const updated = structuredClone(prev);
+                        if (!updated.intermediateStops) updated.intermediateStops = [];
+                        updated.intermediateStops.push(newStop);
+                        return updated;
+                      });
+                    }}
+                  >
+                    📍 Lieu de rendez-vous
+                  </ActionButton>
+                  <ActionButton
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => {
+                      const newStop: TransportStop = {
+                        id: generateId(),
+                        location: "",
+                        address: "",
+                        date: event.date,
+                        time: "",
+                        stopType: TransportStopType.HOME_PICKUP,
+                        persons: [],
+                        notes: "",
+                        isTimingCritical: false,
+                        estimatedDuration: 5,
+                        isPickupRequired: true,
+                        reminderMinutes: 5,
+                      };
+                      setCurrentTransportLeg((prev) => {
+                        const updated = structuredClone(prev);
+                        if (!updated.intermediateStops) updated.intermediateStops = [];
+                        updated.intermediateStops.push(newStop);
+                        return updated;
+                      });
+                    }}
+                  >
+                    🏠 Récupération domicile
+                  </ActionButton>
+                  <ActionButton
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleAddStop}
+                  >
+                    + Étape personnalisée
+                  </ActionButton>
+                </div>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-3">
                 {(currentTransportLeg as EventTransportLeg).intermediateStops?.map((stop, index) => (
-                  <div key={stop.id} className="border border-gray-300 rounded-md p-3 bg-gray-50">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
+                  <div key={stop.id} className="border border-gray-300 rounded-md p-4 bg-gray-50">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
                       <input
                         type="text"
                         value={stop.location}
                         onChange={(e) => handleStopChange(index, "location", e.target.value)}
-                        placeholder="Lieu"
+                        placeholder="Lieu (ex: Aéroport Tours)"
                         className={lightInputClasses}
                       />
                       <input
@@ -1101,17 +1378,144 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
                         onChange={(e) => handleStopChange(index, "time", e.target.value)}
                         className={lightInputClasses}
                       />
-                    </div>
-                    <div className="flex justify-between items-center">
                       <select
                         value={stop.stopType}
                         onChange={(e) => handleStopChange(index, "stopType", e.target.value)}
                         className={lightSelectClasses}
                       >
-                        <option value="waypoint">Étape</option>
-                        <option value="pickup">Prise en charge</option>
-                        <option value="dropoff">Dépose</option>
+                        <option value={TransportStopType.PICKUP}>Récupération</option>
+                        <option value={TransportStopType.DROPOFF}>Dépose</option>
+                        <option value={TransportStopType.WAYPOINT}>Étape intermédiaire</option>
+                        <option value={TransportStopType.AIRPORT_ARRIVAL}>Arrivée aéroport</option>
+                        <option value={TransportStopType.AIRPORT_DEPARTURE}>Départ aéroport</option>
+                        <option value={TransportStopType.TRAIN_STATION_ARRIVAL}>Arrivée gare</option>
+                        <option value={TransportStopType.TRAIN_STATION_DEPARTURE}>Départ gare</option>
+                        <option value={TransportStopType.HOTEL_PICKUP}>Récupération hôtel</option>
+                        <option value={TransportStopType.HOTEL_DROPOFF}>Dépose hôtel</option>
+                        <option value={TransportStopType.RACE_START}>Départ course</option>
+                        <option value={TransportStopType.RACE_FINISH}>Arrivée course</option>
+                        <option value={TransportStopType.MEETING_POINT}>Lieu de rendez-vous</option>
+                        <option value={TransportStopType.HOME_PICKUP}>Récupération domicile</option>
+                        <option value={TransportStopType.HOME_DROPOFF}>Dépose domicile</option>
+                        <option value={TransportStopType.TRAIN_PICKUP}>Récupération gare</option>
+                        <option value={TransportStopType.TRAIN_DROPOFF}>Dépose gare</option>
+                        <option value={TransportStopType.AIRPORT_PICKUP}>Récupération aéroport</option>
+                        <option value={TransportStopType.AIRPORT_DROPOFF}>Dépose aéroport</option>
                       </select>
+                    </div>
+
+                    {/* Adresse précise pour les lieux de rendez-vous */}
+                    {(stop.stopType === TransportStopType.MEETING_POINT || 
+                      stop.stopType === TransportStopType.HOME_PICKUP || 
+                      stop.stopType === TransportStopType.HOME_DROPOFF) && (
+                      <div className="mb-3">
+                        <input
+                          type="text"
+                          value={stop.address || ""}
+                          onChange={(e) => handleStopChange(index, "address", e.target.value)}
+                          placeholder="Adresse précise (ex: 123 Rue de la Paix, 37000 Tours)"
+                          className={lightInputClasses}
+                        />
+                      </div>
+                    )}
+
+                    {/* Informations de contact */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                      <input
+                        type="text"
+                        value={stop.contactPerson || ""}
+                        onChange={(e) => handleStopChange(index, "contactPerson", e.target.value)}
+                        placeholder="Personne de contact"
+                        className={lightInputClasses}
+                      />
+                      <input
+                        type="tel"
+                        value={stop.contactPhone || ""}
+                        onChange={(e) => handleStopChange(index, "contactPhone", e.target.value)}
+                        placeholder="Téléphone de contact"
+                        className={lightInputClasses}
+                      />
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={stop.isTimingCritical || false}
+                          onChange={(e) => handleStopChange(index, "isTimingCritical", e.target.checked.toString())}
+                          className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        />
+                        <label className="ml-2 text-sm text-gray-700">
+                          Horaires critiques (avion/train)
+                        </label>
+                      </div>
+                      <input
+                        type="number"
+                        value={stop.estimatedDuration || 0}
+                        onChange={(e) => handleStopChange(index, "estimatedDuration", e.target.value)}
+                        placeholder="Durée estimée (min)"
+                        className={lightInputClasses}
+                      />
+                      <input
+                        type="number"
+                        value={stop.reminderMinutes || 0}
+                        onChange={(e) => handleStopChange(index, "reminderMinutes", e.target.value)}
+                        placeholder="Rappel (min avant)"
+                        className={lightInputClasses}
+                      />
+                    </div>
+
+                    {/* Options de récupération/dépose obligatoires */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={stop.isPickupRequired || false}
+                          onChange={(e) => handleStopChange(index, "isPickupRequired", e.target.checked.toString())}
+                          className="h-4 w-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
+                        />
+                        <label className="ml-2 text-sm text-gray-700">
+                          🚨 Récupération obligatoire
+                        </label>
+                      </div>
+                      <div className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={stop.isDropoffRequired || false}
+                          onChange={(e) => handleStopChange(index, "isDropoffRequired", e.target.checked.toString())}
+                          className="h-4 w-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
+                        />
+                        <label className="ml-2 text-sm text-gray-700">
+                          🚨 Dépose obligatoire
+                        </label>
+                      </div>
+                    </div>
+
+                    <textarea
+                      value={stop.notes || ""}
+                      onChange={(e) => handleStopChange(index, "notes", e.target.value)}
+                      placeholder="Notes (ex: Terminal 2, porte 15, numéro de vol...)"
+                      className={`${lightInputClasses} mb-3`}
+                      rows={2}
+                    />
+
+                    <div className="flex justify-between items-center">
+                      <div className="text-sm text-gray-600">
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          stop.stopType === TransportStopType.AIRPORT_ARRIVAL ? 'bg-purple-100 text-purple-800' :
+                          stop.stopType === TransportStopType.AIRPORT_DEPARTURE ? 'bg-purple-200 text-purple-900' :
+                          stop.stopType === TransportStopType.PICKUP ? 'bg-blue-100 text-blue-800' :
+                          stop.stopType === TransportStopType.DROPOFF ? 'bg-green-100 text-green-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {stop.stopType}
+                        </span>
+                        {stop.isTimingCritical && (
+                          <span className="ml-2 px-2 py-1 rounded-full text-xs bg-red-100 text-red-800">
+                            ⏰ Critique
+                          </span>
+                        )}
+                      </div>
                       <ActionButton
                         type="button"
                         variant="danger"
