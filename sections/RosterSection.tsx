@@ -57,6 +57,7 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
   const [planningSortBy, setPlanningSortBy] = useState<'name' | 'raceDays'>('name');
   const [planningSortDirection, setPlanningSortDirection] = useState<'asc' | 'desc'>('asc');
   const [planningExpanded, setPlanningExpanded] = useState(true);
+  const [localRaceEvents, setLocalRaceEvents] = useState(appState.raceEvents || []);
   
   // États pour la gestion des modales
   const [selectedRider, setSelectedRider] = useState<Rider | null>(null);
@@ -672,7 +673,7 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
   // Rendu de l'onglet Planning de Saison - Version avec monitoring de groupe
   const renderSeasonPlanningTab = () => {
     // Filtrer les événements futurs uniquement
-    const futureEvents = raceEvents.filter(event => {
+    const futureEvents = localRaceEvents.filter(event => {
       const eventDate = new Date(event.date);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -706,17 +707,20 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
         }
 
         // Mettre à jour l'état local
-        const updatedSelections = [...appState.riderEventSelections, newSelection];
-        appState.setRiderEventSelections?.(updatedSelections);
-
-        // Mettre à jour l'événement avec le nouvel athlète sélectionné
-        const event = raceEvents.find(e => e.id === eventId);
-        if (event) {
-          const updatedEvent = {
-            ...event,
-            selectedRiderIds: [...(event.selectedRiderIds || []), riderId]
-          };
-          appState.setRaceEvents?.(updatedEvent);
+        const updatedSelections = [...(appState.riderEventSelections || []), newSelection];
+        // Mettre à jour l'événement seulement si c'est un titulaire
+        if (status === RiderEventStatus.TITULAIRE) {
+          const event = localRaceEvents.find(e => e.id === eventId);
+          if (event) {
+            const updatedEvent = {
+              ...event,
+              selectedRiderIds: [...(event.selectedRiderIds || []), riderId]
+            };
+            // Mettre à jour l'événement dans la liste
+            const updatedEvents = localRaceEvents.map(e => e.id === eventId ? updatedEvent : e);
+            // Forcer le re-render en mettant à jour l'état local
+            setLocalRaceEvents(updatedEvents);
+          }
         }
 
         console.log(`✅ Athlète ${riderId} ajouté à l'événement ${eventId} avec le statut ${status}`);
@@ -748,11 +752,30 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
             console.warn('⚠️ Aucun teamId actif, sauvegarde locale uniquement');
           }
 
-          // Mettre à jour l'état local
-          const updatedSelections = appState.riderEventSelections.map(sel =>
-            sel.id === existingSelection.id ? updatedSelection : sel
-          );
-          appState.setRiderEventSelections?.(updatedSelections);
+          // Mettre à jour l'événement selon le nouveau statut
+          const event = localRaceEvents.find(e => e.id === eventId);
+          if (event) {
+            const isCurrentlyInEvent = event.selectedRiderIds?.includes(riderId);
+            const shouldBeInEvent = newStatus === RiderEventStatus.TITULAIRE;
+            
+            if (shouldBeInEvent && !isCurrentlyInEvent) {
+              // Ajouter à l'événement si devient titulaire
+              const updatedEvent = {
+                ...event,
+                selectedRiderIds: [...(event.selectedRiderIds || []), riderId]
+              };
+              const updatedEvents = localRaceEvents.map(e => e.id === eventId ? updatedEvent : e);
+              setLocalRaceEvents(updatedEvents);
+            } else if (!shouldBeInEvent && isCurrentlyInEvent) {
+              // Retirer de l'événement si n'est plus titulaire
+              const updatedEvent = {
+                ...event,
+                selectedRiderIds: (event.selectedRiderIds || []).filter(id => id !== riderId)
+              };
+              const updatedEvents = localRaceEvents.map(e => e.id === eventId ? updatedEvent : e);
+              setLocalRaceEvents(updatedEvents);
+            }
+          }
 
           console.log(`✅ Statut de l'athlète ${riderId} mis à jour vers ${newStatus}`);
         }
@@ -782,20 +805,19 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
             console.warn('⚠️ Aucun teamId actif, suppression locale uniquement');
           }
 
-          // Mettre à jour l'état local
-          const updatedSelections = appState.riderEventSelections.filter(
-            sel => sel.id !== existingSelection.id
-          );
-          appState.setRiderEventSelections?.(updatedSelections);
-
-          // Mettre à jour l'événement en retirant l'athlète
-          const event = raceEvents.find(e => e.id === eventId);
-          if (event) {
-            const updatedEvent = {
-              ...event,
-              selectedRiderIds: (event.selectedRiderIds || []).filter(id => id !== riderId)
-            };
-            appState.setRaceEvents?.(updatedEvent);
+          // Mettre à jour l'événement en retirant l'athlète seulement s'il était titulaire
+          if (existingSelection.status === RiderEventStatus.TITULAIRE) {
+            const event = localRaceEvents.find(e => e.id === eventId);
+            if (event) {
+              const updatedEvent = {
+                ...event,
+                selectedRiderIds: (event.selectedRiderIds || []).filter(id => id !== riderId)
+              };
+              // Mettre à jour l'événement dans la liste
+              const updatedEvents = localRaceEvents.map(e => e.id === eventId ? updatedEvent : e);
+              // Forcer le re-render en mettant à jour l'état local
+              setLocalRaceEvents(updatedEvents);
+            }
           }
 
           console.log(`✅ Athlète ${riderId} retiré de l'événement ${eventId}`);
@@ -864,19 +886,19 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
               {planningExpanded ? 'Réduire' : 'Développer'}
             </button>
           </div>
-          {planningExpanded && (
+          {planningExpanded ? (
             <div className="max-h-[70vh] overflow-y-auto space-y-3 pr-2">
             {futureEvents.length > 0 ? (
               futureEvents.map(event => {
-                const selectedRiders = riders.filter(rider => 
+                // Les titulaires sont ceux qui sont dans l'événement
+                const titulaires = riders.filter(rider => 
                   event.selectedRiderIds?.includes(rider.id)
                 );
-                const titulaires = selectedRiders.filter(rider => 
-                  getRiderEventStatus(event.id, rider.id) === RiderEventStatus.TITULAIRE
-                );
-                const remplacants = selectedRiders.filter(rider => 
+                // Les remplaçants sont ceux qui ont le statut remplaçant mais ne sont pas dans l'événement
+                const remplacants = riders.filter(rider => 
                   getRiderEventStatus(event.id, rider.id) === RiderEventStatus.REMPLACANT
                 );
+                const totalSelections = titulaires.length + remplacants.length;
 
                 return (
                   <div key={event.id} className="p-4 bg-gray-50 rounded-lg border border-gray-200">
@@ -893,7 +915,7 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                       </div>
                       <div className="text-right">
                         <div className="text-sm font-semibold text-gray-700">
-                          {selectedRiders.length} sélectionné{selectedRiders.length > 1 ? 's' : ''}
+                          {totalSelections} sélectionné{totalSelections > 1 ? 's' : ''}
                         </div>
                         <div className="text-xs text-gray-500">
                           {titulaires.length} titulaire{titulaires.length > 1 ? 's' : ''} • {remplacants.length} remplaçant{remplacants.length > 1 ? 's' : ''}
@@ -907,8 +929,8 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                         <h6 className="text-sm font-medium text-green-700 mb-2">Titulaires</h6>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                           {riders.map(rider => {
-                            const isSelected = event.selectedRiderIds?.includes(rider.id);
-                            const isTitulaire = getRiderEventStatus(event.id, rider.id) === RiderEventStatus.TITULAIRE;
+                            const isTitulaire = event.selectedRiderIds?.includes(rider.id);
+                            const isRemplacant = getRiderEventStatus(event.id, rider.id) === RiderEventStatus.REMPLACANT;
                             
                             return (
                               <label key={rider.id} className="flex items-center space-x-2 text-sm cursor-pointer">
@@ -917,15 +939,15 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                                   checked={isTitulaire}
                                   onChange={(e) => {
                                     if (e.target.checked) {
-                                      // Si l'athlète était déjà sélectionné (remplaçant), on le retire d'abord
-                                      if (isSelected) {
+                                      // Si l'athlète était remplaçant, on le retire d'abord
+                                      if (isRemplacant) {
                                         removeRiderFromEvent(event.id, rider.id);
                                       }
                                       // Puis on l'ajoute comme titulaire
                                       addRiderToEvent(event.id, rider.id, RiderEventStatus.TITULAIRE);
                                     } else {
                                       // Si on décoche, on retire l'athlète
-                                      if (isSelected) {
+                                      if (isTitulaire || isRemplacant) {
                                         removeRiderFromEvent(event.id, rider.id);
                                       }
                                     }
@@ -946,7 +968,7 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                         <h6 className="text-sm font-medium text-yellow-700 mb-2">Remplaçants</h6>
                         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                           {riders.map(rider => {
-                            const isSelected = event.selectedRiderIds?.includes(rider.id);
+                            const isTitulaire = event.selectedRiderIds?.includes(rider.id);
                             const isRemplacant = getRiderEventStatus(event.id, rider.id) === RiderEventStatus.REMPLACANT;
                             
                             return (
@@ -956,15 +978,15 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
                                   checked={isRemplacant}
                                   onChange={(e) => {
                                     if (e.target.checked) {
-                                      // Si l'athlète était déjà sélectionné (titulaire), on le retire d'abord
-                                      if (isSelected) {
+                                      // Si l'athlète était titulaire, on le retire d'abord
+                                      if (isTitulaire) {
                                         removeRiderFromEvent(event.id, rider.id);
                                       }
                                       // Puis on l'ajoute comme remplaçant
                                       addRiderToEvent(event.id, rider.id, RiderEventStatus.REMPLACANT);
                                     } else {
                                       // Si on décoche, on retire l'athlète
-                                      if (isSelected) {
+                                      if (isTitulaire || isRemplacant) {
                                         removeRiderFromEvent(event.id, rider.id);
                                       }
                                     }
@@ -986,6 +1008,48 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
             ) : (
               <p className="text-center text-gray-500 italic py-8">Aucun événement à venir.</p>
             )}
+            </div>
+          ) : (
+            // Vue réduite - seulement nom et date
+            <div className="space-y-2">
+              {futureEvents.length > 0 ? (
+                futureEvents.map(event => {
+                  // Les titulaires sont ceux qui sont dans l'événement
+                  const titulaires = riders.filter(rider => 
+                    event.selectedRiderIds?.includes(rider.id)
+                  );
+                  // Les remplaçants sont ceux qui ont le statut remplaçant mais ne sont pas dans l'événement
+                  const remplacants = riders.filter(rider => 
+                    getRiderEventStatus(event.id, rider.id) === RiderEventStatus.REMPLACANT
+                  );
+                  const totalSelections = titulaires.length + remplacants.length;
+
+                  return (
+                    <div key={event.id} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg border border-gray-200">
+                      <div>
+                        <h5 className="font-semibold text-gray-900">{event.name}</h5>
+                        <p className="text-sm text-gray-500">
+                          {new Date(event.date).toLocaleDateString('fr-FR', { 
+                            day: 'numeric', 
+                            month: 'short', 
+                            year: 'numeric' 
+                          })}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-semibold text-gray-700">
+                          {totalSelections} sélectionné{totalSelections > 1 ? 's' : ''}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {titulaires.length}T • {remplacants.length}R
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="text-center text-gray-500 italic py-4">Aucun événement à venir.</p>
+              )}
             </div>
           )}
         </div>
