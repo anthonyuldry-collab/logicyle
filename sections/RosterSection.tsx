@@ -843,297 +843,139 @@ export default function RosterSection({ appState, onSaveRider }: RosterSectionPr
             </div>
       </div>
 
-          {/* Vue d'ensemble des sélections */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-            <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
-              <div className="text-2xl font-bold text-blue-600">{futureEvents.length}</div>
-              <p className="text-sm text-blue-700 font-medium">Événements à venir</p>
-              <p className="text-xs text-blue-600">Prochaines compétitions</p>
-            </div>
-            <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
-              <div className="text-2xl font-bold text-purple-600">
-                {Math.round(futureEvents.length > 0 ? (futureEvents.reduce((total, event) => total + (event.selectedRiderIds?.length || 0), 0) / futureEvents.length) : 0)}
-              </div>
-              <p className="text-sm text-purple-700 font-medium">Sélection moyenne</p>
-              <p className="text-xs text-purple-600">Athlètes par événement</p>
+          {/* Nombre total d'événements */}
+          <div className="flex justify-center mb-6">
+            <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-6 rounded-lg border border-purple-200">
+              <div className="text-4xl font-bold text-purple-600 text-center">{futureEvents.length}</div>
+              <p className="text-lg text-purple-700 font-medium text-center">Événements planifiés</p>
             </div>
           </div>
         </div>
 
-                {/* Calendrier des sélections */}
+        {/* Planning de saison simplifié */}
         <div className="bg-white p-6 rounded-lg shadow-md">
-          <h4 className="text-lg font-semibold text-gray-800 mb-4">Gestion des Sélections d'Athlètes</h4>
-      <div className="overflow-x-auto">
-            <table className="min-w-full">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="text-left py-3 px-4 font-medium text-gray-700">Événement</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-700">Date</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-700">Athlètes sélectionnés</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-700">Actions</th>
-            </tr>
-          </thead>
-              <tbody>
-                {futureEvents.map(event => {
-                  const selectedRiders = riders.filter(rider => 
-                    event.selectedRiderIds?.includes(rider.id)
-                  );
-              
-              return (
-                    <tr key={event.id} className="border-b border-gray-100 hover:bg-gray-50">
-                      <td className="py-3 px-4">
-                        <div className="font-medium text-gray-900">{event.name}</div>
-                        <div className="text-sm text-gray-500">{event.location}</div>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="text-sm text-gray-900">
+          <h4 className="text-lg font-semibold text-gray-800 mb-4">Planning de Saison - Sélections d'Athlètes</h4>
+          <div className="max-h-[70vh] overflow-y-auto space-y-3 pr-2">
+            {futureEvents.length > 0 ? (
+              futureEvents.map(event => {
+                const selectedRiders = riders.filter(rider => 
+                  event.selectedRiderIds?.includes(rider.id)
+                );
+                const titulaires = selectedRiders.filter(rider => 
+                  getRiderEventStatus(event.id, rider.id) === RiderEventStatus.TITULAIRE
+                );
+                const remplacants = selectedRiders.filter(rider => 
+                  getRiderEventStatus(event.id, rider.id) === RiderEventStatus.REMPLACANT
+                );
+
+                return (
+                  <div key={event.id} className="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h5 className="font-bold text-gray-900">{event.name}</h5>
+                        <p className="text-sm text-gray-500">
                           {new Date(event.date).toLocaleDateString('fr-FR', { 
-                            day: '2-digit', 
-                            month: 'short',
-                            year: 'numeric'
-                          })}
+                            day: 'numeric', 
+                            month: 'long', 
+                            year: 'numeric' 
+                          })} - {event.location}
+                        </p>
                       </div>
-                        {event.endDate && event.endDate !== event.date && (
-                          <div className="text-xs text-gray-500">
-                            au {new Date(event.endDate).toLocaleDateString('fr-FR', { 
-                              day: '2-digit', 
-                              month: 'short' 
-                            })}
+                      <div className="text-right">
+                        <div className="text-sm font-semibold text-gray-700">
+                          {selectedRiders.length} sélectionné{selectedRiders.length > 1 ? 's' : ''}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {titulaires.length} titulaire{titulaires.length > 1 ? 's' : ''} • {remplacants.length} remplaçant{remplacants.length > 1 ? 's' : ''}
+                        </div>
+                      </div>
                     </div>
-                        )}
-                  </td>
-                      <td className="py-3 px-4">
-                        <div className="space-y-2">
-                          {selectedRiders.map(rider => {
-                            const status = getRiderEventStatus(event.id, rider.id);
-                            const statusColor = status === RiderEventStatus.TITULAIRE ? 'bg-green-100 text-green-800' :
-                                              status === RiderEventStatus.REMPLACANT ? 'bg-yellow-100 text-yellow-800' :
-                                              status === RiderEventStatus.NON_RETENU ? 'bg-red-100 text-red-800' :
-                                              'bg-gray-100 text-gray-800';
+                    
+                    <div className="space-y-3">
+                      {/* Titulaires */}
+                      <div>
+                        <h6 className="text-sm font-medium text-green-700 mb-2">Titulaires</h6>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                          {riders.map(rider => {
+                            const isSelected = event.selectedRiderIds?.includes(rider.id);
+                            const isTitulaire = getRiderEventStatus(event.id, rider.id) === RiderEventStatus.TITULAIRE;
                             
                             return (
-                              <div key={rider.id} className="flex items-center gap-2">
-                                <span className={`text-xs px-2 py-1 rounded-md flex items-center gap-1 ${statusColor}`}>
-                                  {rider.firstName} {rider.lastName.charAt(0)}.
-                                  <span className="text-xs font-medium">({status || 'Non défini'})</span>
-                                </span>
-                                <select
-                                  value={status || ''}
+                              <label key={rider.id} className="flex items-center space-x-2 text-sm cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={isTitulaire}
                                   onChange={(e) => {
-                                    if (e.target.value) {
-                                      updateRiderEventStatus(event.id, rider.id, e.target.value as RiderEventStatus);
+                                    if (e.target.checked) {
+                                      if (!isSelected) {
+                                        addRiderToEvent(event.id, rider.id, RiderEventStatus.TITULAIRE);
+                                      } else {
+                                        updateRiderEventStatus(event.id, rider.id, RiderEventStatus.TITULAIRE);
+                                      }
+                                    } else {
+                                      if (isSelected) {
+                                        removeRiderFromEvent(event.id, rider.id);
+                                      }
                                     }
                                   }}
-                                  className="text-xs border border-gray-300 rounded px-1 py-0.5 bg-white"
-                                >
-                                  <option value={RiderEventStatus.TITULAIRE}>Titulaire</option>
-                                  <option value={RiderEventStatus.REMPLACANT}>Remplaçant</option>
-                                  <option value={RiderEventStatus.NON_RETENU}>Non retenu</option>
-                                </select>
-                                <button
-                                  onClick={() => removeRiderFromEvent(event.id, rider.id)}
-                                  className="text-red-500 hover:text-red-700 text-xs"
-                                  title="Retirer de l'événement"
-                                >
-                                  ×
-                                </button>
-                              </div>
+                                  className="rounded border-gray-300 text-green-600 focus:ring-green-500"
+                                />
+                                <span className={`${isTitulaire ? 'text-green-700 font-medium' : 'text-gray-600'}`}>
+                                  {rider.firstName} {rider.lastName}
+                                </span>
+                              </label>
                             );
                           })}
-                          {selectedRiders.length === 0 && (
-                            <span className="text-xs text-gray-400 italic">Aucune sélection</span>
-                          )}
                         </div>
-                  </td>
-                      <td className="py-3 px-4">
-                        <div className="flex gap-2">
-                          <select
-                            onChange={(e) => {
-                              if (e.target.value) {
-                                const [riderId, status] = e.target.value.split('|');
-                                addRiderToEvent(event.id, riderId, status as RiderEventStatus);
-                                e.target.value = '';
-                              }
-                            }}
-                            className="text-xs border border-gray-300 rounded px-2 py-1 bg-white"
-                            defaultValue=""
-                          >
-                            <option value="">Ajouter un athlète</option>
-                            {riders
-                              .filter(rider => !event.selectedRiderIds?.includes(rider.id))
-                              .map(rider => (
-                                <React.Fragment key={rider.id}>
-                                  <option value={`${rider.id}|${RiderEventStatus.TITULAIRE}`}>
-                                    {rider.firstName} {rider.lastName} (Titulaire)
-                                  </option>
-                                  <option value={`${rider.id}|${RiderEventStatus.REMPLACANT}`}>
-                                    {rider.firstName} {rider.lastName} (Remplaçant)
-                                  </option>
-                                </React.Fragment>
-                              ))}
-                          </select>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-
-
-        {/* Vue individuelle des coureurs avec monitoring */}
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h4 className="text-lg font-semibold text-gray-800 mb-4">Projections de Charge de Travail</h4>
-          
-          {/* Vue simplifiée - Cartes au lieu de tableau */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-            {sortedRidersForPlanning.map(({ rider, raceDays, events }) => {
-              const { category, age } = getAgeCategory(rider.birthDate);
-              const forme = (rider as any).forme || 'Non défini';
-              
-              // Calcul de la charge de travail (projection)
-              const chargeLevel = raceDays === 0 ? 'Aucune' : 
-                                raceDays <= 2 ? 'Légère' : 
-                                raceDays <= 5 ? 'Modérée' : 'Élevée';
-              
-
-              
-              return (
-                <div key={rider.id} className="bg-gradient-to-br from-white to-gray-50 border border-gray-200 rounded-xl p-4 hover:shadow-lg transition-all duration-200">
-                  {/* En-tête du coureur */}
-                  <div className="flex items-center mb-3">
-                      {rider.photoUrl ? (
-                      <img src={rider.photoUrl} alt={rider.firstName} className="w-10 h-10 rounded-full mr-3 border-2 border-gray-200"/>
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center mr-3">
-                        <UserCircleIcon className="w-6 h-6 text-gray-400"/>
                       </div>
-                    )}
-                    <div className="flex-1">
-                      <h4 className="font-semibold text-gray-900 text-sm">{rider.firstName} {rider.lastName}</h4>
-                      <p className="text-xs text-gray-500">{category} • {age !== null ? `${age} ans` : 'Âge inconnu'}</p>
-                      </div>
-                    </div>
 
-                  {/* Projections principales */}
-                  <div className="space-y-3">
-                    {/* Charge de travail projetée */}
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs font-medium text-gray-600">Charge projetée:</span>
-                      <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                        chargeLevel === 'Aucune' ? 'bg-gray-100 text-gray-600' :
-                        chargeLevel === 'Légère' ? 'bg-green-100 text-green-700' :
-                        chargeLevel === 'Modérée' ? 'bg-yellow-100 text-yellow-700' :
-                        'bg-red-100 text-red-700'
-                      }`}>
-                        {chargeLevel} ({raceDays}j)
-                    </span>
+                      {/* Remplaçants */}
+                      <div>
+                        <h6 className="text-sm font-medium text-yellow-700 mb-2">Remplaçants</h6>
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                          {riders.map(rider => {
+                            const isSelected = event.selectedRiderIds?.includes(rider.id);
+                            const isRemplacant = getRiderEventStatus(event.id, rider.id) === RiderEventStatus.REMPLACANT;
+                            
+                            return (
+                              <label key={rider.id} className="flex items-center space-x-2 text-sm cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={isRemplacant}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      if (!isSelected) {
+                                        addRiderToEvent(event.id, rider.id, RiderEventStatus.REMPLACANT);
+                                      } else {
+                                        updateRiderEventStatus(event.id, rider.id, RiderEventStatus.REMPLACANT);
+                                      }
+                                    } else {
+                                      if (isSelected) {
+                                        removeRiderFromEvent(event.id, rider.id);
+                                      }
+                                    }
+                                  }}
+                                  className="rounded border-gray-300 text-yellow-600 focus:ring-yellow-500"
+                                />
+                                <span className={`${isRemplacant ? 'text-yellow-700 font-medium' : 'text-gray-600'}`}>
+                                  {rider.firstName} {rider.lastName}
+                                </span>
+                              </label>
+                            );
+                          })}
                         </div>
-
-
-
-                    {/* Événements planifiés */}
-                    <div>
-                      <span className="text-xs font-medium text-gray-600 block mb-1">Événements:</span>
-                      <div className="flex flex-wrap gap-1">
-                        {events.slice(0, 2).map(event => {
-                          const status = getRiderEventStatus(event.id, rider.id);
-                          const statusColor = status === RiderEventStatus.TITULAIRE ? 'bg-green-100 text-green-700' :
-                                            status === RiderEventStatus.REMPLACANT ? 'bg-yellow-100 text-yellow-700' :
-                                            'bg-blue-100 text-blue-700';
-                          return (
-                            <span key={event.id} className={`text-xs px-2 py-1 rounded-md ${statusColor}`}>
-                              {event.name.length > 15 ? event.name.substring(0, 15) + '...' : event.name}
-                              {status && <span className="ml-1">({status.charAt(0)})</span>}
-                            </span>
-                          );
-                        })}
-                      {events.length > 2 && (
-                          <span className="text-xs text-blue-600 font-medium">+{events.length - 2}</span>
-                        )}
-                        {events.length === 0 && (
-                          <span className="text-xs text-gray-400 italic">Aucun événement</span>
-                      )}
-                    </div>
-                    </div>
-
-                    {/* Forme actuelle */}
-                    <div className="flex justify-between items-center">
-                      <span className="text-xs font-medium text-gray-600">Forme:</span>
-                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                        forme === 'Excellente' ? 'bg-green-100 text-green-700' :
-                        forme === 'Bonne' ? 'bg-blue-100 text-blue-700' :
-                        forme === 'Moyenne' ? 'bg-yellow-100 text-yellow-700' :
-                        forme === 'Faible' ? 'bg-red-100 text-red-700' :
-                        'bg-gray-100 text-gray-600'
-                    }`}>
-                      {forme}
-                    </span>
+                      </div>
                     </div>
                   </div>
-
-                  {/* Actions rapides */}
-                  <div className="flex justify-end gap-1 mt-4 pt-3 border-t border-gray-100">
-                      <ActionButton 
-                        onClick={() => openViewModal(rider)} 
-                        variant="info" 
-                        size="sm" 
-                      icon={<EyeIcon className="w-3 h-3"/>} 
-                      title="Voir détails"
-                    />
-                      <ActionButton 
-                        onClick={() => openEditModal(rider)} 
-                        variant="warning" 
-                        size="sm" 
-                      icon={<PencilIcon className="w-3 h-3"/>} 
-                        title="Modifier"
-                    />
-                    </div>
-                </div>
-              );
-            })}
-      </div>
-
-          {/* Statistiques de projection simplifiées */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-4 rounded-lg border border-blue-200">
-              <div className="text-2xl font-bold text-blue-600">
-                {sortedRidersForPlanning.filter(r => r.raceDays <= 2).length}
-            </div>
-              <p className="text-sm text-blue-700 font-medium">Charge légère</p>
-              <p className="text-xs text-blue-600">0-2 événements</p>
-            </div>
-
-            <div className="bg-gradient-to-r from-yellow-50 to-yellow-100 p-4 rounded-lg border border-yellow-200">
-              <div className="text-2xl font-bold text-yellow-600">
-                {sortedRidersForPlanning.filter(r => r.raceDays >= 3 && r.raceDays <= 5).length}
-            </div>
-              <p className="text-sm text-yellow-700 font-medium">Charge modérée</p>
-              <p className="text-xs text-yellow-600">3-5 événements</p>
-        </div>
-
-            <div className="bg-gradient-to-r from-red-50 to-red-100 p-4 rounded-lg border border-red-200">
-              <div className="text-2xl font-bold text-red-600">
-                {sortedRidersForPlanning.filter(r => r.raceDays >= 6).length}
-                </div>
-              <p className="text-sm text-red-700 font-medium">Charge élevée</p>
-              <p className="text-xs text-red-600">6+ événements</p>
-        </div>
-
-            <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-4 rounded-lg border border-purple-200">
-          <div className="text-2xl font-bold text-purple-600">
-            {sortedRidersForPlanning.reduce((total, r) => total + r.events.length, 0)}
+                );
+              })
+            ) : (
+              <p className="text-center text-gray-500 italic py-8">Aucun événement à venir.</p>
+            )}
           </div>
-              <p className="text-sm text-purple-700 font-medium">Total événements</p>
-              <p className="text-xs text-purple-600">Planifiés</p>
-            </div>
         </div>
       </div>
-    </div>
-  );
+    );
   };
 
   // Algorithme de profilage Coggan Expert - Note générale = moyenne simple de toutes les données

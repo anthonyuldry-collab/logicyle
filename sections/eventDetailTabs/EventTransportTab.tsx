@@ -877,6 +877,53 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
 
   return (
     <div className="space-y-6">
+      {/* Résumé des transports */}
+      {transportLegsForEvent.length > 0 && (
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <h3 className="text-lg font-semibold text-blue-800 mb-3 flex items-center">
+            🚗 Résumé des Transports
+          </h3>
+          <div className="space-y-3">
+            {transportLegsForEvent.map(leg => {
+              const vehicleInfo = leg.assignedVehicleId === 'perso' ? 'Véhicule personnel' : 
+                appState.vehicles.find(v => v.id === leg.assignedVehicleId)?.name || 'Véhicule inconnu';
+              const driverInfo = leg.driverId ? 
+                appState.staff.find(s => s.id === leg.driverId)?.firstName + ' ' + 
+                appState.staff.find(s => s.id === leg.driverId)?.lastName : 'Non assigné';
+              const occupantsInfo = leg.occupants && leg.occupants.length > 0 
+                ? leg.occupants.map(occ => {
+                    const person = occ.type === 'rider' 
+                      ? appState.riders.find(r => r.id === occ.id)
+                      : appState.staff.find(s => s.id === occ.id);
+                    return person ? `${person.firstName} ${person.lastName}` : 'Inconnu';
+                  }).join(', ')
+                : 'Aucun passager';
+              
+              return (
+                <div key={leg.id} className="bg-white p-3 rounded border border-blue-100">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-semibold text-gray-800">
+                      {leg.direction} - {vehicleInfo}
+                    </h4>
+                    <span className="text-sm text-gray-500">
+                      {leg.departureDate} → {leg.arrivalDate}
+                    </span>
+                  </div>
+                  <div className="text-sm text-gray-600 space-y-1">
+                    <div><strong>Conducteur:</strong> {driverInfo}</div>
+                    <div><strong>Passagers:</strong> {occupantsInfo}</div>
+                    <div><strong>Trajet:</strong> {leg.departureLocation} → {leg.arrivalLocation}</div>
+                    {leg.intermediateStops && leg.intermediateStops.length > 0 && (
+                      <div><strong>Étapes:</strong> {leg.intermediateStops.length} étape(s) planifiée(s)</div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Composant de debug pour diagnostiquer les problèmes */}
       <TransportDebug 
         eventId={eventId}
