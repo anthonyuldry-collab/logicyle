@@ -12,7 +12,8 @@ export default defineConfig(({ mode }) => {
         
         resolve: {
             alias: {
-                '@': '.'
+                '@': '.',
+                '@components': './components'
             }
         },
         

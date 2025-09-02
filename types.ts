@@ -127,6 +127,14 @@ export enum RiderEventStatus {
   INFO = "Info",
 }
 
+export enum RiderEventPreference {
+  VEUT_PARTICIPER = "Veut participer",
+  OBJECTIFS_SPECIFIQUES = "Objectifs spécifiques",
+  ABSENT = "Absent(e)",
+  NE_VEUT_PAS = "Ne veut pas participer",
+  EN_ATTENTE = "En attente de décision",
+}
+
 export enum FormeStatus {
   EXCELLENT = "Excellent",
   BON = "Bon",
@@ -600,14 +608,43 @@ export interface StaffMember {
     licenseImageBase64?: string;
     licenseImageMimeType?: string;
 }
+export enum TransportStopType {
+    PICKUP = "Récupération",
+    DROPOFF = "Dépose",
+    WAYPOINT = "Étape intermédiaire",
+    AIRPORT_ARRIVAL = "Arrivée aéroport",
+    AIRPORT_DEPARTURE = "Départ aéroport",
+    TRAIN_STATION_ARRIVAL = "Arrivée gare",
+    TRAIN_STATION_DEPARTURE = "Départ gare",
+    HOTEL_PICKUP = "Récupération hôtel",
+    HOTEL_DROPOFF = "Dépose hôtel",
+    RACE_START = "Départ course",
+    RACE_FINISH = "Arrivée course",
+    MEETING_POINT = "Lieu de rendez-vous",
+    HOME_PICKUP = "Récupération domicile",
+    HOME_DROPOFF = "Dépose domicile",
+    TRAIN_PICKUP = "Récupération gare",
+    TRAIN_DROPOFF = "Dépose gare",
+    AIRPORT_PICKUP = "Récupération aéroport",
+    AIRPORT_DROPOFF = "Dépose aéroport"
+}
+
 export interface TransportStop {
     id: string;
     location: string;
+    address?: string; // Adresse précise pour les lieux de rendez-vous
     date: string;
     time: string;
-    stopType: 'pickup' | 'dropoff' | 'waypoint';
+    stopType: TransportStopType;
     persons: { id: string, type: 'rider' | 'staff' }[];
     notes?: string;
+    isTimingCritical?: boolean; // Pour les horaires d'avion/train
+    estimatedDuration?: number; // Durée estimée en minutes
+    contactPerson?: string; // Personne de contact sur place
+    contactPhone?: string; // Téléphone de contact
+    isPickupRequired?: boolean; // Marque si une récupération est obligatoire
+    isDropoffRequired?: boolean; // Marque si une dépose est obligatoire
+    reminderMinutes?: number; // Minutes avant pour rappel
 }
 
 export interface EventTransportLeg {
@@ -753,6 +790,8 @@ export interface RiderEventSelection {
   eventId: string;
   riderId: string;
   status: RiderEventStatus;
+  riderPreference?: RiderEventPreference;
+  riderObjectives?: string;
   notes?: string;
 }
 
