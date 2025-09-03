@@ -303,9 +303,10 @@ const EventOperationalLogisticsTab: React.FC<EventOperationalLogisticsTabProps> 
                     const personsConcerned = stop.persons.map(p => getOccupantName(p.id, p.type)).join(', ');
                     let description = '';
                     
-                    // Format simple pour toutes les étapes
-                        if (personsConcerned) {
-                        description = `${stop.location} - Récupération ${personsConcerned}`;
+                                        // Format simple pour toutes les étapes
+                    if (personsConcerned) {
+                        const vehicleName = getVehicleInfo(leg.assignedVehicleId);
+                        description = `${stop.location} - Récupération ${personsConcerned} par ${vehicleName}`;
                     } else {
                         description = `${stop.location}`;
                     }
