@@ -732,6 +732,92 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
     return [...unassignedRiders, ...unassignedStaff];
   };
 
+  const getUnassignedPeopleForTab = (tabType: 'aller' | 'jourj' | 'retour') => {
+    const eventParticipantIds = new Set([
+      ...(event.selectedRiderIds || []),
+      ...(event.selectedStaffIds || []),
+    ]);
+
+    let assignedPeople = new Set<string>();
+    
+    // Récupérer les personnes assignées selon le type d'onglet
+    if (tabType === 'aller') {
+      allerLegs.forEach(leg => {
+        leg.occupants.forEach(occ => assignedPeople.add(`${occ.id}-${occ.type}`));
+        leg.intermediateStops?.forEach(stop => {
+          stop.persons?.forEach(person => assignedPeople.add(`${person.id}-${person.type}`));
+        });
+      });
+    } else if (tabType === 'jourj') {
+      jourJLegs.forEach(leg => {
+        leg.occupants.forEach(occ => assignedPeople.add(`${occ.id}-${occ.type}`));
+        leg.intermediateStops?.forEach(stop => {
+          stop.persons?.forEach(person => assignedPeople.add(`${person.id}-${person.type}`));
+        });
+      });
+    } else if (tabType === 'retour') {
+      retourLegs.forEach(leg => {
+        leg.occupants.forEach(occ => assignedPeople.add(`${occ.id}-${occ.type}`));
+        leg.intermediateStops?.forEach(stop => {
+          stop.persons?.forEach(person => assignedPeople.add(`${person.id}-${person.type}`));
+        });
+      });
+    }
+
+    const unassignedRiders = appState.riders.filter(rider => 
+      eventParticipantIds.has(rider.id) && !assignedPeople.has(`${rider.id}-rider`)
+    );
+
+    const unassignedStaff = appState.staff.filter(staff => 
+      eventParticipantIds.has(staff.id) && !assignedPeople.has(`${staff.id}-staff`)
+    );
+
+    return [...unassignedRiders, ...unassignedStaff];
+  };
+
+  const renderUnassignedAlert = (tabType: 'aller' | 'jourj' | 'retour') => {
+    const unassignedPeople = getUnassignedPeopleForTab(tabType);
+    
+    if (unassignedPeople.length === 0) return null;
+
+    const tabLabels = {
+      'aller': 'trajets aller',
+      'jourj': 'trajets du jour J',
+      'retour': 'trajets retour'
+    };
+
+                return (
+      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+        <div className="flex items-start space-x-3">
+          <span className="text-2xl">⚠️</span>
+          <div className="flex-1">
+            <h3 className="text-lg font-semibold text-yellow-800 mb-2">
+              Personnes non assignées pour les {tabLabels[tabType]}
+            </h3>
+            <p className="text-yellow-700 mb-3">
+              {unassignedPeople.length} personne{unassignedPeople.length > 1 ? 's' : ''} participant{unassignedPeople.length > 1 ? 's' : ''} à l'événement n'{unassignedPeople.length > 1 ? 'ont' : 'a'} pas encore été assignée{unassignedPeople.length > 1 ? 's' : ''} aux {tabLabels[tabType]} :
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {unassignedPeople.map((person) => (
+                <span key={`${person.id}-${'firstName' in person ? 'rider' : 'staff'}`} 
+                      className="bg-yellow-200 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium">
+                  {person.firstName} {person.lastName}
+                  <span className={`ml-1 text-xs px-1 py-0.5 rounded-full ${
+                    'firstName' in person 
+                      ? 'bg-pink-100 text-pink-700' 
+                      : 'bg-blue-100 text-blue-700'
+                  }`}>
+                    {'firstName' in person ? '🏃‍♀️' : '👨‍💼'}
+                  </span>
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderSubTabs = () => {
     const tabs = [
       { id: 'aller' as const, label: 'Trajets Aller', icon: '✈️', count: allerLegs.length, color: 'blue' },
@@ -835,7 +921,16 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
                   
                   return (
                     <li key={occ.id + occ.type} className="flex items-center justify-between">
-                      <span className="text-sm">{person ? `${person.firstName} ${person.lastName}` : 'Inconnu'}</span>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm">{person ? `${person.firstName} ${person.lastName}` : 'Inconnu'}</span>
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          occ.type === 'rider' 
+                            ? 'bg-pink-100 text-pink-700' 
+                            : 'bg-blue-100 text-blue-700'
+                        }`}>
+                          {occ.type === 'rider' ? '🏃‍♀️ Coureuse' : '👨‍💼 Staff'}
+                        </span>
+                      </div>
                       {pickupTime && (
                         <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">
                           Récupéré à {pickupTime}
@@ -1019,8 +1114,15 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
                               ? appState.riders.find(r => r.id === occ.id)
                               : appState.staff.find(s => s.id === occ.id);
                                   return (
-                              <span key={occ.id + occ.type} className="bg-green-200 text-green-800 px-3 py-1 rounded-full text-sm">
+                              <span key={occ.id + occ.type} className={`px-3 py-1 rounded-full text-sm ${
+                                occ.type === 'rider' 
+                                  ? 'bg-pink-200 text-pink-800' 
+                                  : 'bg-blue-200 text-blue-800'
+                              }`}>
                                 {person ? `${person.firstName} ${person.lastName}` : 'Inconnu'}
+                                <span className="ml-1">
+                                  {occ.type === 'rider' ? '🏃‍♀️' : '👨‍💼'}
+                                </span>
                               </span>
                                   );
                                 })}
@@ -1121,7 +1223,16 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
                               
                                                                     return (
                                 <li key={occ.id + occ.type} className="flex items-center justify-between">
-                                  <span className="text-sm">{person ? `${person.firstName} ${person.lastName}` : 'Inconnu'}</span>
+                                  <div className="flex items-center space-x-2">
+                                    <span className="text-sm">{person ? `${person.firstName} ${person.lastName}` : 'Inconnu'}</span>
+                                    <span className={`text-xs px-2 py-1 rounded-full ${
+                                      occ.type === 'rider' 
+                                        ? 'bg-pink-100 text-pink-700' 
+                                        : 'bg-blue-100 text-blue-700'
+                                    }`}>
+                                      {occ.type === 'rider' ? '🏃‍♀️ Coureuse' : '👨‍💼 Staff'}
+                                    </span>
+                                  </div>
                                   {pickupTime && (
                                     <span className="text-xs text-orange-600 bg-orange-100 px-2 py-1 rounded">
                                       Récupéré à {pickupTime}
@@ -1245,37 +1356,28 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
       {/* Sous-onglets */}
       {renderSubTabs()}
 
-      {/* Alerte pour les personnes non assignées */}
-      {getUnassignedPeople().length > 0 && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <div className="flex items-start space-x-3">
-            <span className="text-2xl">⚠️</span>
-            <div className="flex-1">
-              <h3 className="text-lg font-semibold text-yellow-800 mb-2">
-                Personnes non assignées
-              </h3>
-              <p className="text-yellow-700 mb-3">
-                {getUnassignedPeople().length} personne{getUnassignedPeople().length > 1 ? 's' : ''} participant{getUnassignedPeople().length > 1 ? 's' : ''} à l'événement n'{getUnassignedPeople().length > 1 ? 'ont' : 'a'} pas encore été assignée{getUnassignedPeople().length > 1 ? 's' : ''} à un transport :
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {getUnassignedPeople().map((person) => (
-                  <span key={`${person.id}-${'firstName' in person ? 'rider' : 'staff'}`} 
-                        className="bg-yellow-200 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium">
-                    {person.firstName} {person.lastName}
-                    {'firstName' in person ? ' (Coureur)' : ' (Staff)'}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+
 
       {/* Contenu des onglets */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        {activeSubTab === 'aller' && renderAllerTab()}
-        {activeSubTab === 'jourj' && renderJourJTab()}
-        {activeSubTab === 'retour' && renderRetourTab()}
+        {activeSubTab === 'aller' && (
+          <>
+            {renderUnassignedAlert('aller')}
+            {renderAllerTab()}
+          </>
+        )}
+        {activeSubTab === 'jourj' && (
+          <>
+            {renderUnassignedAlert('jourj')}
+            {renderJourJTab()}
+          </>
+        )}
+        {activeSubTab === 'retour' && (
+          <>
+            {renderUnassignedAlert('retour')}
+            {renderRetourTab()}
+          </>
+        )}
       </div>
 
       {isModalOpen && (
@@ -1523,7 +1625,14 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
                           className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 disabled:opacity-50"
                         />
                         <span className={`${person.isParticipant ? "font-semibold text-blue-700" : "text-gray-600"} ${isDisabled ? 'text-gray-400' : ''}`}>
-                          {person.name} ({person.type === "rider" ? "Coureur" : "Staff"})
+                          {person.name}
+                          <span className={`ml-2 text-xs px-2 py-1 rounded-full ${
+                            person.type === 'rider' 
+                              ? 'bg-pink-100 text-pink-700' 
+                              : 'bg-blue-100 text-blue-700'
+                          }`}>
+                            {person.type === "rider" ? "🏃‍♀️ Coureuse" : "👨‍💼 Staff"}
+                          </span>
                           {person.isParticipant && " - Participant"}
                           {isAssignedElsewhere && (
                             <span className="text-orange-500 text-xs ml-1">(Déjà assigné ailleurs)</span>
@@ -1607,7 +1716,7 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
                                 value={person.id}
                                 disabled={isAssigned && !isCurrentPerson}
                               >
-                                {person.name} ({person.type === "rider" ? "Coureur" : "Staff"})
+                                {person.name} {person.type === "rider" ? "🏃‍♀️ Coureuse" : "👨‍💼 Staff"}
                                 {isAssigned && !isCurrentPerson ? " - Déjà assigné" : ""}
                               </option>
                             );
