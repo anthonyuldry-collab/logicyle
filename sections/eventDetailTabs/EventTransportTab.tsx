@@ -377,7 +377,7 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
           ...(prev as EventTransportLeg),
           mode: newMode,
           assignedVehicleId: value === "" ? undefined : value,
-          driverId: vehicle?.driverId || undefined,
+          // Ne pas assigner automatiquement le chauffeur, laisser l'utilisateur choisir
           occupants: updatedOccupants,
         }));
         return;
@@ -387,7 +387,7 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
         ...(prev as EventTransportLeg),
         mode: newMode,
         assignedVehicleId: value === "" ? undefined : value,
-        driverId: vehicle?.driverId || undefined,
+        // Ne pas assigner automatiquement le chauffeur, laisser l'utilisateur choisir
       }));
       return;
     }
@@ -515,10 +515,29 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
         const personIndex = stop.persons.findIndex(
           (p: any) => p.id === personId && p.type === personType
         );
+        
         if (personIndex > -1) {
+          // Retirer la personne de l'étape
           stop.persons.splice(personIndex, 1);
+          
+          // Retirer la personne des occupants du véhicule
+          if (updated.occupants) {
+            updated.occupants = updated.occupants.filter(
+              (occ) => !(occ.id === personId && occ.type === personType)
+            );
+          }
         } else {
+          // Ajouter la personne à l'étape
           stop.persons.push({ id: personId, type: personType });
+          
+          // Ajouter la personne aux occupants du véhicule si elle n'y est pas déjà
+          if (!updated.occupants) updated.occupants = [];
+          const isAlreadyOccupant = updated.occupants.some(
+            (occ) => occ.id === personId && occ.type === personType
+          );
+          if (!isAlreadyOccupant) {
+            updated.occupants.push({ id: personId, type: personType });
+          }
         }
       }
       return updated;
@@ -659,6 +678,17 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
     }
   };
 
+  const getOccupantPickupTime = (leg: EventTransportLeg, personId: string, personType: "rider" | "staff") => {
+    if (!leg.intermediateStops) return null;
+    
+    for (const stop of leg.intermediateStops) {
+      if (stop.persons && stop.persons.some(p => p.id === personId && p.type === personType)) {
+        return stop.time;
+      }
+    }
+    return null;
+  };
+
   const renderSubTabs = () => {
     const tabs = [
       { id: 'aller' as const, label: 'Trajets Aller', icon: '✈️', count: allerLegs.length, color: 'blue' },
@@ -753,10 +783,19 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
                               const person = occ.type === "rider" 
                                 ? appState.riders.find(r => r.id === occ.id)
                                 : appState.staff.find(s => s.id === occ.id);
+                              const pickupTime = getOccupantPickupTime(leg, occ.id, occ.type);
+                              
                               return (
-                                <li key={occ.id + occ.type} className="flex items-center space-x-2">
-                                  <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                                  <span className="text-sm">{person ? `${person.firstName} ${person.lastName}` : 'Inconnu'}</span>
+                                <li key={occ.id + occ.type} className="flex items-center justify-between">
+                                  <div className="flex items-center space-x-2">
+                                    <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                                    <span className="text-sm">{person ? `${person.firstName} ${person.lastName}` : 'Inconnu'}</span>
+                                  </div>
+                                  {pickupTime && (
+                                    <span className="text-xs text-blue-600 bg-blue-100 px-2 py-1 rounded">
+                                      Récupéré à {pickupTime}
+                                    </span>
+                                  )}
                                 </li>
                               );
                             })}
@@ -889,16 +928,26 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
                       </h5>
                       <div className="bg-green-50 p-3 rounded-lg">
                         {leg.assignedVehicleId ? (
-                          <div className="text-sm text-gray-700">
-                            <p><strong>Véhicule:</strong> {
-                              leg.assignedVehicleId === 'perso' ? 'Véhicule personnel' :
-                              appState.vehicles.find(v => v.id === leg.assignedVehicleId)?.name || 'Inconnu'
-                            }</p>
-                            {leg.driverId && (
-                              <p><strong>Conducteur:</strong> {
-                                appState.staff.find(s => s.id === leg.driverId)?.firstName + ' ' +
-                                appState.staff.find(s => s.id === leg.driverId)?.lastName
-                              }</p>
+                          <div className="text-sm text-gray-700 space-y-1">
+                            <div className="flex items-center space-x-2">
+                              <span className="font-medium">🚗 Véhicule:</span>
+                              <span>{
+                                leg.assignedVehicleId === 'perso' ? 'Véhicule personnel' :
+                                appState.vehicles.find(v => v.id === leg.assignedVehicleId)?.name || 'Inconnu'
+                              }</span>
+                            </div>
+                            {leg.driverId ? (
+                              <div className="flex items-center space-x-2">
+                                <span className="font-medium">👨‍💼 Chauffeur:</span>
+                                <span className="bg-green-200 text-green-800 px-2 py-1 rounded-full text-xs">
+                                  {appState.staff.find(s => s.id === leg.driverId)?.firstName} {appState.staff.find(s => s.id === leg.driverId)?.lastName}
+                                </span>
+                              </div>
+                            ) : (
+                              <div className="flex items-center space-x-2">
+                                <span className="font-medium">👨‍💼 Chauffeur:</span>
+                                <span className="text-orange-600 text-xs">Non assigné</span>
+                              </div>
                             )}
                           </div>
                         ) : (
@@ -1007,23 +1056,32 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
                         <span className="mr-2">👥</span> Participants
                               </h5>
                       <div className="bg-orange-50 p-3 rounded-lg">
-                        {leg.occupants.length > 0 ? (
+                                                {leg.occupants.length > 0 ? (
                           <ul className="space-y-2">
-                                {leg.occupants.map((occ) => {
+                            {leg.occupants.map((occ) => {
                               const person = occ.type === "rider" 
                                 ? appState.riders.find(r => r.id === occ.id)
                                 : appState.staff.find(s => s.id === occ.id);
-                                  return (
-                                <li key={occ.id + occ.type} className="flex items-center space-x-2">
-                                  <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
-                                  <span className="text-sm">{person ? `${person.firstName} ${person.lastName}` : 'Inconnu'}</span>
-                                    </li>
-                                  );
-                                })}
-                              </ul>
+                              const pickupTime = getOccupantPickupTime(leg, occ.id, occ.type);
+                              
+                              return (
+                                <li key={occ.id + occ.type} className="flex items-center justify-between">
+                                  <div className="flex items-center space-x-2">
+                                    <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                                    <span className="text-sm">{person ? `${person.firstName} ${person.lastName}` : 'Inconnu'}</span>
+                                  </div>
+                                  {pickupTime && (
+                                    <span className="text-xs text-orange-600 bg-orange-100 px-2 py-1 rounded">
+                                      Récupéré à {pickupTime}
+                                    </span>
+                                  )}
+                                </li>
+                              );
+                            })}
+                          </ul>
                         ) : (
                           <p className="text-gray-400 text-sm">Aucun participant assigné</p>
-                                        )}
+                        )}
                             </div>
                                         </div>
                                           </div>
@@ -1194,42 +1252,64 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
               </div>
             </div>
 
-            {/* Véhicule assigné - Seulement pour les transports terrestres */}
+                        {/* Véhicule assigné - Seulement pour les transports terrestres */}
             {((currentTransportLeg as EventTransportLeg).mode !== TransportMode.VOL && 
               (currentTransportLeg as EventTransportLeg).mode !== TransportMode.TRAIN) && (
-            <div>
-              <label htmlFor="assignedVehicleId" className="block text-sm font-medium text-gray-700">
-                Véhicule assigné
-              </label>
-              <select
-                name="assignedVehicleId"
-                id="assignedVehicleId"
-                value={(currentTransportLeg as EventTransportLeg).assignedVehicleId || ""}
-                onChange={handleInputChange}
-                className={lightSelectClasses}
-              >
-                <option value="">Sélectionner un véhicule...</option>
-                <option value="perso">Véhicule personnel</option>
-                {appState.vehicles.map((vehicle) => {
-                  const availability = checkVehicleAvailability(
-                    vehicle,
-                    (currentTransportLeg as EventTransportLeg).departureDate,
-                    (currentTransportLeg as EventTransportLeg).arrivalDate,
-                    appState.eventTransportLegs,
-                    (currentTransportLeg as EventTransportLeg).id
-                  );
-                  return (
-                    <option
-                      key={vehicle.id}
-                      value={vehicle.id}
-                      disabled={availability.status !== "available"}
-                    >
-                      {vehicle.name} {availability.reason}
-                    </option>
-                  );
-                })}
-              </select>
-            </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="assignedVehicleId" className="block text-sm font-medium text-gray-700">
+                    Véhicule assigné
+                  </label>
+                  <select
+                    name="assignedVehicleId"
+                    id="assignedVehicleId"
+                    value={(currentTransportLeg as EventTransportLeg).assignedVehicleId || ""}
+                    onChange={handleInputChange}
+                    className={lightSelectClasses}
+                  >
+                    <option value="">Sélectionner un véhicule...</option>
+                    <option value="perso">Véhicule personnel</option>
+                    {appState.vehicles.map((vehicle) => {
+                      const availability = checkVehicleAvailability(
+                        vehicle,
+                        (currentTransportLeg as EventTransportLeg).departureDate,
+                        (currentTransportLeg as EventTransportLeg).arrivalDate,
+                        appState.eventTransportLegs,
+                        (currentTransportLeg as EventTransportLeg).id
+                      );
+                      return (
+                        <option
+                          key={vehicle.id}
+                          value={vehicle.id}
+                          disabled={availability.status !== "available"}
+                        >
+                          {vehicle.name} {availability.reason}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+                
+                <div>
+                  <label htmlFor="driverId" className="block text-sm font-medium text-gray-700">
+                    Chauffeur
+                  </label>
+                  <select
+                    name="driverId"
+                    id="driverId"
+                    value={(currentTransportLeg as EventTransportLeg).driverId || ""}
+                    onChange={handleInputChange}
+                    className={lightSelectClasses}
+                  >
+                    <option value="">Sélectionner un chauffeur...</option>
+                    {appState.staff.map((staffMember) => (
+                      <option key={staffMember.id} value={staffMember.id}>
+                        {staffMember.firstName} {staffMember.lastName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
             )}
 
             {/* Dates et lieux */}
@@ -1293,9 +1373,14 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
             {/* Sélection des occupants */}
             <div>
               <div className="flex justify-between items-center mb-2">
-                <label className="block text-sm font-medium text-gray-700">
-                  Occupants
-                </label>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Occupants
+                  </label>
+                  <p className="text-xs text-gray-500 mt-1">
+                    💡 Les personnes récupérées aux étapes sont automatiquement ajoutées ici
+                  </p>
+                </div>
                 {(() => {
                   const vehicle = (currentTransportLeg as EventTransportLeg).assignedVehicleId 
                     ? appState.vehicles.find(v => v.id === (currentTransportLeg as EventTransportLeg).assignedVehicleId)
@@ -1397,7 +1482,7 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
                         <label className="block text-sm font-medium text-gray-700 mb-2">
                           👤 Qui récupère
                         </label>
-                        <select
+                                                <select
                           value={stop.persons?.[0]?.id || ""}
                           onChange={(e) => {
                             const personId = e.target.value;
@@ -1407,11 +1492,19 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
                                 handleStopPersonChange(index, personId, person.type);
                               }
                             } else {
-                              // Supprimer la personne
+                              // Supprimer la personne de l'étape et des occupants
                       setCurrentTransportLeg((prev) => {
                         const updated = structuredClone(prev);
                                 if (updated.intermediateStops && updated.intermediateStops[index]) {
+                                  const currentPerson = updated.intermediateStops[index].persons?.[0];
                                   updated.intermediateStops[index].persons = [];
+                                  
+                                  // Retirer aussi des occupants si c'était la seule étape de récupération
+                                  if (currentPerson && updated.occupants) {
+                                    updated.occupants = updated.occupants.filter(
+                                      (occ) => !(occ.id === currentPerson.id && occ.type === currentPerson.type)
+                                    );
+                                  }
                                 }
                         return updated;
                       });
