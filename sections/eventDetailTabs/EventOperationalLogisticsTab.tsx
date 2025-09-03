@@ -208,29 +208,9 @@ const EventOperationalLogisticsTab: React.FC<EventOperationalLogisticsTabProps> 
                     // Créer une description détaillée pour le jour J
                     let description = '';
                     
-                    // Si c'est un transport avec passagers, format direct
-                    if (leg.occupants && leg.occupants.length > 0) {
-                        const occupantsNames = leg.occupants.map(occ => getOccupantName(occ.id, occ.type)).join(', ');
-                        const allVehicles = getAllVehiclesInfo(leg);
-                        description = `🚗 ${occupantsNames} transporté${leg.occupants.length > 1 ? 's' : ''} par ${allVehicles}`;
-                        if (leg.departureLocation && leg.arrivalLocation) {
-                            description += ` de ${leg.departureLocation} vers ${leg.arrivalLocation}`;
-                        } else if (leg.departureLocation) {
-                            description += ` de ${leg.departureLocation}`;
-                        } else if (leg.arrivalLocation) {
-                            description += ` vers ${leg.arrivalLocation}`;
-                        }
-                    } else {
-                        // Format classique pour les départs sans passagers
-                        const allVehicles = getAllVehiclesInfo(leg);
-                        description = `🚗 Départ - ${allVehicles}`;
-                        if (leg.departureLocation) {
-                            description += ` - De: ${leg.departureLocation}`;
-                        }
-                        if (leg.arrivalLocation) {
-                            description += ` → ${leg.arrivalLocation}`;
-                        }
-                    }
+                    // Format simple pour les départs
+                    const vehicleName = getVehicleInfo(leg.assignedVehicleId);
+                    description = `Départ du ${vehicleName}`;
                     
                     timings.push({
                         id: `auto-transport-depart-${leg.id}`,
@@ -251,21 +231,12 @@ const EventOperationalLogisticsTab: React.FC<EventOperationalLogisticsTabProps> 
                     // Créer une description détaillée pour le jour J
                     let description = '';
                     
-                    // Si c'est une récupération (avec occupants), format direct
-                    if (leg.occupants && leg.occupants.length > 0) {
-                        const occupantsNames = leg.occupants.map(occ => getOccupantName(occ.id, occ.type)).join(', ');
-                        const allVehicles = getAllVehiclesInfo(leg);
-                        description = `🏁 ${occupantsNames} récupéré${leg.occupants.length > 1 ? 's' : ''} par ${allVehicles}`;
-                        if (leg.arrivalLocation) {
-                            description += ` à ${leg.arrivalLocation}`;
-                        }
+                    // Format simple pour les arrivées
+                    const vehicleName = getVehicleInfo(leg.assignedVehicleId);
+                    if (leg.arrivalLocation) {
+                        description = `Arrivée des véhicules à ${leg.arrivalLocation}`;
                     } else {
-                        // Format classique pour les arrivées sans récupération
-                        const allVehicles = getAllVehiclesInfo(leg);
-                        description = `🏁 Arrivée - ${allVehicles}`;
-                        if (leg.arrivalLocation) {
-                            description += ` - À: ${leg.arrivalLocation}`;
-                        }
+                        description = `Arrivée du ${vehicleName}`;
                     }
                     
                     timings.push({
@@ -333,40 +304,11 @@ const EventOperationalLogisticsTab: React.FC<EventOperationalLogisticsTabProps> 
                     const personsConcerned = stop.persons.map(p => getOccupantName(p.id, p.type)).join(', ');
                     let description = '';
                     
-                    if (isSimpleFormat) {
-                        // Format simplifié pour les vols/trains avec noms des personnes
-                        description = `${emoji} ${stopTypeLabel} ${stop.location}`;
-                        if (personsConcerned) {
-                            description += ` - ${personsConcerned}`;
-                        }
-                        if (stop.isTimingCritical) {
-                            description += ' ⏰';
-                        }
+                    // Format simple pour toutes les étapes
+                    if (personsConcerned) {
+                        description = `${stop.location} pour récupérer ${personsConcerned}`;
                     } else {
-                        // Format détaillé pour les autres étapes avec noms des personnes
-                        description = `${emoji} ${stopTypeLabel} - ${vehicleInfo} - ${stop.location}`;
-                        
-                        if (personsConcerned) {
-                            description += ` - ${personsConcerned}`;
-                        }
-                        
-                        if (stop.notes) {
-                            description += ` (${stop.notes})`;
-                        }
-
-                        // Ajouter des indicateurs spéciaux
-                        if (stop.isTimingCritical) {
-                            description += ' ⏰';
-                        }
-                        if (stop.isPickupRequired) {
-                            description += ' 🚨';
-                        }
-                        if (stop.isDropoffRequired) {
-                            description += ' 🚨';
-                        }
-                        if (stop.reminderMinutes && stop.reminderMinutes > 0) {
-                            description += ` 🔔`;
-                        }
+                        description = `${stop.location}`;
                     }
 
                     timings.push({
