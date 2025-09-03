@@ -71,6 +71,8 @@ interface EventOperationalLogisticsTabProps {
   event: RaceEvent;
   updateEvent: (updatedEventData: Partial<RaceEvent>) => void;
   appState: AppState;
+  viewMode?: 'team' | 'individual'; // Nouveau prop pour le mode d'affichage
+  selectedPersonId?: string; // ID de la personne pour le mode individuel
 }
 
 interface AutoTiming extends OperationalTiming {
@@ -85,7 +87,13 @@ const categoryStyles: Record<OperationalTimingCategory, { icon: React.FC<any>; c
     [OperationalTimingCategory.MASSAGE]: { icon: HandRaisedIcon, color: 'text-teal-500' },
 };
 
-const EventOperationalLogisticsTab: React.FC<EventOperationalLogisticsTabProps> = ({ event, updateEvent, appState }) => {
+const EventOperationalLogisticsTab: React.FC<EventOperationalLogisticsTabProps> = ({ 
+  event, 
+  updateEvent, 
+  appState, 
+  viewMode = 'team', 
+  selectedPersonId 
+}) => {
   const [logistics, setLogistics] = useState<OperationalLogisticsDay[]>([]);
   const [isEditing, setIsEditing] = useState(false);
 
@@ -123,7 +131,35 @@ const EventOperationalLogisticsTab: React.FC<EventOperationalLogisticsTabProps> 
         } catch { return null; }
     };
     
+    // Fonction pour déterminer si un trajet est individuel (vol personnel, etc.)
+    const isIndividualTrip = (leg: EventTransportLeg): boolean => {
+        // Un trajet est considéré comme individuel si :
+        // 1. C'est un vol (mode VOL)
+        // 2. OU il n'y a qu'une seule personne (rider ou staff)
+        // 3. OU c'est un trajet personnel spécifique (ex: vol d'Axelle)
+        return leg.mode === TransportMode.VOL || 
+               (leg.occupants && leg.occupants.length <= 1) ||
+               leg.details?.toLowerCase().includes('personnel') ||
+               leg.details?.toLowerCase().includes('individuel');
+    };
+    
+    // Fonction pour déterminer si un trajet doit être affiché selon le mode
+    const shouldShowInTiming = (leg: EventTransportLeg): boolean => {
+        if (viewMode === 'individual' && selectedPersonId) {
+            // Mode individuel : afficher tous les trajets de cette personne
+            return leg.occupants?.some(occ => occ.id === selectedPersonId) || false;
+        } else {
+            // Mode équipe : ne pas afficher les trajets individuels
+            return !isIndividualTrip(leg);
+        }
+    };
+    
     appState.eventTransportLegs.filter(leg => leg.eventId === event.id).forEach(leg => {
+        // Filtrer les trajets selon le mode d'affichage
+        if (!shouldShowInTiming(leg)) {
+            return; // Skip les trajets non pertinents
+        }
+        
         if (leg.departureDate && leg.departureTime) {
             const targetDay = getTargetMealDay(leg.departureDate);
             if (targetDay) {
@@ -371,8 +407,13 @@ const EventOperationalLogisticsTab: React.FC<EventOperationalLogisticsTabProps> 
     let finalDays = Object.values(mergedDays);
     finalDays.forEach(day => day.keyTimings.sort((a, b) => (parseTimeOfDayToMinutes(a.time) ?? 9999) - (parseTimeOfDayToMinutes(b.time) ?? 9999)));
 
-    // Grouping Logic
+    // Logique de groupement améliorée (uniquement en mode équipe)
     const groupedDays = finalDays.map(day => {
+        // En mode individuel, ne pas grouper les timings
+        if (viewMode === 'individual') {
+            return day;
+        }
+        
         const newKeyTimings: OperationalTiming[] = [];
         const processedIndices = new Set<number>();
 
@@ -380,41 +421,85 @@ const EventOperationalLogisticsTab: React.FC<EventOperationalLogisticsTabProps> 
             if (processedIndices.has(i)) continue;
 
             const currentTiming = day.keyTimings[i];
-            const isGroupable = currentTiming.category === OperationalTimingCategory.TRANSPORT && (currentTiming.description.startsWith('Départ') || currentTiming.description.startsWith('Arrivée'));
+            const isGroupable = currentTiming.category === OperationalTimingCategory.TRANSPORT && 
+                               (currentTiming.description.includes('🚗 Départ') || currentTiming.description.includes('🏁 Arrivée'));
 
             if (isGroupable) {
-                const matches = currentTiming.description.match(/^(Départ|Arrivée)\s(.*?)\s\((.*?)\)\s(de|à)\s(.+)/);
-                if (matches) {
-                    const type = matches[1];
-                    const location = matches[5];
+                // Extraire les informations du timing actuel
+                const currentMatches = currentTiming.description.match(/^(🚗 Départ|🏁 Arrivée)\s(.*?)\s-\s(.*?)\s-\s(De|À):\s(.+)/);
+                if (currentMatches) {
+                    const emoji = currentMatches[1];
+                    const direction = currentMatches[2];
+                    const vehicleInfo = currentMatches[3];
+                    const preposition = currentMatches[4];
+                    const location = currentMatches[5];
                     const time = currentTiming.time;
 
                     const groupPeers = [currentTiming];
-                    const groupVehicles = [matches[2]];
+                    const groupVehicles = [vehicleInfo];
+                    const groupDirections = [direction];
 
+                    // Chercher d'autres timings groupables
                     for (let j = i + 1; j < day.keyTimings.length; j++) {
+                        if (processedIndices.has(j)) continue;
+                        
                         const nextTiming = day.keyTimings[j];
                         if (nextTiming.time !== time) break;
 
                         if (nextTiming.category === OperationalTimingCategory.TRANSPORT) {
-                            const nextMatches = nextTiming.description.match(/^(Départ|Arrivée)\s(.*?)\s\((.*?)\)\s(de|à)\s(.+)/);
-                            if (nextMatches && nextMatches[1] === type && nextMatches[5] === location) {
+                            const nextMatches = nextTiming.description.match(/^(🚗 Départ|🏁 Arrivée)\s(.*?)\s-\s(.*?)\s-\s(De|À):\s(.+)/);
+                            if (nextMatches && 
+                                nextMatches[1] === emoji && 
+                                nextMatches[4] === preposition && 
+                                nextMatches[5] === location) {
+                                
                                 groupPeers.push(nextTiming);
-                                groupVehicles.push(nextMatches[2]);
+                                groupVehicles.push(nextMatches[3]);
+                                groupDirections.push(nextMatches[2]);
                                 processedIndices.add(j);
                             }
                         }
                     }
 
                     if (groupPeers.length > 1) {
-                        const newDescription = `${type} ${groupVehicles.join(', ')} (${groupPeers[0].description.match(/\((.*?)\)/)?.[1] || ''}) ${type === 'Départ' ? 'de' : 'à'} ${location}`;
-                        newKeyTimings.push({ ...currentTiming, id: `grouped-${currentTiming.id}`, description: newDescription });
+                        // Grouper les timings
+                        const uniqueDirections = [...new Set(groupDirections)];
+                        const uniqueVehicles = [...new Set(groupVehicles)];
+                        
+                        let newDescription = '';
+                        if (uniqueDirections.length === 1) {
+                            // Même direction pour tous
+                            newDescription = `${emoji} ${uniqueDirections[0]} - ${uniqueVehicles.join(', ')} - ${preposition}: ${location}`;
+                        } else {
+                            // Directions différentes
+                            newDescription = `${emoji} ${uniqueDirections.join(', ')} - ${uniqueVehicles.join(', ')} - ${preposition}: ${location}`;
+                        }
+                        
+                        // Ajouter le nombre de personnes concernées
+                        const totalOccupants = groupPeers.reduce((total, timing) => {
+                            const occupantsMatch = timing.description.match(/Passagers: ([^-]+)/);
+                            if (occupantsMatch) {
+                                const occupants = occupantsMatch[1].split(', ').length;
+                                return total + occupants;
+                            }
+                            return total;
+                        }, 0);
+                        
+                        if (totalOccupants > 0) {
+                            newDescription += ` (${totalOccupants} personne${totalOccupants > 1 ? 's' : ''})`;
+                        }
+                        
+                        newKeyTimings.push({ 
+                            ...currentTiming, 
+                            id: `grouped-${currentTiming.id}`, 
+                            description: newDescription 
+                        });
                         processedIndices.add(i);
                     } else {
                         newKeyTimings.push(currentTiming);
                     }
                 } else {
-                     newKeyTimings.push(currentTiming);
+                    newKeyTimings.push(currentTiming);
                 }
             } else {
                 newKeyTimings.push(currentTiming);
@@ -496,14 +581,41 @@ const EventOperationalLogisticsTab: React.FC<EventOperationalLogisticsTabProps> 
   
   const lightInputClass = "block w-full px-2 py-1 border rounded-md shadow-sm sm:text-sm bg-white text-gray-900 border-gray-300 placeholder-gray-400 focus:ring-blue-500 focus:border-blue-500 text-xs";
   
+  // Obtenir le nom de la personne pour le mode individuel
+  const getPersonName = (): string => {
+    if (viewMode === 'individual' && selectedPersonId) {
+      const rider = appState.riders.find(r => r.id === selectedPersonId);
+      const staff = appState.staff.find(s => s.id === selectedPersonId);
+      if (rider) return `${rider.firstName} ${rider.lastName}`;
+      if (staff) return `${staff.firstName} ${staff.lastName}`;
+    }
+    return '';
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h3 className="text-xl font-semibold text-gray-700">Logistique Opérationnelle (Timing par Jour)</h3>
-        {!isEditing && <ActionButton onClick={() => setIsEditing(true)} variant="primary">Modifier Timings</ActionButton>}
+        <div>
+          <h3 className="text-xl font-semibold text-gray-700">
+            {viewMode === 'individual' 
+              ? `Timing Personnel - ${getPersonName()}` 
+              : 'Logistique Opérationnelle (Timing par Jour)'
+            }
+          </h3>
+          {viewMode === 'individual' && (
+            <p className="text-sm text-gray-500 mt-1">
+              Affichage des trajets et timings personnels uniquement
+            </p>
+          )}
+        </div>
+        {!isEditing && viewMode === 'team' && (
+          <ActionButton onClick={() => setIsEditing(true)} variant="primary">
+            Modifier Timings
+          </ActionButton>
+        )}
       </div>
 
-      {isEditing ? (
+      {isEditing && viewMode === 'team' ? (
         <div className="space-y-4">
           {displayLogistics.map(day => {
             return (
@@ -648,7 +760,17 @@ const EventOperationalLogisticsTab: React.FC<EventOperationalLogisticsTabProps> 
         </>
       )}
 
-      {!isEditing && (
+      {viewMode === 'individual' && displayLogistics.length === 0 && (
+        <div className="text-center py-8 text-gray-500">
+          <span className="text-4xl mb-4 block">👤</span>
+          <h3 className="text-lg font-semibold text-gray-700 mb-2">Aucun timing personnel</h3>
+          <p className="text-gray-500">
+            {getPersonName()} n'a pas de trajets ou timings personnels planifiés pour cet événement.
+          </p>
+        </div>
+      )}
+
+      {!isEditing && viewMode === 'team' && (
          <div className="mt-6 pt-4 border-t">
             <h4 className="text-md font-semibold text-gray-700 mb-2 flex items-center"><InformationCircleIcon className="w-5 h-5 mr-2 text-blue-500"/>Légende</h4>
             <ul className="text-xs text-gray-600 space-y-1">
