@@ -53,7 +53,7 @@ const PerformancePoleSection: React.FC<PerformancePoleSectionProps> = ({ appStat
     } : { average: 0, min: 0, max: 0 };
     
     // Répartition par catégorie d'âge avec métriques de puissance
-    const ageDistribution = ['U15', 'U17', 'U19', 'U23', 'Senior'].map(category => {
+    const ageDistribution = ['U19', 'U23', 'Senior'].map(category => {
       const categoryRiders = riders.filter(r => {
         const { category: riderCategory } = getAgeCategory(r.birthDate);
         return riderCategory === category;
