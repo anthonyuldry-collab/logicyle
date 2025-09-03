@@ -807,7 +807,7 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
                       ? 'bg-pink-100 text-pink-700' 
                       : 'bg-blue-100 text-blue-700'
                   }`}>
-                    {'firstName' in person ? '🏃‍♀️' : '👨‍💼'}
+                    {'firstName' in person ? 'Coureuse' : 'Staff'}
                   </span>
                 </span>
               ))}
@@ -928,7 +928,7 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
                             ? 'bg-pink-100 text-pink-700' 
                             : 'bg-blue-100 text-blue-700'
                         }`}>
-                          {occ.type === 'rider' ? '🏃‍♀️ Coureuse' : '👨‍💼 Staff'}
+                          {occ.type === 'rider' ? 'Coureuse' : 'Staff'}
                         </span>
                       </div>
                       {pickupTime && (
@@ -1120,9 +1120,6 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
                                   : 'bg-blue-200 text-blue-800'
                               }`}>
                                 {person ? `${person.firstName} ${person.lastName}` : 'Inconnu'}
-                                <span className="ml-1">
-                                  {occ.type === 'rider' ? '🏃‍♀️' : '👨‍💼'}
-                                </span>
                               </span>
                                   );
                                 })}
@@ -1230,7 +1227,7 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
                                         ? 'bg-pink-100 text-pink-700' 
                                         : 'bg-blue-100 text-blue-700'
                                     }`}>
-                                      {occ.type === 'rider' ? '🏃‍♀️ Coureuse' : '👨‍💼 Staff'}
+                                      {occ.type === 'rider' ? 'Coureuse' : 'Staff'}
                                     </span>
                                   </div>
                                   {pickupTime && (
@@ -1631,7 +1628,7 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
                               ? 'bg-pink-100 text-pink-700' 
                               : 'bg-blue-100 text-blue-700'
                           }`}>
-                            {person.type === "rider" ? "🏃‍♀️ Coureuse" : "👨‍💼 Staff"}
+                            {person.type === "rider" ? "Coureuse" : "Staff"}
                           </span>
                           {person.isParticipant && " - Participant"}
                           {isAssignedElsewhere && (
@@ -1716,7 +1713,7 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
                                 value={person.id}
                                 disabled={isAssigned && !isCurrentPerson}
                               >
-                                {person.name} {person.type === "rider" ? "🏃‍♀️ Coureuse" : "👨‍💼 Staff"}
+                                {person.name} {person.type === "rider" ? "Coureuse" : "Staff"}
                                 {isAssigned && !isCurrentPerson ? " - Déjà assigné" : ""}
                               </option>
                             );
