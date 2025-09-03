@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { AppState, Rider, Sex, RaceEvent, EventType } from '../types';
 import SectionWrapper from '../components/SectionWrapper';
 import UsersIcon from '../components/icons/UsersIcon';
@@ -6,17 +6,22 @@ import TrophyIcon from '../components/icons/TrophyIcon';
 import TrendingUpIcon from '../components/icons/TrendingUpIcon';
 import StarIcon from '../components/icons/StarIcon';
 import CakeIcon from '../components/icons/CakeIcon';
+import ChartBarIcon from '../components/icons/ChartBarIcon';
 import { getAgeCategory } from '../utils/ageUtils';
+import { PowerAnalysisTable } from '../components';
 
 interface PerformancePoleSectionProps {
   appState: AppState;
 }
 
+type PerformanceTab = 'overview' | 'powerAnalysis';
+
 const PerformancePoleSection: React.FC<PerformancePoleSectionProps> = ({ appState }) => {
+  const [activeTab, setActiveTab] = useState<PerformanceTab>('overview');
   // Protection contre appState null/undefined
   if (!appState) {
     return (
-      <SectionWrapper title="Centre Stratégique ITSJ - Pôle Performance">
+      <SectionWrapper title="Vue d'Ensemble">
         <div className="p-6 text-center text-gray-500">
           Chargement des données...
         </div>
@@ -26,6 +31,7 @@ const PerformancePoleSection: React.FC<PerformancePoleSectionProps> = ({ appStat
 
   const riders = appState.riders || [];
   const raceEvents = appState.raceEvents || [];
+  const scoutingProfiles = appState.scoutingProfiles || [];
 
   // Calculs stratégiques améliorés
   const strategicMetrics = useMemo(() => {
@@ -111,7 +117,7 @@ const PerformancePoleSection: React.FC<PerformancePoleSectionProps> = ({ appStat
     
     // Événements à venir
     const upcomingEvents = raceEvents.filter(event => 
-      event.type === EventType.RACE && 
+      event.type === EventType.COMPETITION && 
       new Date(event.startDate) > new Date()
     ).length;
 
@@ -177,16 +183,39 @@ const PerformancePoleSection: React.FC<PerformancePoleSectionProps> = ({ appStat
     };
   }, [riders, raceEvents, appState.performanceEntries]);
 
+  const tabButtonStyle = (tabName: PerformanceTab) => 
+    `px-4 py-2 font-medium text-sm rounded-t-lg whitespace-nowrap transition-colors duration-150 focus:outline-none ${
+      activeTab === tabName 
+        ? 'bg-white text-blue-600 border-b-2 border-blue-500 shadow-sm' 
+        : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+    }`;
+
   return (
-    <SectionWrapper title="Centre Stratégique ITSJ - Pôle Performance">
-      <div className="space-y-8">
-        {/* En-tête stratégique */}
-        <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-6 rounded-lg">
-          <h2 className="text-2xl font-bold mb-2">Vue d'Ensemble Stratégique</h2>
-          <p className="text-blue-100">
-            Tableau de bord centralisé pour la prise de décision stratégique du pôle performance
-          </p>
-        </div>
+    <SectionWrapper title="Vue d'Ensemble">
+      {/* Onglets principaux */}
+      <div className="mb-6 border-b border-gray-200">
+        <nav className="-mb-px flex space-x-1 overflow-x-auto" aria-label="Tabs">
+          <button onClick={() => setActiveTab('overview')} className={tabButtonStyle('overview')}>
+            <UsersIcon className="w-4 h-4 inline mr-2" />
+            Vue d'Ensemble
+          </button>
+          <button onClick={() => setActiveTab('powerAnalysis')} className={tabButtonStyle('powerAnalysis')}>
+            <ChartBarIcon className="w-4 h-4 inline mr-2" />
+            Analyse des Puissances
+          </button>
+        </nav>
+      </div>
+
+      {/* Contenu des onglets */}
+      {activeTab === 'overview' && (
+        <div className="space-y-8">
+          {/* En-tête stratégique */}
+          <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-6 rounded-lg">
+            <h2 className="text-2xl font-bold mb-2">Vue d'Ensemble Stratégique</h2>
+            <p className="text-blue-100">
+              Tableau de bord centralisé pour la prise de décision stratégique du pôle performance
+            </p>
+          </div>
 
         {/* Métriques clés en grille */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -409,27 +438,15 @@ const PerformancePoleSection: React.FC<PerformancePoleSectionProps> = ({ appStat
           </div>
         </div>
 
-        {/* Message stratégique */}
-        <div className="bg-blue-50 border-l-4 border-blue-400 p-6 rounded-lg">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <StarIcon className="h-6 w-6 text-blue-400" />
-            </div>
-            <div className="ml-3">
-              <h3 className="text-lg font-medium text-blue-800">
-                Centre de Décision Stratégique
-              </h3>
-              <div className="mt-2 text-sm text-blue-700">
-                <p>
-                  Cette vue d'ensemble vous permet de prendre des décisions stratégiques éclairées 
-                  pour le développement du pôle performance ITSJ. Les métriques clés sont mises en évidence 
-                  pour faciliter l'analyse et la planification.
-                </p>
-              </div>
-            </div>
-          </div>
+
         </div>
-      </div>
+      )}
+
+      {activeTab === 'powerAnalysis' && (
+        <div className="space-y-6">
+          <PowerAnalysisTable riders={riders} scoutingProfiles={scoutingProfiles} />
+        </div>
+      )}
     </SectionWrapper>
   );
 };
