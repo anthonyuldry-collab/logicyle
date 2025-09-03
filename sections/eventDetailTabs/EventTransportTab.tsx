@@ -137,6 +137,7 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
   >(initialTransportFormStateFactory(eventId));
   const [isEditing, setIsEditing] = useState(false);
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [activeSubTab, setActiveSubTab] = useState<'aller' | 'jourj' | 'retour'>('aller');
 
   const transportLegsForEvent = useMemo(() => {
     return appState.eventTransportLegs.filter((leg) => leg.eventId === eventId);
@@ -391,6 +392,22 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
       return;
     }
 
+    // Gestion spéciale pour le changement de mode de transport
+    if (name === "mode") {
+      setCurrentTransportLeg((prev) => {
+        const updated = { ...prev, [name]: value };
+        
+        // Si on passe en mode vol ou train, réinitialiser le véhicule assigné
+        if (value === TransportMode.VOL || value === TransportMode.TRAIN) {
+          updated.assignedVehicleId = undefined;
+          updated.driverId = undefined;
+        }
+        
+        return updated;
+      });
+      return;
+    }
+
     setCurrentTransportLeg((prev) => ({
       ...prev,
       [name]: type === "checkbox" ? checked : value,
@@ -445,7 +462,7 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
       location: "",
       date: event.date,
       time: "",
-      stopType: TransportStopType.WAYPOINT,
+      stopType: TransportStopType.PICKUP,
       persons: [],
       notes: "",
       isTimingCritical: false,
@@ -642,78 +659,166 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
     }
   };
 
-  const renderTransportTable = (legs: EventTransportLeg[], title: string) => (
-    <div className="mb-8">
-      <h3 className="text-xl font-semibold text-gray-700 mb-3">{title}</h3>
-      {legs.length === 0 ? (
-        <p className="text-gray-500 italic">Aucun trajet planifié.</p>
-      ) : (
-        <div className="overflow-x-auto">
-          <table className="min-w-full bg-white text-sm">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-8"></th>
-                <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Trajet
-                </th>
-                <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Départ
-                </th>
-                <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Arrivée
-                </th>
-                <th className="py-2 px-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Occupants
-                </th>
-                <th className="py-2 px-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {legs.map((leg) => {
-                const vehicle = appState.vehicles.find(
-                  (v) => v.id === leg.assignedVehicleId
-                );
-                const driver = appState.staff.find(
-                  (s) => s.id === leg.driverId
-                );
-                const isExpanded = expandedRows.has(leg.id);
+  const renderSubTabs = () => {
+    const tabs = [
+      { id: 'aller' as const, label: 'Trajets Aller', icon: '✈️', count: allerLegs.length, color: 'blue' },
+      { id: 'jourj' as const, label: 'Jour J', icon: '🏁', count: jourJLegs.length, color: 'green' },
+      { id: 'retour' as const, label: 'Trajets Retour', icon: '🏠', count: retourLegs.length, color: 'orange' }
+    ];
+
                 return (
-                  <React.Fragment key={leg.id}>
-                    <tr className="hover:bg-gray-50 transition-colors">
-                      <td className="py-3 px-3">
+      <div className="border-b border-gray-200 mb-6">
+        <nav className="-mb-px flex space-x-8">
+          {tabs.map((tab) => (
                         <button
-                          onClick={() => toggleRowExpansion(leg.id)}
-                          className="text-gray-500 hover:text-gray-700"
-                        >
-                          <ChevronDownIcon
-                            className={`w-4 h-4 transition-transform ${
-                              isExpanded ? "rotate-180" : ""
-                            }`}
-                          />
+              key={tab.id}
+              onClick={() => setActiveSubTab(tab.id)}
+              className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 ${
+                activeSubTab === tab.id
+                  ? `border-${tab.color}-500 text-${tab.color}-600`
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              <span className="text-lg">{tab.icon}</span>
+              <span>{tab.label}</span>
+              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                activeSubTab === tab.id
+                  ? `bg-${tab.color}-100 text-${tab.color}-800`
+                  : 'bg-gray-100 text-gray-800'
+              }`}>
+                {tab.count}
+              </span>
                         </button>
-                      </td>
-                      <td className="py-3 px-3 font-medium text-gray-900">
-                        <div>{vehicle ? vehicle.name : leg.mode}</div>
-                        <div className="text-xs text-gray-500">{leg.mode}</div>
-                      </td>
-                      <td className="py-3 px-3 text-gray-700">
-                        <div className="font-semibold">
-                          {formatDate(leg.departureDate, leg.departureTime)}
+          ))}
+        </nav>
                         </div>
-                        <div>De: {leg.departureLocation}</div>
-                      </td>
-                      <td className="py-3 px-3 text-gray-700">
-                        <div className="font-semibold">
-                          {formatDate(leg.arrivalDate, leg.arrivalTime)}
+    );
+  };
+
+  const renderAllerTab = () => (
+    <div className="space-y-4">
+      {allerLegs.length === 0 ? (
+        <div className="text-center py-12 text-gray-500">
+          <span className="text-6xl mb-4 block">✈️</span>
+          <h3 className="text-xl font-semibold text-gray-700 mb-2">Aucun trajet aller planifié</h3>
+          <p className="text-gray-500 mb-6">Ajoutez des trajets pour organiser les départs vers l'événement</p>
+          <ActionButton
+            onClick={openAddModal}
+            icon={<PlusCircleIcon className="w-5 h-5" />}
+          >
+            Ajouter un Trajet Aller
+          </ActionButton>
                         </div>
-                        <div>À: {leg.arrivalLocation}</div>
-                      </td>
-                      <td className="py-3 px-3 text-gray-700">
-                        {leg.occupants.length} pers.
-                      </td>
-                      <td className="py-3 px-3 whitespace-nowrap text-right space-x-2">
+      ) : (
+        <div className="space-y-4">
+          {allerLegs.map((leg) => (
+            <div key={leg.id} className="border border-blue-200 rounded-lg p-6 hover:shadow-md transition-shadow bg-white">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center space-x-3 mb-4">
+                    <span className="text-2xl">
+                      {leg.mode === TransportMode.VOL ? '✈️' : '🚗'}
+                    </span>
+                    <div>
+                      <h4 className="text-lg font-semibold text-gray-800">
+                        {leg.mode === TransportMode.VOL ? 'Vol' : 'Transport terrestre'}
+                      </h4>
+                      <p className="text-sm text-gray-600">
+                        {formatDate(leg.departureDate, leg.departureTime)} → {formatDate(leg.arrivalDate, leg.arrivalTime)}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h5 className="font-medium text-gray-700 mb-3 flex items-center">
+                        <span className="mr-2">📍</span> Trajet
+                      </h5>
+                      <div className="bg-blue-50 p-3 rounded-lg">
+                        <p className="text-sm text-gray-700">
+                          <strong>Départ:</strong> {leg.departureLocation}<br/>
+                          <strong>Arrivée:</strong> {leg.arrivalLocation}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h5 className="font-medium text-gray-700 mb-3 flex items-center">
+                        <span className="mr-2">👥</span> Participants
+                      </h5>
+                      <div className="bg-blue-50 p-3 rounded-lg">
+                        {leg.occupants.length > 0 ? (
+                          <ul className="space-y-2">
+                            {leg.occupants.map((occ) => {
+                              const person = occ.type === "rider" 
+                                ? appState.riders.find(r => r.id === occ.id)
+                                : appState.staff.find(s => s.id === occ.id);
+                              return (
+                                <li key={occ.id + occ.type} className="flex items-center space-x-2">
+                                  <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
+                                  <span className="text-sm">{person ? `${person.firstName} ${person.lastName}` : 'Inconnu'}</span>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        ) : (
+                          <p className="text-gray-400 text-sm">Aucun participant assigné</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {leg.mode === TransportMode.VOL && leg.details && (
+                    <div className="mt-4">
+                      <h5 className="font-medium text-gray-700 mb-2 flex items-center">
+                        <span className="mr-2">🎫</span> Détails du vol
+                      </h5>
+                      <div className="bg-blue-100 p-3 rounded-lg">
+                        <p className="text-sm text-blue-800">{leg.details}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {leg.intermediateStops && leg.intermediateStops.length > 0 && (
+                    <div className="mt-4">
+                      <h5 className="font-medium text-gray-700 mb-3 flex items-center">
+                        <span className="mr-2">🚌</span> Récupérations/Déposes
+                      </h5>
+                      <div className="space-y-2">
+                        {leg.intermediateStops.map((stop) => {
+                          const person = stop.persons && stop.persons.length > 0 
+                            ? (stop.persons[0].type === "rider" 
+                                ? appState.riders.find(r => r.id === stop.persons[0].id)
+                                : appState.staff.find(s => s.id === stop.persons[0].id))
+                            : null;
+                          
+                          return (
+                            <div key={stop.id} className="bg-blue-50 p-3 rounded-lg">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-3">
+                                  <span className="text-blue-600 font-medium">{stop.time}</span>
+                                  <span className="font-medium">{stop.location}</span>
+                                  {person && (
+                                    <span className="text-sm text-gray-600">
+                                      → {person.firstName} {person.lastName}
+                                    </span>
+                                  )}
+                                </div>
+                                {stop.notes && (
+                                  <span className="text-xs text-gray-500 italic">
+                                    {stop.notes}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="flex space-x-2 ml-6">
                         <ActionButton
                           onClick={() => openEditModal(leg)}
                           variant="secondary"
@@ -726,134 +831,270 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
                           size="sm"
                           icon={<TrashIcon className="w-4 h-4" />}
                         />
-                      </td>
-                    </tr>
-                    {isExpanded && (
-                      <tr className="bg-gray-50">
-                        <td colSpan={6} className="p-3">
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  const renderJourJTab = () => (
+    <div className="space-y-4">
+      {jourJLegs.length === 0 ? (
+        <div className="text-center py-12 text-gray-500">
+          <span className="text-6xl mb-4 block">🏁</span>
+          <h3 className="text-xl font-semibold text-gray-700 mb-2">Aucun transport jour J planifié</h3>
+          <p className="text-gray-500 mb-6">Ajoutez des trajets pour organiser les déplacements du jour de l'événement</p>
+          <ActionButton
+            onClick={openAddModal}
+            icon={<PlusCircleIcon className="w-5 h-5" />}
+          >
+            Ajouter un Transport Jour J
+          </ActionButton>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {jourJLegs.map((leg) => (
+            <div key={leg.id} className="border border-green-200 rounded-lg p-6 hover:shadow-md transition-shadow bg-white">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center space-x-3 mb-4">
+                    <span className="text-2xl">🚗</span>
                             <div>
-                              <h5 className="font-semibold mb-1">
-                                Détails Véhicule
+                      <h4 className="text-lg font-semibold text-gray-800">Transport Jour J</h4>
+                      <p className="text-sm text-gray-600">
+                        {leg.departureTime} → {leg.arrivalTime}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h5 className="font-medium text-gray-700 mb-3 flex items-center">
+                        <span className="mr-2">📍</span> Trajet
                               </h5>
-                              <p>
-                                <strong>Véhicule:</strong>{" "}
-                                {vehicle?.name || "N/A"}
-                              </p>
-                              <p>
-                                <strong>Conducteur:</strong>{" "}
-                                {driver
-                                  ? `${driver.firstName} ${driver.lastName}`
-                                  : "N/A"}
-                              </p>
-                              <p>
-                                <strong>Places:</strong> {leg.occupants.length}{" "}
-                                / {vehicle?.seats || "∞"}
+                      <div className="bg-green-50 p-3 rounded-lg">
+                        <p className="text-sm text-gray-700">
+                          <strong>Départ:</strong> {leg.departureLocation}<br/>
+                          <strong>Arrivée:</strong> {leg.arrivalLocation}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h5 className="font-medium text-gray-700 mb-3 flex items-center">
+                        <span className="mr-2">🚗</span> Véhicule
+                      </h5>
+                      <div className="bg-green-50 p-3 rounded-lg">
+                        {leg.assignedVehicleId ? (
+                          <div className="text-sm text-gray-700">
+                            <p><strong>Véhicule:</strong> {
+                              leg.assignedVehicleId === 'perso' ? 'Véhicule personnel' :
+                              appState.vehicles.find(v => v.id === leg.assignedVehicleId)?.name || 'Inconnu'
+                            }</p>
+                            {leg.driverId && (
+                              <p><strong>Conducteur:</strong> {
+                                appState.staff.find(s => s.id === leg.driverId)?.firstName + ' ' +
+                                appState.staff.find(s => s.id === leg.driverId)?.lastName
+                              }</p>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-gray-400 text-sm">Aucun véhicule assigné</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-4">
+                    <h5 className="font-medium text-gray-700 mb-3 flex items-center">
+                      <span className="mr-2">👥</span> Passagers
+                    </h5>
+                    <div className="bg-green-50 p-3 rounded-lg">
+                      {leg.occupants.length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          {leg.occupants.map((occ) => {
+                            const person = occ.type === "rider" 
+                              ? appState.riders.find(r => r.id === occ.id)
+                              : appState.staff.find(s => s.id === occ.id);
+                            return (
+                              <span key={occ.id + occ.type} className="bg-green-200 text-green-800 px-3 py-1 rounded-full text-sm">
+                                {person ? `${person.firstName} ${person.lastName}` : 'Inconnu'}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <p className="text-gray-400 text-sm">Aucun passager assigné</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex space-x-2 ml-6">
+                  <ActionButton
+                    onClick={() => openEditModal(leg)}
+                    variant="secondary"
+                    size="sm"
+                    icon={<PencilIcon className="w-4 h-4" />}
+                  />
+                  <ActionButton
+                    onClick={() => handleDelete(leg.id)}
+                    variant="danger"
+                    size="sm"
+                    icon={<TrashIcon className="w-4 h-4" />}
+                  />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  const renderRetourTab = () => (
+    <div className="space-y-4">
+      {retourLegs.length === 0 ? (
+        <div className="text-center py-12 text-gray-500">
+          <span className="text-6xl mb-4 block">🏠</span>
+          <h3 className="text-xl font-semibold text-gray-700 mb-2">Aucun trajet retour planifié</h3>
+          <p className="text-gray-500 mb-6">Ajoutez des trajets pour organiser les retours après l'événement</p>
+          <ActionButton
+            onClick={openAddModal}
+            icon={<PlusCircleIcon className="w-5 h-5" />}
+          >
+            Ajouter un Trajet Retour
+          </ActionButton>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {retourLegs.map((leg) => (
+            <div key={leg.id} className="border border-orange-200 rounded-lg p-6 hover:shadow-md transition-shadow bg-white">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <div className="flex items-center space-x-3 mb-4">
+                    <span className="text-2xl">
+                      {leg.mode === TransportMode.VOL ? '✈️' : '🚗'}
+                    </span>
+                    <div>
+                      <h4 className="text-lg font-semibold text-gray-800">
+                        {leg.mode === TransportMode.VOL ? 'Vol retour' : 'Transport terrestre'}
+                      </h4>
+                      <p className="text-sm text-gray-600">
+                        {formatDate(leg.departureDate, leg.departureTime)} → {formatDate(leg.arrivalDate, leg.arrivalTime)}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h5 className="font-medium text-gray-700 mb-3 flex items-center">
+                        <span className="mr-2">📍</span> Trajet
+                      </h5>
+                      <div className="bg-orange-50 p-3 rounded-lg">
+                        <p className="text-sm text-gray-700">
+                          <strong>Départ:</strong> {leg.departureLocation}<br/>
+                          <strong>Arrivée:</strong> {leg.arrivalLocation}
                               </p>
                             </div>
+                    </div>
+                    
                             <div>
-                              <h5 className="font-semibold mb-1">
-                                Occupants ({leg.occupants.length})
+                      <h5 className="font-medium text-gray-700 mb-3 flex items-center">
+                        <span className="mr-2">👥</span> Participants
                               </h5>
-                              <ul className="list-disc list-inside max-h-24 overflow-y-auto">
+                      <div className="bg-orange-50 p-3 rounded-lg">
+                        {leg.occupants.length > 0 ? (
+                          <ul className="space-y-2">
                                 {leg.occupants.map((occ) => {
-                                  const person =
-                                    occ.type === "rider"
-                                      ? appState.riders.find(
-                                          (p) => p.id === occ.id
-                                        )
-                                      : appState.staff.find(
-                                          (p) => p.id === occ.id
-                                        );
+                              const person = occ.type === "rider" 
+                                ? appState.riders.find(r => r.id === occ.id)
+                                : appState.staff.find(s => s.id === occ.id);
                                   return (
-                                    <li key={occ.id + occ.type}>
-                                      {person
-                                        ? `${person.firstName} ${person.lastName}`
-                                        : "Inconnu"}
+                                <li key={occ.id + occ.type} className="flex items-center space-x-2">
+                                  <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
+                                  <span className="text-sm">{person ? `${person.firstName} ${person.lastName}` : 'Inconnu'}</span>
                                     </li>
                                   );
                                 })}
                               </ul>
+                        ) : (
+                          <p className="text-gray-400 text-sm">Aucun participant assigné</p>
+                                        )}
                             </div>
-                            <div className="md:col-span-1">
-                              <h5 className="font-semibold mb-1">
-                                Étapes & Notes
+                                        </div>
+                                          </div>
+
+                  {leg.mode === TransportMode.VOL && leg.details && (
+                    <div className="mt-4">
+                      <h5 className="font-medium text-gray-700 mb-2 flex items-center">
+                        <span className="mr-2">🎫</span> Détails du vol retour
                               </h5>
-                              {leg.intermediateStops && leg.intermediateStops.length > 0 ? (
-                                <div className="space-y-1 mb-2">
-                                  {leg.intermediateStops.map((stop, index) => (
-                                    <div key={stop.id} className="text-xs bg-gray-100 p-2 rounded">
-                                      <div className="flex items-center gap-2 flex-wrap">
-                                        <span className={`px-1 py-0.5 rounded text-xs ${
-                                          stop.stopType === TransportStopType.AIRPORT_ARRIVAL ? 'bg-purple-100 text-purple-800' :
-                                          stop.stopType === TransportStopType.AIRPORT_DEPARTURE ? 'bg-purple-200 text-purple-900' :
-                                          stop.stopType === TransportStopType.TRAIN_STATION_ARRIVAL ? 'bg-orange-100 text-orange-800' :
-                                          stop.stopType === TransportStopType.TRAIN_STATION_DEPARTURE ? 'bg-orange-200 text-orange-900' :
-                                          stop.stopType === TransportStopType.MEETING_POINT ? 'bg-yellow-100 text-yellow-800' :
-                                          stop.stopType === TransportStopType.HOME_PICKUP ? 'bg-teal-100 text-teal-800' :
-                                          stop.stopType === TransportStopType.HOME_DROPOFF ? 'bg-teal-200 text-teal-900' :
-                                          stop.stopType === TransportStopType.PICKUP ? 'bg-blue-100 text-blue-800' :
-                                          stop.stopType === TransportStopType.DROPOFF ? 'bg-green-100 text-green-800' :
-                                          'bg-gray-100 text-gray-800'
-                                        }`}>
-                                          {stop.stopType}
+                      <div className="bg-orange-100 p-3 rounded-lg">
+                        <p className="text-sm text-orange-800">{leg.details}</p>
+                                      </div>
+                                        </div>
+                                      )}
+
+                                    {leg.intermediateStops && leg.intermediateStops.length > 0 && (
+                    <div className="mt-4">
+                      <h5 className="font-medium text-gray-700 mb-3 flex items-center">
+                        <span className="mr-2">🚌</span> Déposes
+                      </h5>
+                      <div className="space-y-2">
+                        {leg.intermediateStops.map((stop) => {
+                          const person = stop.persons && stop.persons.length > 0 
+                            ? (stop.persons[0].type === "rider" 
+                                ? appState.riders.find(r => r.id === stop.persons[0].id)
+                                : appState.staff.find(s => s.id === stop.persons[0].id))
+                            : null;
+                          
+                          return (
+                            <div key={stop.id} className="bg-orange-50 p-3 rounded-lg">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center space-x-3">
+                                  <span className="text-orange-600 font-medium">{stop.time}</span>
+                                  <span className="font-medium">{stop.location}</span>
+                                  {person && (
+                                    <span className="text-sm text-gray-600">
+                                      → {person.firstName} {person.lastName}
                                         </span>
-                                        {stop.isTimingCritical && (
-                                          <span className="text-red-600 text-xs">⏰ Critique</span>
-                                        )}
-                                        {stop.isPickupRequired && (
-                                          <span className="text-green-600 text-xs">🚨 Récupération</span>
-                                        )}
-                                        {stop.isDropoffRequired && (
-                                          <span className="text-red-600 text-xs">🚨 Dépose</span>
-                                        )}
-                                        {stop.reminderMinutes && stop.reminderMinutes > 0 && (
-                                          <span className="text-blue-600 text-xs">🔔 -{stop.reminderMinutes}min</span>
                                         )}
                                       </div>
-                                      <div className="text-gray-600">
-                                        <div className="font-medium">{stop.location}</div>
-                                        {stop.address && (
-                                          <div className="text-xs text-gray-500">{stop.address}</div>
-                                        )}
-                                        <div className="text-sm">
-                                          {stop.time}
-                                          {stop.estimatedDuration && stop.estimatedDuration > 0 && (
-                                            <span className="text-gray-500"> ({stop.estimatedDuration}min)</span>
+                                {stop.notes && (
+                                  <span className="text-xs text-gray-500 italic">
+                                    {stop.notes}
+                                  </span>
                                           )}
                                         </div>
-                                        {stop.contactPerson && (
-                                          <div className="text-xs text-gray-500">
-                                            Contact: {stop.contactPerson}
-                                            {stop.contactPhone && ` - ${stop.contactPhone}`}
                                           </div>
-                                        )}
+                          );
+                        })}
                                       </div>
-                                      {stop.notes && (
-                                        <div className="text-gray-500 italic text-xs">
-                                          {stop.notes}
                                         </div>
                                       )}
                                     </div>
-                                  ))}
+                
+                <div className="flex space-x-2 ml-6">
+                  <ActionButton
+                    onClick={() => openEditModal(leg)}
+                    variant="secondary"
+                    size="sm"
+                    icon={<PencilIcon className="w-4 h-4" />}
+                  />
+                  <ActionButton
+                    onClick={() => handleDelete(leg.id)}
+                    variant="danger"
+                    size="sm"
+                    icon={<TrashIcon className="w-4 h-4" />}
+                  />
                                 </div>
-                              ) : (
-                                <p className="text-sm text-gray-500">Aucune étape</p>
-                              )}
-                              <p className="text-sm">
-                                <strong>Notes:</strong>{" "}
-                                {leg.details || "Aucune"}
-                              </p>
                             </div>
                           </div>
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </tbody>
-          </table>
+          ))}
         </div>
       )}
     </div>
@@ -876,13 +1117,13 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
     );
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* En-tête avec bouton d'ajout global */}
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold text-gray-800">Plan de Transport</h2>
           <p className="text-gray-600">Organisation des déplacements pour {event.name}</p>
-        </div>
+                  </div>
         <ActionButton
           onClick={openAddModal}
           icon={<PlusCircleIcon className="w-5 h-5" />}
@@ -891,362 +1132,14 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
         </ActionButton>
       </div>
 
-      {/* Section Aller */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="bg-blue-50 px-6 py-4 border-b border-blue-200 rounded-t-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <span className="text-2xl">✈️</span>
-              <div>
-                <h3 className="text-xl font-semibold text-blue-800">Trajets Aller</h3>
-                <p className="text-blue-600 text-sm">Départ vers l'événement - Billets d'avion et récupérations</p>
-              </div>
-            </div>
-            <div className="text-sm text-blue-600">
-              {allerLegs.length} trajet{allerLegs.length > 1 ? 's' : ''} planifié{allerLegs.length > 1 ? 's' : ''}
-            </div>
-          </div>
-        </div>
-        <div className="p-6">
-          {allerLegs.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <span className="text-4xl mb-2 block">✈️</span>
-              <p>Aucun trajet aller planifié</p>
-              <p className="text-sm">Ajoutez des trajets pour organiser les départs</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {allerLegs.map((leg) => (
-                <div key={leg.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-3">
-                        <span className="text-lg">
-                          {leg.mode === TransportMode.VOL ? '✈️' : '🚗'}
-                        </span>
-                        <div>
-                          <h4 className="font-semibold text-gray-800">
-                            {leg.mode === TransportMode.VOL ? 'Vol' : 'Transport terrestre'}
-                          </h4>
-                          <p className="text-sm text-gray-600">
-                            {formatDate(leg.departureDate, leg.departureTime)} → {formatDate(leg.arrivalDate, leg.arrivalTime)}
-                          </p>
-                        </div>
-                      </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <h5 className="font-medium text-gray-700 mb-2">📍 Trajet</h5>
-                          <p className="text-sm text-gray-600">
-                            <strong>Départ:</strong> {leg.departureLocation}<br/>
-                            <strong>Arrivée:</strong> {leg.arrivalLocation}
-                          </p>
-                        </div>
-                        
-                        <div>
-                          <h5 className="font-medium text-gray-700 mb-2">👥 Participants</h5>
-                          <div className="text-sm text-gray-600">
-                            {leg.occupants.length > 0 ? (
-                              <ul className="space-y-1">
-                                {leg.occupants.map((occ) => {
-                                  const person = occ.type === "rider" 
-                                    ? appState.riders.find(r => r.id === occ.id)
-                                    : appState.staff.find(s => s.id === occ.id);
-                                  return (
-                                    <li key={occ.id + occ.type} className="flex items-center space-x-2">
-                                      <span className="w-2 h-2 bg-blue-500 rounded-full"></span>
-                                      <span>{person ? `${person.firstName} ${person.lastName}` : 'Inconnu'}</span>
-                                    </li>
-                                  );
-                                })}
-                              </ul>
-                            ) : (
-                              <p className="text-gray-400">Aucun participant assigné</p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
+      {/* Sous-onglets */}
+      {renderSubTabs()}
 
-                      {leg.mode === TransportMode.VOL && leg.details && (
-                        <div className="mt-3 p-3 bg-blue-50 rounded-lg">
-                          <h5 className="font-medium text-blue-800 mb-1">🎫 Détails du vol</h5>
-                          <p className="text-sm text-blue-700">{leg.details}</p>
-                        </div>
-                      )}
-
-                      {leg.intermediateStops && leg.intermediateStops.length > 0 && (
-                        <div className="mt-3">
-                          <h5 className="font-medium text-gray-700 mb-2">🚌 Récupérations/Déposes</h5>
-                          <div className="space-y-2">
-                            {leg.intermediateStops.map((stop) => (
-                              <div key={stop.id} className="flex items-center space-x-2 text-sm bg-gray-50 p-2 rounded">
-                                <span className="text-gray-500">{stop.time}</span>
-                                <span className="font-medium">{stop.location}</span>
-                                <span className="text-gray-500">({stop.stopType})</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="flex space-x-2 ml-4">
-                      <ActionButton
-                        onClick={() => openEditModal(leg)}
-                        variant="secondary"
-                        size="sm"
-                        icon={<PencilIcon className="w-4 h-4" />}
-                      />
-                      <ActionButton
-                        onClick={() => handleDelete(leg.id)}
-                        variant="danger"
-                        size="sm"
-                        icon={<TrashIcon className="w-4 h-4" />}
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Section Jour J */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="bg-green-50 px-6 py-4 border-b border-green-200 rounded-t-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <span className="text-2xl">🏁</span>
-              <div>
-                <h3 className="text-xl font-semibold text-green-800">Transport Jour J</h3>
-                <p className="text-green-600 text-sm">Déplacements le jour de l'événement</p>
-              </div>
-            </div>
-            <div className="text-sm text-green-600">
-              {jourJLegs.length} trajet{jourJLegs.length > 1 ? 's' : ''} planifié{jourJLegs.length > 1 ? 's' : ''}
-            </div>
-          </div>
-        </div>
-        <div className="p-6">
-          {jourJLegs.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <span className="text-4xl mb-2 block">🏁</span>
-              <p>Aucun transport jour J planifié</p>
-              <p className="text-sm">Ajoutez des trajets pour organiser les déplacements du jour</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {jourJLegs.map((leg) => (
-                <div key={leg.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-3">
-                        <span className="text-lg">🚗</span>
-                        <div>
-                          <h4 className="font-semibold text-gray-800">Transport Jour J</h4>
-                          <p className="text-sm text-gray-600">
-                            {leg.departureTime} → {leg.arrivalTime}
-                          </p>
-                        </div>
-                      </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <h5 className="font-medium text-gray-700 mb-2">📍 Trajet</h5>
-                          <p className="text-sm text-gray-600">
-                            <strong>Départ:</strong> {leg.departureLocation}<br/>
-                            <strong>Arrivée:</strong> {leg.arrivalLocation}
-                          </p>
-                        </div>
-                        
-                        <div>
-                          <h5 className="font-medium text-gray-700 mb-2">🚗 Véhicule</h5>
-                          <div className="text-sm text-gray-600">
-                            {leg.assignedVehicleId ? (
-                              <div>
-                                <p><strong>Véhicule:</strong> {
-                                  leg.assignedVehicleId === 'perso' ? 'Véhicule personnel' :
-                                  appState.vehicles.find(v => v.id === leg.assignedVehicleId)?.name || 'Inconnu'
-                                }</p>
-                                {leg.driverId && (
-                                  <p><strong>Conducteur:</strong> {
-                                    appState.staff.find(s => s.id === leg.driverId)?.firstName + ' ' +
-                                    appState.staff.find(s => s.id === leg.driverId)?.lastName
-                                  }</p>
-                                )}
-                              </div>
-                            ) : (
-                              <p className="text-gray-400">Aucun véhicule assigné</p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="mt-3">
-                        <h5 className="font-medium text-gray-700 mb-2">👥 Passagers</h5>
-                        <div className="text-sm text-gray-600">
-                          {leg.occupants.length > 0 ? (
-                            <div className="flex flex-wrap gap-2">
-                              {leg.occupants.map((occ) => {
-                                const person = occ.type === "rider" 
-                                  ? appState.riders.find(r => r.id === occ.id)
-                                  : appState.staff.find(s => s.id === occ.id);
-                                return (
-                                  <span key={occ.id + occ.type} className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs">
-                                    {person ? `${person.firstName} ${person.lastName}` : 'Inconnu'}
-                                  </span>
-                                );
-                              })}
-                            </div>
-                          ) : (
-                            <p className="text-gray-400">Aucun passager assigné</p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="flex space-x-2 ml-4">
-                      <ActionButton
-                        onClick={() => openEditModal(leg)}
-                        variant="secondary"
-                        size="sm"
-                        icon={<PencilIcon className="w-4 h-4" />}
-                      />
-                      <ActionButton
-                        onClick={() => handleDelete(leg.id)}
-                        variant="danger"
-                        size="sm"
-                        icon={<TrashIcon className="w-4 h-4" />}
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Section Retour */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        <div className="bg-orange-50 px-6 py-4 border-b border-orange-200 rounded-t-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-3">
-              <span className="text-2xl">🏠</span>
-              <div>
-                <h3 className="text-xl font-semibold text-orange-800">Trajets Retour</h3>
-                <p className="text-orange-600 text-sm">Retour après l'événement - Déposes et vols retour</p>
-              </div>
-            </div>
-            <div className="text-sm text-orange-600">
-              {retourLegs.length} trajet{retourLegs.length > 1 ? 's' : ''} planifié{retourLegs.length > 1 ? 's' : ''}
-            </div>
-          </div>
-        </div>
-        <div className="p-6">
-          {retourLegs.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <span className="text-4xl mb-2 block">🏠</span>
-              <p>Aucun trajet retour planifié</p>
-              <p className="text-sm">Ajoutez des trajets pour organiser les retours</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {retourLegs.map((leg) => (
-                <div key={leg.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center space-x-3 mb-3">
-                        <span className="text-lg">
-                          {leg.mode === TransportMode.VOL ? '✈️' : '🚗'}
-                        </span>
-                        <div>
-                          <h4 className="font-semibold text-gray-800">
-                            {leg.mode === TransportMode.VOL ? 'Vol retour' : 'Transport terrestre'}
-                          </h4>
-                          <p className="text-sm text-gray-600">
-                            {formatDate(leg.departureDate, leg.departureTime)} → {formatDate(leg.arrivalDate, leg.arrivalTime)}
-                          </p>
-                        </div>
-                      </div>
-                      
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <h5 className="font-medium text-gray-700 mb-2">📍 Trajet</h5>
-                          <p className="text-sm text-gray-600">
-                            <strong>Départ:</strong> {leg.departureLocation}<br/>
-                            <strong>Arrivée:</strong> {leg.arrivalLocation}
-                          </p>
-                        </div>
-                        
-                        <div>
-                          <h5 className="font-medium text-gray-700 mb-2">👥 Participants</h5>
-                          <div className="text-sm text-gray-600">
-                            {leg.occupants.length > 0 ? (
-                              <ul className="space-y-1">
-                                {leg.occupants.map((occ) => {
-                                  const person = occ.type === "rider" 
-                                    ? appState.riders.find(r => r.id === occ.id)
-                                    : appState.staff.find(s => s.id === occ.id);
-                                  return (
-                                    <li key={occ.id + occ.type} className="flex items-center space-x-2">
-                                      <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
-                                      <span>{person ? `${person.firstName} ${person.lastName}` : 'Inconnu'}</span>
-                                    </li>
-                                  );
-                                })}
-                              </ul>
-                            ) : (
-                              <p className="text-gray-400">Aucun participant assigné</p>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {leg.mode === TransportMode.VOL && leg.details && (
-                        <div className="mt-3 p-3 bg-orange-50 rounded-lg">
-                          <h5 className="font-medium text-orange-800 mb-1">🎫 Détails du vol retour</h5>
-                          <p className="text-sm text-orange-700">{leg.details}</p>
-                        </div>
-                      )}
-
-                      {leg.intermediateStops && leg.intermediateStops.length > 0 && (
-                        <div className="mt-3">
-                          <h5 className="font-medium text-gray-700 mb-2">🚌 Déposes</h5>
-                          <div className="space-y-2">
-                            {leg.intermediateStops.map((stop) => (
-                              <div key={stop.id} className="flex items-center space-x-2 text-sm bg-gray-50 p-2 rounded">
-                                <span className="text-gray-500">{stop.time}</span>
-                                <span className="font-medium">{stop.location}</span>
-                                <span className="text-gray-500">({stop.stopType})</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="flex space-x-2 ml-4">
-                      <ActionButton
-                        onClick={() => openEditModal(leg)}
-                        variant="secondary"
-                        size="sm"
-                        icon={<PencilIcon className="w-4 h-4" />}
-                      />
-                      <ActionButton
-                        onClick={() => handleDelete(leg.id)}
-                        variant="danger"
-                        size="sm"
-                        icon={<TrashIcon className="w-4 h-4" />}
-                      />
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+      {/* Contenu des onglets */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        {activeSubTab === 'aller' && renderAllerTab()}
+        {activeSubTab === 'jourj' && renderJourJTab()}
+        {activeSubTab === 'retour' && renderRetourTab()}
       </div>
 
       {isModalOpen && (
@@ -1301,7 +1194,9 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
               </div>
             </div>
 
-            {/* Véhicule assigné */}
+            {/* Véhicule assigné - Seulement pour les transports terrestres */}
+            {((currentTransportLeg as EventTransportLeg).mode !== TransportMode.VOL && 
+              (currentTransportLeg as EventTransportLeg).mode !== TransportMode.TRAIN) && (
             <div>
               <label htmlFor="assignedVehicleId" className="block text-sm font-medium text-gray-700">
                 Véhicule assigné
@@ -1335,6 +1230,7 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
                 })}
               </select>
             </div>
+            )}
 
             {/* Dates et lieux */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1475,303 +1371,113 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
               </div>
             </div>
 
-            {/* Étapes intermédiaires */}
+            {/* Étapes intermédiaires - Version simplifiée */}
             <div>
-              <div className="flex justify-between items-center mb-2">
+              <div className="flex justify-between items-center mb-4">
                 <label className="block text-sm font-medium text-gray-700">
-                  Étapes intermédiaires
+                  Récupérations / Déposes
                 </label>
-                <div className="flex flex-wrap gap-2">
                   <ActionButton
                     type="button"
                     variant="secondary"
                     size="sm"
-                    onClick={() => {
-                      const newStop: TransportStop = {
-                        id: generateId(),
-                        location: "",
-                        date: event.date,
-                        time: "",
-                        stopType: TransportStopType.AIRPORT_ARRIVAL,
-                        persons: [],
-                        notes: "",
-                        isTimingCritical: true,
-                        estimatedDuration: 30,
-                        isPickupRequired: true,
-                        reminderMinutes: 15,
-                      };
-                      setCurrentTransportLeg((prev) => {
-                        const updated = structuredClone(prev);
-                        if (!updated.intermediateStops) updated.intermediateStops = [];
-                        updated.intermediateStops.push(newStop);
-                        return updated;
-                      });
-                    }}
-                  >
-                    ✈️ Arrivée aéroport
+                  onClick={handleAddStop}
+                  icon={<PlusCircleIcon className="w-4 h-4" />}
+                >
+                  Ajouter une étape
                   </ActionButton>
-                  <ActionButton
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => {
-                      const newStop: TransportStop = {
-                        id: generateId(),
-                        location: "",
-                        date: event.date,
-                        time: "",
-                        stopType: TransportStopType.TRAIN_STATION_ARRIVAL,
-                        persons: [],
-                        notes: "",
-                        isTimingCritical: true,
-                        estimatedDuration: 20,
-                        isPickupRequired: true,
-                        reminderMinutes: 10,
-                      };
-                      setCurrentTransportLeg((prev) => {
-                        const updated = structuredClone(prev);
-                        if (!updated.intermediateStops) updated.intermediateStops = [];
-                        updated.intermediateStops.push(newStop);
-                        return updated;
-                      });
-                    }}
-                  >
-                    🚂 Arrivée gare
-                  </ActionButton>
-                  <ActionButton
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => {
-                      const newStop: TransportStop = {
-                        id: generateId(),
-                        location: "",
-                        address: "",
-                        date: event.date,
-                        time: "",
-                        stopType: TransportStopType.MEETING_POINT,
-                        persons: [],
-                        notes: "",
-                        isTimingCritical: false,
-                        estimatedDuration: 10,
-                        isPickupRequired: true,
-                        reminderMinutes: 5,
-                      };
-                      setCurrentTransportLeg((prev) => {
-                        const updated = structuredClone(prev);
-                        if (!updated.intermediateStops) updated.intermediateStops = [];
-                        updated.intermediateStops.push(newStop);
-                        return updated;
-                      });
-                    }}
-                  >
-                    📍 Lieu de rendez-vous
-                  </ActionButton>
-                  <ActionButton
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => {
-                      const newStop: TransportStop = {
-                        id: generateId(),
-                        location: "",
-                        address: "",
-                        date: event.date,
-                        time: "",
-                        stopType: TransportStopType.HOME_PICKUP,
-                        persons: [],
-                        notes: "",
-                        isTimingCritical: false,
-                        estimatedDuration: 5,
-                        isPickupRequired: true,
-                        reminderMinutes: 5,
-                      };
-                      setCurrentTransportLeg((prev) => {
-                        const updated = structuredClone(prev);
-                        if (!updated.intermediateStops) updated.intermediateStops = [];
-                        updated.intermediateStops.push(newStop);
-                        return updated;
-                      });
-                    }}
-                  >
-                    🏠 Récupération domicile
-                  </ActionButton>
-                  <ActionButton
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    onClick={handleAddStop}
-                  >
-                    + Étape personnalisée
-                  </ActionButton>
-                </div>
               </div>
-              <div className="space-y-3">
+              
+              <div className="space-y-4">
                 {(currentTransportLeg as EventTransportLeg).intermediateStops?.map((stop, index) => (
-                  <div key={stop.id} className="border border-gray-300 rounded-md p-4 bg-gray-50">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
-                      <input
-                        type="text"
-                        value={stop.location}
-                        onChange={(e) => handleStopChange(index, "location", e.target.value)}
-                        placeholder="Lieu (ex: Aéroport Tours)"
-                        className={lightInputClasses}
-                      />
-                      <input
-                        type="date"
-                        value={stop.date}
-                        onChange={(e) => handleStopChange(index, "date", e.target.value)}
-                        className={lightInputClasses}
-                      />
+                  <div key={stop.id} className="border border-gray-300 rounded-lg p-4 bg-gray-50">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                      {/* Qui récupère */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          👤 Qui récupère
+                        </label>
+                        <select
+                          value={stop.persons?.[0]?.id || ""}
+                          onChange={(e) => {
+                            const personId = e.target.value;
+                            if (personId) {
+                              const person = allAvailablePeople.find(p => p.id === personId);
+                              if (person) {
+                                handleStopPersonChange(index, personId, person.type);
+                              }
+                            } else {
+                              // Supprimer la personne
+                      setCurrentTransportLeg((prev) => {
+                        const updated = structuredClone(prev);
+                                if (updated.intermediateStops && updated.intermediateStops[index]) {
+                                  updated.intermediateStops[index].persons = [];
+                                }
+                        return updated;
+                      });
+                            }
+                          }}
+                          className={lightSelectClasses}
+                        >
+                          <option value="">Sélectionner une personne...</option>
+                          {allAvailablePeople.map((person) => (
+                            <option key={`${person.id}-${person.type}`} value={person.id}>
+                              {person.name} ({person.type === "rider" ? "Coureur" : "Staff"})
+                            </option>
+                          ))}
+                        </select>
+                </div>
+
+                      {/* Quand */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          🕐 Heure
+                        </label>
                       <input
                         type="time"
                         value={stop.time}
                         onChange={(e) => handleStopChange(index, "time", e.target.value)}
                         className={lightInputClasses}
                       />
-                      <select
-                        value={stop.stopType}
-                        onChange={(e) => handleStopChange(index, "stopType", e.target.value)}
-                        className={lightSelectClasses}
-                      >
-                        <option value={TransportStopType.PICKUP}>Récupération</option>
-                        <option value={TransportStopType.DROPOFF}>Dépose</option>
-                        <option value={TransportStopType.WAYPOINT}>Étape intermédiaire</option>
-                        <option value={TransportStopType.AIRPORT_ARRIVAL}>Arrivée aéroport</option>
-                        <option value={TransportStopType.AIRPORT_DEPARTURE}>Départ aéroport</option>
-                        <option value={TransportStopType.TRAIN_STATION_ARRIVAL}>Arrivée gare</option>
-                        <option value={TransportStopType.TRAIN_STATION_DEPARTURE}>Départ gare</option>
-                        <option value={TransportStopType.HOTEL_PICKUP}>Récupération hôtel</option>
-                        <option value={TransportStopType.HOTEL_DROPOFF}>Dépose hôtel</option>
-                        <option value={TransportStopType.RACE_START}>Départ course</option>
-                        <option value={TransportStopType.RACE_FINISH}>Arrivée course</option>
-                        <option value={TransportStopType.MEETING_POINT}>Lieu de rendez-vous</option>
-                        <option value={TransportStopType.HOME_PICKUP}>Récupération domicile</option>
-                        <option value={TransportStopType.HOME_DROPOFF}>Dépose domicile</option>
-                        <option value={TransportStopType.TRAIN_PICKUP}>Récupération gare</option>
-                        <option value={TransportStopType.TRAIN_DROPOFF}>Dépose gare</option>
-                        <option value={TransportStopType.AIRPORT_PICKUP}>Récupération aéroport</option>
-                        <option value={TransportStopType.AIRPORT_DROPOFF}>Dépose aéroport</option>
-                      </select>
                     </div>
 
-                    {/* Adresse précise pour les lieux de rendez-vous */}
-                    {(stop.stopType === TransportStopType.MEETING_POINT || 
-                      stop.stopType === TransportStopType.HOME_PICKUP || 
-                      stop.stopType === TransportStopType.HOME_DROPOFF) && (
-                      <div className="mb-3">
+                      {/* Où */}
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          📍 Lieu
+                        </label>
                         <input
                           type="text"
-                          value={stop.address || ""}
-                          onChange={(e) => handleStopChange(index, "address", e.target.value)}
-                          placeholder="Adresse précise (ex: 123 Rue de la Paix, 37000 Tours)"
+                          value={stop.location}
+                          onChange={(e) => handleStopChange(index, "location", e.target.value)}
+                          placeholder="Ex: Aéroport Tours, Gare SNCF..."
                           className={lightInputClasses}
                         />
                       </div>
-                    )}
-
-                    {/* Informations de contact */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-                      <input
-                        type="text"
-                        value={stop.contactPerson || ""}
-                        onChange={(e) => handleStopChange(index, "contactPerson", e.target.value)}
-                        placeholder="Personne de contact"
-                        className={lightInputClasses}
-                      />
-                      <input
-                        type="tel"
-                        value={stop.contactPhone || ""}
-                        onChange={(e) => handleStopChange(index, "contactPhone", e.target.value)}
-                        placeholder="Téléphone de contact"
-                        className={lightInputClasses}
-                      />
                     </div>
                     
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={stop.isTimingCritical || false}
-                          onChange={(e) => handleStopChange(index, "isTimingCritical", e.target.checked.toString())}
-                          className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
-                        />
-                        <label className="ml-2 text-sm text-gray-700">
-                          Horaires critiques (avion/train)
+                    {/* Notes optionnelles */}
+                    <div className="mb-3">
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        📝 Notes (optionnel)
                         </label>
-                      </div>
                       <input
-                        type="number"
-                        value={stop.estimatedDuration || 0}
-                        onChange={(e) => handleStopChange(index, "estimatedDuration", e.target.value)}
-                        placeholder="Durée estimée (min)"
-                        className={lightInputClasses}
-                      />
-                      <input
-                        type="number"
-                        value={stop.reminderMinutes || 0}
-                        onChange={(e) => handleStopChange(index, "reminderMinutes", e.target.value)}
-                        placeholder="Rappel (min avant)"
-                        className={lightInputClasses}
-                      />
-                    </div>
-
-                    {/* Options de récupération/dépose obligatoires */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={stop.isPickupRequired || false}
-                          onChange={(e) => handleStopChange(index, "isPickupRequired", e.target.checked.toString())}
-                          className="h-4 w-4 text-green-600 border-gray-300 rounded focus:ring-green-500"
-                        />
-                        <label className="ml-2 text-sm text-gray-700">
-                          🚨 Récupération obligatoire
-                        </label>
-                      </div>
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={stop.isDropoffRequired || false}
-                          onChange={(e) => handleStopChange(index, "isDropoffRequired", e.target.checked.toString())}
-                          className="h-4 w-4 text-red-600 border-gray-300 rounded focus:ring-red-500"
-                        />
-                        <label className="ml-2 text-sm text-gray-700">
-                          🚨 Dépose obligatoire
-                        </label>
-                      </div>
-                    </div>
-
-                    <textarea
+                        type="text"
                       value={stop.notes || ""}
                       onChange={(e) => handleStopChange(index, "notes", e.target.value)}
-                      placeholder="Notes (ex: Terminal 2, porte 15, numéro de vol...)"
-                      className={`${lightInputClasses} mb-3`}
-                      rows={2}
-                    />
-
-                    <div className="flex justify-between items-center">
-                      <div className="text-sm text-gray-600">
-                        <span className={`px-2 py-1 rounded-full text-xs ${
-                          stop.stopType === TransportStopType.AIRPORT_ARRIVAL ? 'bg-purple-100 text-purple-800' :
-                          stop.stopType === TransportStopType.AIRPORT_DEPARTURE ? 'bg-purple-200 text-purple-900' :
-                          stop.stopType === TransportStopType.PICKUP ? 'bg-blue-100 text-blue-800' :
-                          stop.stopType === TransportStopType.DROPOFF ? 'bg-green-100 text-green-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>
-                          {stop.stopType}
-                        </span>
-                        {stop.isTimingCritical && (
-                          <span className="ml-2 px-2 py-1 rounded-full text-xs bg-red-100 text-red-800">
-                            ⏰ Critique
-                          </span>
-                        )}
+                        placeholder="Ex: Terminal 2, Porte 15, Numéro de vol..."
+                        className={lightInputClasses}
+                      />
                       </div>
+
+                    {/* Actions */}
+                    <div className="flex justify-end">
                       <ActionButton
                         type="button"
                         variant="danger"
                         size="sm"
                         onClick={() => handleRemoveStop(stop.id)}
+                        icon={<TrashIcon className="w-4 h-4" />}
                       >
                         Supprimer
                       </ActionButton>
