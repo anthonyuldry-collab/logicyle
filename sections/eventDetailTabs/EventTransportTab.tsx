@@ -714,6 +714,36 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
     return assignedPeople;
   };
 
+  const getPersonAssignments = (personId: string, personType: "rider" | "staff") => {
+    const assignments: string[] = [];
+    
+    transportLegsForEvent.forEach(leg => {
+      // Vérifier les occupants directs
+      const isDirectOccupant = leg.occupants.some(occ => occ.id === personId && occ.type === personType);
+      if (isDirectOccupant) {
+        const direction = leg.direction === TransportDirection.ALLER ? 'Aller' : 
+                         leg.direction === TransportDirection.RETOUR ? 'Retour' : 'Jour J';
+        const vehicle = leg.assignedVehicleId === 'perso' ? 'Véhicule personnel' :
+                       leg.assignedVehicleId ? 
+                         (appState.vehicles.find(v => v.id === leg.assignedVehicleId)?.name || 'Transport') :
+                         'Transport';
+        assignments.push(`${direction} - ${vehicle}`);
+      }
+      
+      // Vérifier les étapes intermédiaires
+      leg.intermediateStops?.forEach(stop => {
+        const isInStop = stop.persons?.some(p => p.id === personId && p.type === personType);
+        if (isInStop) {
+          const direction = leg.direction === TransportDirection.ALLER ? 'Aller' : 
+                           leg.direction === TransportDirection.RETOUR ? 'Retour' : 'Jour J';
+          assignments.push(`${direction} - Récupération à ${stop.location}`);
+        }
+      });
+    });
+    
+    return assignments;
+  };
+
   const getUnassignedPeople = () => {
     const assignedPeople = getAssignedPeople();
     const eventParticipantIds = new Set([
@@ -1555,7 +1585,8 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
                   Occupants
                 </label>
                   <p className="text-xs text-gray-500 mt-1">
-                    💡 Les personnes récupérées aux étapes sont automatiquement ajoutées ici
+                    💡 Les personnes récupérées aux étapes sont automatiquement ajoutées ici<br/>
+                    ⚠️ Vous pouvez assigner une personne à plusieurs transports (survoler l'avertissement pour voir les détails)
                   </p>
                 </div>
                 {(() => {
@@ -1607,7 +1638,7 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
                     
                     const assignedPeople = getAssignedPeople();
                     const isAssignedElsewhere = assignedPeople.has(`${person.id}-${person.type}`) && !isSelected;
-                    const isDisabled = (!isSelected && currentOccupants >= maxCapacity) || isAssignedElsewhere;
+                    const isDisabled = (!isSelected && currentOccupants >= maxCapacity);
                     
                     return (
                       <label
@@ -1632,7 +1663,9 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
                           </span>
                           {person.isParticipant && " - Participant"}
                           {isAssignedElsewhere && (
-                            <span className="text-orange-500 text-xs ml-1">(Déjà assigné ailleurs)</span>
+                            <span className="text-orange-500 text-xs ml-1" title={getPersonAssignments(person.id, person.type).join(', ')}>
+                              ⚠️ (Aussi assigné ailleurs)
+                            </span>
                           )}
                           {!isSelected && currentOccupants >= maxCapacity && !isAssignedElsewhere && (
                             <span className="text-red-500 text-xs ml-1">(Véhicule plein)</span>
@@ -1711,10 +1744,9 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
                               <option 
                                 key={`${person.id}-${person.type}`} 
                                 value={person.id}
-                                disabled={isAssigned && !isCurrentPerson}
                               >
                                 {person.name} {person.type === "rider" ? "Coureuse" : "Staff"}
-                                {isAssigned && !isCurrentPerson ? " - Déjà assigné" : ""}
+                                {isAssigned && !isCurrentPerson ? " ⚠️ (Aussi assigné ailleurs)" : ""}
                               </option>
                             );
                           })}

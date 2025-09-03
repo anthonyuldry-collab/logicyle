@@ -108,6 +108,7 @@ const EventOperationalLogisticsTab: React.FC<EventOperationalLogisticsTabProps> 
 }) => {
   const [logistics, setLogistics] = useState<OperationalLogisticsDay[]>([]);
   const [isEditing, setIsEditing] = useState(false);
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
   useEffect(() => {
     setLogistics(structuredClone(event.operationalLogistics || []));
@@ -817,6 +818,27 @@ const EventOperationalLogisticsTab: React.FC<EventOperationalLogisticsTabProps> 
     }));
   };
 
+  const selectAllTimingsForDay = (dayId: string) => {
+    setSelectedDay(dayId);
+  };
+
+  const deselectAllTimingsForDay = (dayId: string) => {
+    setLogistics(prev => prev.map(day => {
+      if (day.id === dayId) {
+        return { ...day, keyTimings: [] };
+      }
+      return day;
+    }));
+  };
+
+  const toggleDaySelection = (dayId: string) => {
+    if (selectedDay === dayId) {
+      setSelectedDay(null);
+    } else {
+      setSelectedDay(dayId);
+    }
+  };
+
   const handleSave = () => {
     updateEvent({ operationalLogistics: logistics });
     setIsEditing(false);
@@ -867,12 +889,35 @@ const EventOperationalLogisticsTab: React.FC<EventOperationalLogisticsTabProps> 
         <div className="space-y-4">
           {displayLogistics.map(day => {
             return (
-            <div key={day.id} className="p-3 border rounded-md bg-gray-50">
+            <div key={day.id} className={`p-3 border rounded-md ${selectedDay === day.id ? 'bg-blue-50 border-blue-300' : 'bg-gray-50'}`}>
               <div className="flex items-center mb-2">
                 <select value={day.dayName} onChange={(e) => handleDayNameChange(day.id, e.target.value as MealDay)} className={`${lightInputClass} font-semibold !w-auto mr-2`}>
                   {Object.values(MealDayEnum).map(d => <option key={d} value={d}>{d}</option>)}
                 </select>
                 {day.dayName === mainEventDayName && <span className="text-xs font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full">JOUR J</span>}
+                
+                {/* Boutons de sélection par jour */}
+                <div className="flex gap-1 ml-2">
+                  <ActionButton 
+                    type="button" 
+                    variant={selectedDay === day.id ? "primary" : "secondary"} 
+                    size="sm" 
+                    onClick={() => toggleDaySelection(day.id)} 
+                    className="!p-1 text-xs"
+                  >
+                    {selectedDay === day.id ? "Sélectionné" : "Sélectionner"}
+                  </ActionButton>
+                  <ActionButton 
+                    type="button" 
+                    variant="danger" 
+                    size="sm" 
+                    onClick={() => deselectAllTimingsForDay(day.id)} 
+                    className="!p-1 text-xs"
+                  >
+                    Vider
+                  </ActionButton>
+                </div>
+                
                 <ActionButton type="button" variant="danger" size="sm" onClick={() => removeDay(day.id)} className="ml-auto !p-1"><TrashIcon className="w-4 h-4"/></ActionButton>
               </div>
               
