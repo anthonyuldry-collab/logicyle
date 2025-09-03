@@ -286,7 +286,6 @@ const EventOperationalLogisticsTab: React.FC<EventOperationalLogisticsTabProps> 
                 if (targetDay && stop.time) {
                     // Informations sur le véhicule pour cette étape
                     const vehicleInfo = getVehicleInfo(leg.assignedVehicleId);
-                    const driverInfo = getDriverName(leg.driverId);
                     
                     // Déterminer le type d'étape avec emoji
                     let stopTypeLabel = '';
@@ -345,7 +344,7 @@ const EventOperationalLogisticsTab: React.FC<EventOperationalLogisticsTabProps> 
                         }
                     } else {
                         // Format détaillé pour les autres étapes avec noms des personnes
-                        description = `${emoji} ${stopTypeLabel} - ${vehicleInfo}${driverInfo} - ${stop.location}`;
+                        description = `${emoji} ${stopTypeLabel} - ${vehicleInfo} - ${stop.location}`;
                         
                         if (personsConcerned) {
                             description += ` - ${personsConcerned}`;
