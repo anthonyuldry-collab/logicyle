@@ -5,6 +5,7 @@ import UsersIcon from '../components/icons/UsersIcon';
 import TrophyIcon from '../components/icons/TrophyIcon';
 import TrendingUpIcon from '../components/icons/TrendingUpIcon';
 import StarIcon from '../components/icons/StarIcon';
+import CakeIcon from '../components/icons/CakeIcon';
 import { getAgeCategory } from '../utils/ageUtils';
 
 interface PerformancePoleSectionProps {
