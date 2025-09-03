@@ -745,19 +745,24 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
             <div key={leg.id} className="border border-blue-200 rounded-lg p-6 hover:shadow-md transition-shadow bg-white">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <div className="flex items-center space-x-3 mb-4">
-                    <span className="text-2xl">
-                      {leg.mode === TransportMode.VOL ? '✈️' : '🚗'}
-                    </span>
-                    <div>
-                      <h4 className="text-lg font-semibold text-gray-800">
-                        {leg.mode === TransportMode.VOL ? 'Vol' : 'Transport terrestre'}
-                      </h4>
-                      <p className="text-sm text-gray-600">
-                        {formatDate(leg.departureDate, leg.departureTime)} → {formatDate(leg.arrivalDate, leg.arrivalTime)}
-                      </p>
-                    </div>
-                  </div>
+                                        <div className="flex items-center space-x-3 mb-4">
+                        <span className="text-2xl">
+                          {leg.mode === TransportMode.VOL ? '✈️' : '🚗'}
+                        </span>
+                        <div>
+                          <h4 className="text-lg font-semibold text-gray-800">
+                            {leg.mode === TransportMode.VOL ? 'Vol' : (
+                              leg.assignedVehicleId === 'perso' ? 'Véhicule personnel' :
+                              leg.assignedVehicleId ? 
+                                (appState.vehicles.find(v => v.id === leg.assignedVehicleId)?.name || 'Transport terrestre') :
+                                'Transport terrestre'
+                            )}
+                          </h4>
+                          <p className="text-sm text-gray-600">
+                            {formatDate(leg.departureDate, leg.departureTime)} → {formatDate(leg.arrivalDate, leg.arrivalTime)}
+                          </p>
+                        </div>
+                      </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
@@ -899,15 +904,20 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
             <div key={leg.id} className="border border-green-200 rounded-lg p-6 hover:shadow-md transition-shadow bg-white">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <div className="flex items-center space-x-3 mb-4">
-                    <span className="text-2xl">🚗</span>
+                                        <div className="flex items-center space-x-3 mb-4">
+                        <span className="text-2xl">🚗</span>
                             <div>
-                      <h4 className="text-lg font-semibold text-gray-800">Transport Jour J</h4>
-                      <p className="text-sm text-gray-600">
-                        {leg.departureTime} → {leg.arrivalTime}
-                      </p>
-                    </div>
-                  </div>
+                          <h4 className="text-lg font-semibold text-gray-800">
+                            {leg.assignedVehicleId === 'perso' ? 'Véhicule personnel' :
+                             leg.assignedVehicleId ? 
+                               (appState.vehicles.find(v => v.id === leg.assignedVehicleId)?.name || 'Transport Jour J') :
+                               'Transport Jour J'}
+                          </h4>
+                          <p className="text-sm text-gray-600">
+                            {leg.departureTime} → {leg.arrivalTime}
+                          </p>
+                        </div>
+                      </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
@@ -918,14 +928,14 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
                         <p className="text-sm text-gray-700">
                           <strong>Départ:</strong> {leg.departureLocation}<br/>
                           <strong>Arrivée:</strong> {leg.arrivalLocation}
-                        </p>
-                      </div>
+                              </p>
+                            </div>
                     </div>
                     
-                    <div>
+                            <div>
                       <h5 className="font-medium text-gray-700 mb-3 flex items-center">
                         <span className="mr-2">🚗</span> Véhicule
-                      </h5>
+                              </h5>
                       <div className="bg-green-50 p-3 rounded-lg">
                         {leg.assignedVehicleId ? (
                           <div className="text-sm text-gray-700 space-y-1">
@@ -964,17 +974,17 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
                     <div className="bg-green-50 p-3 rounded-lg">
                       {leg.occupants.length > 0 ? (
                         <div className="flex flex-wrap gap-2">
-                          {leg.occupants.map((occ) => {
+                                {leg.occupants.map((occ) => {
                             const person = occ.type === "rider" 
                               ? appState.riders.find(r => r.id === occ.id)
                               : appState.staff.find(s => s.id === occ.id);
-                            return (
+                                  return (
                               <span key={occ.id + occ.type} className="bg-green-200 text-green-800 px-3 py-1 rounded-full text-sm">
                                 {person ? `${person.firstName} ${person.lastName}` : 'Inconnu'}
                               </span>
-                            );
-                          })}
-                        </div>
+                                  );
+                                })}
+                            </div>
                       ) : (
                         <p className="text-gray-400 text-sm">Aucun passager assigné</p>
                       )}
@@ -1024,19 +1034,24 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
             <div key={leg.id} className="border border-orange-200 rounded-lg p-6 hover:shadow-md transition-shadow bg-white">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <div className="flex items-center space-x-3 mb-4">
-                    <span className="text-2xl">
-                      {leg.mode === TransportMode.VOL ? '✈️' : '🚗'}
-                    </span>
-                    <div>
-                      <h4 className="text-lg font-semibold text-gray-800">
-                        {leg.mode === TransportMode.VOL ? 'Vol retour' : 'Transport terrestre'}
-                      </h4>
-                      <p className="text-sm text-gray-600">
-                        {formatDate(leg.departureDate, leg.departureTime)} → {formatDate(leg.arrivalDate, leg.arrivalTime)}
-                      </p>
-                    </div>
-                  </div>
+                                        <div className="flex items-center space-x-3 mb-4">
+                        <span className="text-2xl">
+                          {leg.mode === TransportMode.VOL ? '✈️' : '🚗'}
+                        </span>
+                        <div>
+                          <h4 className="text-lg font-semibold text-gray-800">
+                            {leg.mode === TransportMode.VOL ? 'Vol retour' : (
+                              leg.assignedVehicleId === 'perso' ? 'Véhicule personnel' :
+                              leg.assignedVehicleId ? 
+                                (appState.vehicles.find(v => v.id === leg.assignedVehicleId)?.name || 'Transport terrestre') :
+                                'Transport terrestre'
+                            )}
+                          </h4>
+                          <p className="text-sm text-gray-600">
+                            {formatDate(leg.departureDate, leg.departureTime)} → {formatDate(leg.arrivalDate, leg.arrivalTime)}
+                          </p>
+                                      </div>
+                      </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
@@ -1058,13 +1073,13 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
                       <div className="bg-orange-50 p-3 rounded-lg">
                                                 {leg.occupants.length > 0 ? (
                           <ul className="space-y-2">
-                            {leg.occupants.map((occ) => {
+                                {leg.occupants.map((occ) => {
                               const person = occ.type === "rider" 
                                 ? appState.riders.find(r => r.id === occ.id)
                                 : appState.staff.find(s => s.id === occ.id);
                               const pickupTime = getOccupantPickupTime(leg, occ.id, occ.type);
                               
-                              return (
+                                  return (
                                 <li key={occ.id + occ.type} className="flex items-center justify-between">
                                   <div className="flex items-center space-x-2">
                                     <span className="w-2 h-2 bg-orange-500 rounded-full"></span>
@@ -1075,14 +1090,14 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
                                       Récupéré à {pickupTime}
                                     </span>
                                   )}
-                                </li>
-                              );
-                            })}
-                          </ul>
+                                    </li>
+                                  );
+                                })}
+                              </ul>
                         ) : (
                           <p className="text-gray-400 text-sm">Aucun participant assigné</p>
-                        )}
-                            </div>
+                                          )}
+                                        </div>
                                         </div>
                                           </div>
 
@@ -1094,7 +1109,7 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
                       <div className="bg-orange-100 p-3 rounded-lg">
                         <p className="text-sm text-orange-800">{leg.details}</p>
                                       </div>
-                                        </div>
+                                          </div>
                                       )}
 
                                     {leg.intermediateStops && leg.intermediateStops.length > 0 && (
@@ -1122,17 +1137,17 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
                                         </span>
                                         )}
                                       </div>
-                                {stop.notes && (
+                                      {stop.notes && (
                                   <span className="text-xs text-gray-500 italic">
-                                    {stop.notes}
+                                          {stop.notes}
                                   </span>
-                                          )}
-                                        </div>
-                                          </div>
+                                      )}
+                                    </div>
+                                </div>
                           );
                         })}
-                                      </div>
-                                        </div>
+                            </div>
+                          </div>
                                       )}
                                     </div>
                 
@@ -1256,39 +1271,39 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
             {((currentTransportLeg as EventTransportLeg).mode !== TransportMode.VOL && 
               (currentTransportLeg as EventTransportLeg).mode !== TransportMode.TRAIN) && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="assignedVehicleId" className="block text-sm font-medium text-gray-700">
-                    Véhicule assigné
-                  </label>
-                  <select
-                    name="assignedVehicleId"
-                    id="assignedVehicleId"
-                    value={(currentTransportLeg as EventTransportLeg).assignedVehicleId || ""}
-                    onChange={handleInputChange}
-                    className={lightSelectClasses}
-                  >
-                    <option value="">Sélectionner un véhicule...</option>
-                    <option value="perso">Véhicule personnel</option>
-                    {appState.vehicles.map((vehicle) => {
-                      const availability = checkVehicleAvailability(
-                        vehicle,
-                        (currentTransportLeg as EventTransportLeg).departureDate,
-                        (currentTransportLeg as EventTransportLeg).arrivalDate,
-                        appState.eventTransportLegs,
-                        (currentTransportLeg as EventTransportLeg).id
-                      );
-                      return (
-                        <option
-                          key={vehicle.id}
-                          value={vehicle.id}
-                          disabled={availability.status !== "available"}
-                        >
-                          {vehicle.name} {availability.reason}
-                        </option>
-                      );
-                    })}
-                  </select>
-                </div>
+            <div>
+              <label htmlFor="assignedVehicleId" className="block text-sm font-medium text-gray-700">
+                Véhicule assigné
+              </label>
+              <select
+                name="assignedVehicleId"
+                id="assignedVehicleId"
+                value={(currentTransportLeg as EventTransportLeg).assignedVehicleId || ""}
+                onChange={handleInputChange}
+                className={lightSelectClasses}
+              >
+                <option value="">Sélectionner un véhicule...</option>
+                <option value="perso">Véhicule personnel</option>
+                {appState.vehicles.map((vehicle) => {
+                  const availability = checkVehicleAvailability(
+                    vehicle,
+                    (currentTransportLeg as EventTransportLeg).departureDate,
+                    (currentTransportLeg as EventTransportLeg).arrivalDate,
+                    appState.eventTransportLegs,
+                    (currentTransportLeg as EventTransportLeg).id
+                  );
+                  return (
+                    <option
+                      key={vehicle.id}
+                      value={vehicle.id}
+                      disabled={availability.status !== "available"}
+                    >
+                      {vehicle.name} {availability.reason}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
                 
                 <div>
                   <label htmlFor="driverId" className="block text-sm font-medium text-gray-700">
@@ -1374,9 +1389,9 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
             <div>
               <div className="flex justify-between items-center mb-2">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Occupants
-                  </label>
+                <label className="block text-sm font-medium text-gray-700">
+                  Occupants
+                </label>
                   <p className="text-xs text-gray-500 mt-1">
                     💡 Les personnes récupérées aux étapes sont automatiquement ajoutées ici
                   </p>
