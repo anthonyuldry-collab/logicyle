@@ -574,6 +574,39 @@ const EventOperationalLogisticsTab: React.FC<EventOperationalLogisticsTabProps> 
                     ...currentTiming,
                     description: groupedDescription
                 });
+            } else if (currentTiming.description.includes('Départ du')) {
+                // Grouper les départs identiques
+                const time = currentTiming.time;
+                const vehicleName = currentTiming.description.replace('Départ du ', '');
+                
+                // Chercher d'autres départs à la même heure
+                const vehicles: string[] = [vehicleName];
+                
+                for (let j = i + 1; j < day.keyTimings.length; j++) {
+                    if (processedIndices.has(j)) continue;
+                    
+                    const nextTiming = day.keyTimings[j];
+                    if (nextTiming.time === time && 
+                        nextTiming.description.includes('Départ du')) {
+                        
+                        const nextVehicleName = nextTiming.description.replace('Départ du ', '');
+                        vehicles.push(nextVehicleName);
+                        processedIndices.add(j);
+                    }
+                }
+                
+                // Créer la description groupée avec tous les véhicules
+                if (vehicles.length > 1) {
+                    const uniqueVehicles = [...new Set(vehicles)];
+                    const groupedDescription = `Départ des véhicules (${uniqueVehicles.join(', ')})`;
+                    
+                    newKeyTimings.push({
+                        ...currentTiming,
+                        description: groupedDescription
+                    });
+                } else {
+                    newKeyTimings.push(currentTiming);
+                }
             } else {
                 // Pour tous les autres timings, les ajouter normalement
                 newKeyTimings.push(currentTiming);
