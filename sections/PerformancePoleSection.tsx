@@ -1,7 +1,436 @@
-import React from 'react';
+import React, { useMemo } from 'react';
+import { AppState, Rider, Sex, RaceEvent, EventType } from '../types';
+import SectionWrapper from '../components/SectionWrapper';
+import UsersIcon from '../components/icons/UsersIcon';
+import TrophyIcon from '../components/icons/TrophyIcon';
+import TrendingUpIcon from '../components/icons/TrendingUpIcon';
+import StarIcon from '../components/icons/StarIcon';
+import { getAgeCategory } from '../utils/ageUtils';
 
-const PerformancePoleSection: React.FC = () => {
-  return null;
+interface PerformancePoleSectionProps {
+  appState: AppState;
+}
+
+const PerformancePoleSection: React.FC<PerformancePoleSectionProps> = ({ appState }) => {
+  // Protection contre appState null/undefined
+  if (!appState) {
+    return (
+      <SectionWrapper title="Centre Stratégique ITSJ - Pôle Performance">
+        <div className="p-6 text-center text-gray-500">
+          Chargement des données...
+        </div>
+      </SectionWrapper>
+    );
+  }
+
+  const riders = appState.riders || [];
+  const raceEvents = appState.raceEvents || [];
+
+  // Calculs stratégiques améliorés
+  const strategicMetrics = useMemo(() => {
+    const totalRiders = riders.length;
+    const femaleRiders = riders.filter(r => r.sex === Sex.FEMALE).length;
+    const maleRiders = riders.filter(r => r.sex === Sex.MALE).length;
+    
+    // Calculs d'âge
+    const currentDate = new Date();
+    const ages = riders.map(rider => {
+      const birthDate = new Date(rider.birthDate);
+      return currentDate.getFullYear() - birthDate.getFullYear();
+    }).filter(age => !isNaN(age));
+    
+    const ageStats = ages.length > 0 ? {
+      average: Math.round(ages.reduce((sum, age) => sum + age, 0) / ages.length),
+      min: Math.min(...ages),
+      max: Math.max(...ages)
+    } : { average: 0, min: 0, max: 0 };
+    
+    // Répartition par catégorie d'âge avec métriques de puissance
+    const ageDistribution = ['U15', 'U17', 'U19', 'U23', 'Senior'].map(category => {
+      const categoryRiders = riders.filter(r => {
+        const { category: riderCategory } = getAgeCategory(r.birthDate);
+        return riderCategory === category;
+      });
+      
+      const categoryAges = categoryRiders.map(r => {
+        const birthDate = new Date(r.birthDate);
+        return currentDate.getFullYear() - birthDate.getFullYear();
+      }).filter(age => !isNaN(age));
+      
+      const categoryAgeStats = categoryAges.length > 0 ? {
+        average: Math.round(categoryAges.reduce((sum, age) => sum + age, 0) / categoryAges.length),
+        min: Math.min(...categoryAges),
+        max: Math.max(...categoryAges)
+      } : { average: 0, min: 0, max: 0 };
+      
+      // Moyennes de puissance par catégorie
+      const powerAverages = {
+        cp: 0,
+        power20min: 0,
+        power12min: 0,
+        power5min: 0,
+        power1min: 0,
+        power30s: 0
+      };
+      
+      if (categoryRiders.length > 0) {
+        const ridersWithPower = categoryRiders.filter(r => r.powerProfileFresh);
+        if (ridersWithPower.length > 0) {
+          powerAverages.cp = Math.round(
+            ridersWithPower.reduce((sum, r) => sum + (r.powerProfileFresh?.criticalPower || 0), 0) / ridersWithPower.length
+          );
+          powerAverages.power20min = Math.round(
+            ridersWithPower.reduce((sum, r) => sum + (r.powerProfileFresh?.power20min || 0), 0) / ridersWithPower.length
+          );
+          powerAverages.power12min = Math.round(
+            ridersWithPower.reduce((sum, r) => sum + (r.powerProfileFresh?.power12min || 0), 0) / ridersWithPower.length
+          );
+          powerAverages.power5min = Math.round(
+            ridersWithPower.reduce((sum, r) => sum + (r.powerProfileFresh?.power5min || 0), 0) / ridersWithPower.length
+          );
+          powerAverages.power1min = Math.round(
+            ridersWithPower.reduce((sum, r) => sum + (r.powerProfileFresh?.power1min || 0), 0) / ridersWithPower.length
+          );
+          powerAverages.power30s = Math.round(
+            ridersWithPower.reduce((sum, r) => sum + (r.powerProfileFresh?.power30s || 0), 0) / ridersWithPower.length
+          );
+        }
+      }
+      
+      return {
+        category,
+        count: categoryRiders.length,
+        ageStats: categoryAgeStats,
+        powerAverages
+      };
+    });
+
+    // Coureurs avec profil de puissance
+    const ridersWithPower = riders.filter(r => r.powerProfileFresh?.criticalPower).length;
+    
+    // Événements à venir
+    const upcomingEvents = raceEvents.filter(event => 
+      event.type === EventType.RACE && 
+      new Date(event.startDate) > new Date()
+    ).length;
+
+    // Moyenne CP de l'équipe
+    const averageCP = riders.length > 0 
+      ? Math.round(riders.reduce((sum, r) => {
+          const cp = r.powerProfileFresh?.criticalPower || 0;
+          return sum + cp;
+        }, 0) / riders.length)
+      : 0;
+
+    // Derniers résultats de l'équipe
+    const recentResults = appState.performanceEntries
+      ?.filter(entry => {
+        const event = raceEvents.find(e => e.id === entry.eventId);
+        return event && new Date(event.startDate) <= new Date();
+      })
+      ?.sort((a, b) => {
+        const eventA = raceEvents.find(e => e.id === a.eventId);
+        const eventB = raceEvents.find(e => e.id === b.eventId);
+        return new Date(eventB?.startDate || 0).getTime() - new Date(eventA?.startDate || 0).getTime();
+      })
+      ?.slice(0, 3) || [];
+
+    // Groupement par équipe (si disponible)
+    const teamGroups = appState.teams?.map(team => {
+      const teamRiders = riders.filter(rider => {
+        // Logique pour associer les coureurs à l'équipe
+        // Pour l'instant, on prend tous les coureurs si c'est l'équipe active
+        return appState.activeTeamId === team.id;
+      });
+      
+      const teamAges = teamRiders.map(rider => {
+        const birthDate = new Date(rider.birthDate);
+        return currentDate.getFullYear() - birthDate.getFullYear();
+      }).filter(age => !isNaN(age));
+      
+      const teamAgeStats = teamAges.length > 0 ? {
+        average: Math.round(teamAges.reduce((sum, age) => sum + age, 0) / teamAges.length),
+        min: Math.min(...teamAges),
+        max: Math.max(...teamAges)
+      } : { average: 0, min: 0, max: 0 };
+      
+      return {
+        team,
+        riderCount: teamRiders.length,
+        ageStats: teamAgeStats
+      };
+    }).filter(group => group.riderCount > 0) || [];
+
+    return {
+      totalRiders,
+      femaleRiders,
+      maleRiders,
+      ageStats,
+      ageDistribution,
+      ridersWithPower,
+      upcomingEvents,
+      averageCP,
+      powerCoverage: totalRiders > 0 ? Math.round((ridersWithPower / totalRiders) * 100) : 0,
+      recentResults,
+      teamGroups
+    };
+  }, [riders, raceEvents, appState.performanceEntries]);
+
+  return (
+    <SectionWrapper title="Centre Stratégique ITSJ - Pôle Performance">
+      <div className="space-y-8">
+        {/* En-tête stratégique */}
+        <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-6 rounded-lg">
+          <h2 className="text-2xl font-bold mb-2">Vue d'Ensemble Stratégique</h2>
+          <p className="text-blue-100">
+            Tableau de bord centralisé pour la prise de décision stratégique du pôle performance
+          </p>
+        </div>
+
+        {/* Métriques clés en grille */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {/* Total Coureurs */}
+          <div className="bg-white p-6 rounded-lg shadow-lg border-l-4 border-blue-500">
+            <div className="flex items-center">
+              <div className="p-3 bg-blue-100 rounded-full">
+                <UsersIcon className="w-8 h-8 text-blue-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Effectif Total</p>
+                <p className="text-3xl font-bold text-gray-900">{strategicMetrics.totalRiders}</p>
+                <p className="text-xs text-gray-500">Coureurs actifs</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Âge Moyen */}
+          <div className="bg-white p-6 rounded-lg shadow-lg border-l-4 border-orange-500">
+            <div className="flex items-center">
+              <div className="p-3 bg-orange-100 rounded-full">
+                <CakeIcon className="w-8 h-8 text-orange-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Âge Moyen</p>
+                <p className="text-3xl font-bold text-gray-900">{strategicMetrics.ageStats.average} ans</p>
+                <p className="text-xs text-gray-500">
+                  {strategicMetrics.ageStats.min}-{strategicMetrics.ageStats.max} ans
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Couverture Puissance */}
+          <div className="bg-white p-6 rounded-lg shadow-lg border-l-4 border-green-500">
+            <div className="flex items-center">
+              <div className="p-3 bg-green-100 rounded-full">
+                <TrendingUpIcon className="w-8 h-8 text-green-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Couverture Puissance</p>
+                <p className="text-3xl font-bold text-gray-900">{strategicMetrics.powerCoverage}%</p>
+                <p className="text-xs text-gray-500">Profils complets</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Moyenne CP */}
+          <div className="bg-white p-6 rounded-lg shadow-lg border-l-4 border-purple-500">
+            <div className="flex items-center">
+              <div className="p-3 bg-purple-100 rounded-full">
+                <StarIcon className="w-8 h-8 text-purple-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Puissance Moyenne</p>
+                <p className="text-3xl font-bold text-gray-900">{strategicMetrics.averageCP}W</p>
+                <p className="text-xs text-gray-500">CP équipe</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Répartition par âge - Vue stratégique améliorée */}
+        <div className="bg-white p-6 rounded-lg shadow-lg">
+          <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+            <TrophyIcon className="w-6 h-6 text-blue-600 mr-3" />
+            Répartition Stratégique par Catégorie
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {strategicMetrics.ageDistribution.map(({ category, count, ageStats, powerAverages }) => (
+              <div key={category} className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-lg border-2 border-blue-200">
+                <div className="text-center mb-4">
+                  <div className="text-4xl font-bold text-blue-600 mb-2">{count}</div>
+                  <div className="text-lg font-semibold text-gray-800">{category}</div>
+                  <div className="text-sm text-gray-600">
+                    {strategicMetrics.totalRiders > 0 
+                      ? Math.round((count / strategicMetrics.totalRiders) * 100) 
+                      : 0}% de l'effectif
+                  </div>
+                </div>
+                
+                {count > 0 && powerAverages.cp > 0 && (
+                  <div className="bg-white p-3 rounded-lg border">
+                    <div className="text-sm font-medium text-gray-600 mb-2">Moyennes Puissance</div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <span className="text-gray-500">CP:</span>
+                        <span className="font-semibold ml-1">{powerAverages.cp}W</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">20min:</span>
+                        <span className="font-semibold ml-1">{powerAverages.power20min}W</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">12min:</span>
+                        <span className="font-semibold ml-1">{powerAverages.power12min}W</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">5min:</span>
+                        <span className="font-semibold ml-1">{powerAverages.power5min}W</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">1min:</span>
+                        <span className="font-semibold ml-1">{powerAverages.power1min}W</span>
+                      </div>
+                      <div>
+                        <span className="text-gray-500">30s:</span>
+                        <span className="font-semibold ml-1">{powerAverages.power30s}W</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Groupement par équipe avec âge moyen */}
+        {strategicMetrics.teamGroups.length > 0 && (
+          <div className="bg-white p-6 rounded-lg shadow-lg">
+            <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+              <UsersIcon className="w-6 h-6 text-green-600 mr-3" />
+              Groupement par Équipe
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {strategicMetrics.teamGroups.map(({ team, riderCount, ageStats }) => (
+                <div key={team.id} className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-lg border-2 border-green-200">
+                  <div className="text-center mb-4">
+                    <div className="text-2xl font-bold text-green-600 mb-2">{riderCount}</div>
+                    <div className="text-lg font-semibold text-gray-800">{team.name}</div>
+                    <div className="text-sm text-gray-600">{team.level}</div>
+                  </div>
+                  
+                  {riderCount > 0 && (
+                    <div className="bg-white p-4 rounded-lg border">
+                      <div className="text-sm font-medium text-gray-600 mb-2">Âge Moyen de l'Équipe</div>
+                      <div className="text-2xl font-bold text-gray-900 mb-1">
+                        {ageStats.average} ans
+                      </div>
+                      <div className="text-xs text-gray-500">
+                        {ageStats.min}-{ageStats.max} ans
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Derniers résultats de l'équipe */}
+        {strategicMetrics.recentResults.length > 0 && (
+          <div className="bg-white p-6 rounded-lg shadow-lg">
+            <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+              <TrophyIcon className="w-6 h-6 text-yellow-600 mr-3" />
+              Derniers Résultats de l'Équipe
+            </h3>
+            <div className="space-y-4">
+              {strategicMetrics.recentResults.map((result, index) => {
+                const event = raceEvents.find(e => e.id === result.eventId);
+                if (!event) return null;
+                
+                return (
+                  <div key={result.id} className="bg-gradient-to-r from-yellow-50 to-orange-50 p-4 rounded-lg border border-yellow-200">
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-gray-900 mb-2">{event.name}</h4>
+                        <p className="text-sm text-gray-600 mb-2">
+                          {new Date(event.startDate).toLocaleDateString('fr-FR', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                          })}
+                        </p>
+                        {result.raceOverallRanking && (
+                          <p className="text-sm text-gray-700">
+                            <span className="font-medium">Classement général:</span> {result.raceOverallRanking}
+                          </p>
+                        )}
+                        {result.resultsSummary && (
+                          <p className="text-sm text-gray-700 mt-1">
+                            <span className="font-medium">Résumé:</span> {result.resultsSummary}
+                          </p>
+                        )}
+                      </div>
+                      <div className="ml-4 text-right">
+                        <div className="text-2xl font-bold text-yellow-600">#{index + 1}</div>
+                        <div className="text-xs text-gray-500">Dernier</div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Indicateurs de performance stratégique */}
+        <div className="bg-white p-6 rounded-lg shadow-lg">
+          <h3 className="text-xl font-semibold text-gray-900 mb-6">Indicateurs Stratégiques</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="text-center p-4 bg-gray-50 rounded-lg">
+              <div className="text-2xl font-bold text-gray-900 mb-2">
+                {strategicMetrics.ridersWithPower}
+              </div>
+              <div className="text-sm text-gray-600">Coureurs avec Profil Puissance</div>
+            </div>
+            <div className="text-center p-4 bg-gray-50 rounded-lg">
+              <div className="text-2xl font-bold text-gray-900 mb-2">
+                {strategicMetrics.upcomingEvents}
+              </div>
+              <div className="text-sm text-gray-600">Événements à Venir</div>
+            </div>
+            <div className="text-center p-4 bg-gray-50 rounded-lg">
+              <div className="text-2xl font-bold text-gray-900 mb-2">
+                {strategicMetrics.totalRiders > 0 ? Math.round(strategicMetrics.totalRiders / 3) : 0}
+              </div>
+              <div className="text-sm text-gray-600">Équipes Potentielles</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Message stratégique */}
+        <div className="bg-blue-50 border-l-4 border-blue-400 p-6 rounded-lg">
+          <div className="flex">
+            <div className="flex-shrink-0">
+              <StarIcon className="h-6 w-6 text-blue-400" />
+            </div>
+            <div className="ml-3">
+              <h3 className="text-lg font-medium text-blue-800">
+                Centre de Décision Stratégique
+              </h3>
+              <div className="mt-2 text-sm text-blue-700">
+                <p>
+                  Cette vue d'ensemble vous permet de prendre des décisions stratégiques éclairées 
+                  pour le développement du pôle performance ITSJ. Les métriques clés sont mises en évidence 
+                  pour faciliter l'analyse et la planification.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </SectionWrapper>
+  );
 };
 
 export default PerformancePoleSection;

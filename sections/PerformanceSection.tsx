@@ -275,17 +275,7 @@ export const PerformanceSection: React.FC<{ appState: AppState }> = ({ appState 
 
       {activeTab === 'powerAnalysis' && (
         <div className="space-y-6">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h3 className="text-lg font-semibold text-blue-900 mb-2">
-              📊 Analyse des Puissances
-            </h3>
-            <p className="text-blue-800 text-sm">
-              Tableau complet d'analyse des performances de puissance avec filtres avancés, 
-              tri par colonnes, et comparaison entre coureurs et scouts.
-              Triez par durée spécifique, filtrez par sexe et catégorie d'âge, 
-              et basculez entre watts bruts et watts par kilo pour optimiser vos stratégies.
-            </p>
-          </div>
+
           
           <PowerAnalysisTable riders={riders} scoutingProfiles={scoutingProfiles} />
         </div>

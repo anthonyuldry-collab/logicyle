@@ -77,6 +77,7 @@ import NutritionSection from "./sections/NutritionSection";
 import PendingApprovalView from "./sections/PendingApprovalView";
 import { PerformanceProjectSection } from "./sections/PerformanceProjectSection";
 import PerformanceSection from "./sections/PerformanceSection";
+import PerformancePoleSection from "./sections/PerformancePoleSection";
 import PermissionsSection from "./sections/PermissionsSection";
 import RiderEquipmentSection from "./sections/RiderEquipmentSection";
 import RosterSection from "./sections/RosterSection";
@@ -1234,12 +1235,8 @@ const App: React.FC = () => {
                     />
                   )}
                   {currentSection === "performance" && appState.riders && currentUser && (
-                    <PerformanceSection
+                    <PerformancePoleSection
                       appState={appState}
-                      navigateTo={navigateTo}
-                      setTeamProducts={createBatchSetHandler<TeamProduct>("teamProducts")}
-                      setRiders={createBatchSetHandler<Rider>("riders")}
-                      currentUser={currentUser}
                     />
                   )}
                   {currentSection === "settings" && (
