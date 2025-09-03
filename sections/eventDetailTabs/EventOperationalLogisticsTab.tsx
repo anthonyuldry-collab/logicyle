@@ -306,7 +306,7 @@ const EventOperationalLogisticsTab: React.FC<EventOperationalLogisticsTabProps> 
                     
                     // Format simple pour toutes les étapes
                     if (personsConcerned) {
-                        description = `${stop.location} pour récupérer ${personsConcerned}`;
+                        description = `${stop.location} - Récupération ${personsConcerned}`;
                     } else {
                         description = `${stop.location}`;
                     }
@@ -524,7 +524,7 @@ const EventOperationalLogisticsTab: React.FC<EventOperationalLogisticsTabProps> 
     let finalDays = Object.values(mergedDays);
     finalDays.forEach(day => day.keyTimings.sort((a, b) => (parseTimeOfDayToMinutes(a.time) ?? 9999) - (parseTimeOfDayToMinutes(b.time) ?? 9999)));
 
-    // Logique de groupement améliorée (uniquement en mode équipe)
+    // Logique de groupement simplifiée (uniquement en mode équipe)
     const groupedDays = finalDays.map(day => {
         // En mode individuel, ne pas grouper les timings
         if (viewMode === 'individual') {
@@ -538,75 +538,29 @@ const EventOperationalLogisticsTab: React.FC<EventOperationalLogisticsTabProps> 
             if (processedIndices.has(i)) continue;
 
             const currentTiming = day.keyTimings[i];
-            const isGroupable = currentTiming.category === OperationalTimingCategory.TRANSPORT && 
-                               (currentTiming.description.includes('🚗 Départ') || currentTiming.description.includes('🏁 Arrivée'));
-
-            if (isGroupable) {
-                // Extraire les informations du timing actuel
-                const currentMatches = currentTiming.description.match(/^(🚗 Départ|🏁 Arrivée)\s(.*?)\s-\s(.*?)\s-\s(De|À):\s(.+)/);
-                if (currentMatches) {
-                    const emoji = currentMatches[1];
-                    const direction = currentMatches[2];
-                    const vehicleInfo = currentMatches[3];
-                    const preposition = currentMatches[4];
-                    const location = currentMatches[5];
-                    const time = currentTiming.time;
-
-                    const groupPeers = [currentTiming];
-                    const groupVehicles = [vehicleInfo];
-                    const groupDirections = [direction];
-
-                    // Chercher d'autres timings groupables
-                    for (let j = i + 1; j < day.keyTimings.length; j++) {
-                        if (processedIndices.has(j)) continue;
-                        
-                        const nextTiming = day.keyTimings[j];
-                        if (nextTiming.time !== time) break;
-
-                        if (nextTiming.category === OperationalTimingCategory.TRANSPORT) {
-                            const nextMatches = nextTiming.description.match(/^(🚗 Départ|🏁 Arrivée)\s(.*?)\s-\s(.*?)\s-\s(De|À):\s(.+)/);
-                            if (nextMatches && 
-                                nextMatches[1] === emoji && 
-                                nextMatches[4] === preposition && 
-                                nextMatches[5] === location) {
-                                
-                                groupPeers.push(nextTiming);
-                                groupVehicles.push(nextMatches[3]);
-                                groupDirections.push(nextMatches[2]);
-                                processedIndices.add(j);
-                            }
-                        }
+            
+            // Grouper les arrivées identiques
+            if (currentTiming.description.includes('Arrivée des véhicules')) {
+                const time = currentTiming.time;
+                const description = currentTiming.description;
+                
+                // Chercher d'autres arrivées identiques
+                let foundDuplicate = false;
+                for (let j = i + 1; j < day.keyTimings.length; j++) {
+                    if (processedIndices.has(j)) continue;
+                    
+                    const nextTiming = day.keyTimings[j];
+                    if (nextTiming.time === time && 
+                        nextTiming.description === description) {
+                        processedIndices.add(j);
+                        foundDuplicate = true;
                     }
-
-                    if (groupPeers.length > 1) {
-                        // Grouper les timings
-                        const uniqueDirections = [...new Set(groupDirections)];
-                        const uniqueVehicles = [...new Set(groupVehicles)];
-                        
-                        let newDescription = '';
-                        if (uniqueDirections.length === 1) {
-                            // Même direction pour tous
-                            newDescription = `${emoji} ${uniqueDirections[0]} - ${uniqueVehicles.join(', ')} - ${preposition}: ${location}`;
-                        } else {
-                            // Directions différentes
-                            newDescription = `${emoji} ${uniqueDirections.join(', ')} - ${uniqueVehicles.join(', ')} - ${preposition}: ${location}`;
-                        }
-                        
-                        // Pas besoin de compter les occupants, l'info est déjà dans les véhicules
-                        
-                        newKeyTimings.push({ 
-                            ...currentTiming, 
-                            id: `grouped-${currentTiming.id}`, 
-                            description: newDescription 
-                        });
-                        processedIndices.add(i);
-                    } else {
-                        newKeyTimings.push(currentTiming);
-                    }
-                } else {
-                    newKeyTimings.push(currentTiming);
                 }
+                
+                // Ajouter seulement la première occurrence
+                newKeyTimings.push(currentTiming);
             } else {
+                // Pour tous les autres timings, les ajouter normalement
                 newKeyTimings.push(currentTiming);
             }
         }
