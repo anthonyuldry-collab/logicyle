@@ -50,6 +50,7 @@ interface OperationalDashboardViewProps {
   upcomingEvents: RaceEvent[];
   alerts: { id: string; text: string; eventId?: string }[];
   lastDebriefing: { event: RaceEvent; generalObjectives?: string; resultsSummary?: string; keyLearnings?: string } | null;
+  recentEventsAwaitingDebriefing: RaceEvent[];
   navigateTo: (section: AppSection, eventId?: string) => void;
 }
 
@@ -65,6 +66,7 @@ const OperationalDashboardView: React.FC<OperationalDashboardViewProps> = ({
   upcomingEvents, 
   alerts, 
   lastDebriefing,
+  recentEventsAwaitingDebriefing,
   navigateTo 
 }: OperationalDashboardViewProps) => {
   const { t } = useTranslations();
@@ -488,6 +490,7 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({ navigateTo, 
             upcomingEvents={upcomingEvents}
             alerts={alerts}
             lastDebriefing={lastDebriefing}
+            recentEventsAwaitingDebriefing={recentEventsAwaitingDebriefing}
             navigateTo={navigateTo}
           />
         )
