@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { RaceEvent, EventTransportLeg, RiderEventSelection, RiderEventStatus, Rider, StaffMember, TransportStop, MealDay, TeamLevel, Discipline, EventType, TransportDirection, EventBudgetItem, BudgetItemCategory, User, TeamRole, EventRaceDocument, DocumentStatus, StaffRole } from '../types';
+import { RaceEvent, EventTransportLeg, RiderEventSelection, RiderEventStatus, Rider, StaffMember, TransportStop, MealDay, TeamLevel, Discipline, EventType, TransportDirection, EventBudgetItem, BudgetItemCategory, User, TeamRole, EventRaceDocument, DocumentStatus, StaffRole, PerformanceEntry } from '../types';
 import { emptyRaceInformation, EVENT_TYPE_COLORS, ELIGIBLE_CATEGORIES_CONFIG } from '../constants'; 
 import SectionWrapper from '../components/SectionWrapper';
 import ActionButton from '../components/ActionButton';
@@ -27,6 +27,7 @@ interface EventsSectionProps {
   staff: StaffMember[];
   teamLevel?: TeamLevel;
   currentUser: User;
+  performanceEntries?: PerformanceEntry[];
 }
 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
@@ -132,6 +133,7 @@ export const EventsSection = ({
     staff,
     teamLevel,
     currentUser,
+    performanceEntries,
 }: EventsSectionProps): JSX.Element => {
   // Protection minimale - seulement raceEvents est requis
   if (!raceEvents) {
@@ -598,7 +600,7 @@ export const EventsSection = ({
             <div className="grid gap-4">
               {pastEvents.map(event => {
                 const eventEndDate = event.endDate ? new Date(event.endDate) : new Date(event.date);
-                const hasPerformanceEntry = appState?.performanceEntries?.some(pe => pe.eventId === event.id);
+                const hasPerformanceEntry = performanceEntries?.some(pe => pe.eventId === event.id);
                 
                 return (
                   <div

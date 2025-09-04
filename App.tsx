@@ -1173,6 +1173,7 @@ const App: React.FC = () => {
                       staff={appState.staff}
                       teamLevel={appState.teamLevel}
                       currentUser={currentUser}
+                      performanceEntries={appState.performanceEntries}
                     />
                   )}
                   {currentSection === "roster" && appState.riders && (
