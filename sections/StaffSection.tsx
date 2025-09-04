@@ -556,8 +556,24 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
                 item.eventId === eventId)
             );
             
+            // Récupérer les coûts réels existants pour les préserver
+            const existingActualCosts = new Map<string, number>();
+            prevBudgetItems
+              .filter(item => item.eventId === eventId && item.category === BudgetItemCategory.SALAIRES && item.description.includes('Vacataire'))
+              .forEach(item => {
+                if (item.actualCost !== undefined) {
+                  existingActualCosts.set(item.id, item.actualCost);
+                }
+              });
+            
+            // Préserver les coûts réels existants
+            const preservedVacataireItems = vacataireBudgetItems.map(item => ({
+              ...item,
+              actualCost: existingActualCosts.get(item.id) || item.actualCost
+            }));
+            
             // Ajouter les nouveaux éléments de budget vacataire
-            return [...filteredItems, ...vacataireBudgetItems];
+            return [...filteredItems, ...preservedVacataireItems];
           });
           
           console.log('✅ Budget des vacataires mis à jour automatiquement');
