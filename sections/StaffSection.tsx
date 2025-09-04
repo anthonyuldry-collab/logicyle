@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, ChangeEvent } from 'react';
+import * as firebaseService from '../services/firebaseService';
 import { StaffMember, RaceEvent, EventStaffAvailability, StaffRoleKey, EventBudgetItem, StaffRole, StaffStatus, AvailabilityStatus, EventType, ContractType, BudgetItemCategory, User, TeamRole, WorkExperience, Team, PerformanceEntry, Mission, MissionStatus, MissionCompensationType, Address, EducationOrCertification, AppSection, PermissionLevel, Vehicle, EventTransportLeg } from '../types'; 
 import { STAFF_ROLE_COLORS, STAFF_STATUS_COLORS, EVENT_TYPE_COLORS, STAFF_ROLES_CONFIG } from '../constants'; 
 import SectionWrapper from '../components/SectionWrapper';
@@ -529,6 +530,22 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
       if (vacataireBudgetItems.length > 0) {
         console.log(`💰 ${vacataireBudgetItems.length} éléments de budget vacataire calculés:`, vacataireBudgetItems);
         
+        // Sauvegarder les éléments de budget dans Firebase
+        if (team?.id) {
+          try {
+            for (const budgetItem of vacataireBudgetItems) {
+              await firebaseService.saveData(
+                team.id,
+                "eventBudgetItems",
+                budgetItem
+              );
+            }
+            console.log('✅ Budget des vacataires sauvegardé dans Firebase');
+          } catch (error) {
+            console.error('❌ Erreur lors de la sauvegarde du budget des vacataires:', error);
+          }
+        }
+        
         // Mettre à jour les éléments de budget existants ou en créer de nouveaux
         if (eventBudgetItems && setEventBudgetItems) {
           setEventBudgetItems((prevBudgetItems: EventBudgetItem[]) => {
@@ -845,7 +862,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
                         onClick={() => {
                           // Naviguer vers la section des effectifs pour assigner des coureurs
                           // Ici vous pouvez implémenter la navigation vers la section appropriée
-                          alert('Navigation vers la section Effectifs pour assigner des coureurs');
+                          window.alert('Navigation vers la section Effectifs pour assigner des coureurs');
                         }}
                       >
                         Assigner Coureurs
@@ -1254,7 +1271,7 @@ export const StaffSection: React.FC<StaffSectionProps> = ({
                                       
                                       if (isAlreadyAssignedElsewhere) {
                                         // Empêcher l'assignation multiple
-                                        alert(`⚠️ ${member.firstName} ${member.lastName} est déjà assigné à un autre poste. Un staff ne peut être assigné qu'à un seul poste.`);
+                                        window.alert(`⚠️ ${member.firstName} ${member.lastName} est déjà assigné à un autre poste. Un staff ne peut être assigné qu'à un seul poste.`);
                                         return;
                                       }
                                       

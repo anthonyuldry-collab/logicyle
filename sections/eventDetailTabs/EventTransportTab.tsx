@@ -296,9 +296,36 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
     return budgetItems;
   };
 
-  const updateCostsForEvent = (allLegsForEvent: EventTransportLeg[]) => {
+  const updateCostsForEvent = async (allLegsForEvent: EventTransportLeg[]) => {
     const vacataireBudgetItems = calculateVacataireBudgetItems(allLegsForEvent);
     const vehicleBudgetItems = calculateVehicleBudgetItems(allLegsForEvent);
+
+    // Sauvegarder les nouveaux éléments de budget dans Firebase
+    if (appState.activeTeamId) {
+      try {
+        // Sauvegarder les éléments de budget des vacataires
+        for (const budgetItem of vacataireBudgetItems) {
+          await saveData(
+            appState.activeTeamId,
+            "eventBudgetItems",
+            budgetItem
+          );
+        }
+        
+        // Sauvegarder les éléments de budget des véhicules
+        for (const budgetItem of vehicleBudgetItems) {
+          await saveData(
+            appState.activeTeamId,
+            "eventBudgetItems",
+            budgetItem
+          );
+        }
+        
+        console.log('✅ Éléments de budget des déplacements sauvegardés dans Firebase');
+      } catch (error) {
+        console.error('❌ Erreur lors de la sauvegarde des éléments de budget:', error);
+      }
+    }
 
     setEventBudgetItems((prevBudget) => {
       const manualBudgetItemsForEvent = prevBudget.filter(
@@ -586,14 +613,14 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
       });
 
       // Update budget items after the state update
-      setTimeout(() => {
+      setTimeout(async () => {
         const legsForThisEvent = appState.eventTransportLegs.filter(
           (leg) => leg.eventId === eventId
         );
         const updatedLegsForEvent = isEditing 
           ? legsForThisEvent.map((leg) => leg.id === legToSave.id ? legToSave : leg)
           : [...legsForThisEvent, legToSave];
-        updateCostsForEvent(updatedLegsForEvent);
+        await updateCostsForEvent(updatedLegsForEvent);
       }, 0);
 
     setIsModalOpen(false);
@@ -636,6 +663,7 @@ export const EventTransportTab: React.FC<EventTransportTabProps> = ({
         const legsForThisEvent = updatedLegs.filter(
           (leg) => leg.eventId === eventId
         );
+        // Mettre à jour les coûts de manière asynchrone
         updateCostsForEvent(legsForThisEvent);
         return updatedLegs;
       });

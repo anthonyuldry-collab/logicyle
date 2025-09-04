@@ -97,6 +97,36 @@ export default function EventBudgetTab({
   const totalEstimated = budgetItemsForEvent.reduce((sum, item) => sum + item.estimatedCost, 0);
   const totalActual = budgetItemsForEvent.reduce((sum, item) => sum + (item.actualCost || 0), 0);
 
+  // Calculs sectorisés pour l'analyse des sources de dépenses
+  const budgetAnalysis = useMemo(() => {
+    const categoryTotals = Object.values(BudgetItemCategory).map(category => {
+      const items = budgetItemsForEvent.filter(item => item.category === category);
+      const estimated = items.reduce((sum, item) => sum + item.estimatedCost, 0);
+      const actual = items.reduce((sum, item) => sum + (item.actualCost || 0), 0);
+      const percentage = totalEstimated > 0 ? (estimated / totalEstimated) * 100 : 0;
+      
+      return {
+        category,
+        estimated,
+        actual,
+        percentage,
+        itemCount: items.length,
+        items
+      };
+    }).filter(cat => cat.estimated > 0 || cat.actual > 0);
+
+    // Trier par montant estimé décroissant
+    categoryTotals.sort((a, b) => b.estimated - a.estimated);
+
+    return {
+      categoryTotals,
+      totalEstimated,
+      totalActual,
+      variance: totalActual > 0 ? totalActual - totalEstimated : 0,
+      variancePercentage: totalEstimated > 0 ? ((totalActual - totalEstimated) / totalEstimated) * 100 : 0
+    };
+  }, [budgetItemsForEvent, totalEstimated, totalActual]);
+
   return (
     <div>
       <div className="flex justify-between items-center mb-4">
@@ -105,6 +135,81 @@ export default function EventBudgetTab({
           Ajouter Ligne
         </ActionButton>
       </div>
+
+      {/* Analyse sectorisée du budget */}
+      {budgetItemsForEvent.length > 0 && (
+        <div className="mb-8 bg-gray-50 rounded-lg p-6">
+          <h4 className="text-lg font-semibold text-gray-800 mb-4 flex items-center">
+            <span className="mr-2">📊</span>
+            Analyse Sectorisée du Budget
+          </h4>
+          
+          {/* Résumé global */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="bg-white p-4 rounded-lg border">
+              <div className="text-sm text-gray-600">Budget Estimé</div>
+              <div className="text-2xl font-bold text-blue-600">{budgetAnalysis.totalEstimated.toFixed(2)} €</div>
+            </div>
+            <div className="bg-white p-4 rounded-lg border">
+              <div className="text-sm text-gray-600">Budget Réel</div>
+              <div className="text-2xl font-bold text-green-600">
+                {budgetAnalysis.totalActual > 0 ? `${budgetAnalysis.totalActual.toFixed(2)} €` : 'N/A'}
+              </div>
+            </div>
+            <div className="bg-white p-4 rounded-lg border">
+              <div className="text-sm text-gray-600">Écart</div>
+              <div className={`text-2xl font-bold ${budgetAnalysis.variance >= 0 ? 'text-red-600' : 'text-green-600'}`}>
+                {budgetAnalysis.variance !== 0 ? `${budgetAnalysis.variance.toFixed(2)} €` : '0 €'}
+                {budgetAnalysis.variancePercentage !== 0 && (
+                  <span className="text-sm ml-2">
+                    ({budgetAnalysis.variancePercentage > 0 ? '+' : ''}{budgetAnalysis.variancePercentage.toFixed(1)}%)
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Répartition par catégorie */}
+          <div className="space-y-3">
+            <h5 className="text-md font-medium text-gray-700 mb-3">Répartition par Catégorie</h5>
+            {budgetAnalysis.categoryTotals.map((categoryData) => (
+              <div key={categoryData.category} className="bg-white p-4 rounded-lg border">
+                <div className="flex justify-between items-start mb-2">
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <h6 className="font-medium text-gray-800">{categoryData.category}</h6>
+                      <div className="text-sm text-gray-500">
+                        {categoryData.itemCount} élément{categoryData.itemCount > 1 ? 's' : ''}
+                      </div>
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      {categoryData.percentage.toFixed(1)}% du budget total
+                    </div>
+                  </div>
+                  <div className="text-right ml-4">
+                    <div className="text-lg font-semibold text-gray-800">
+                      {categoryData.estimated.toFixed(2)} €
+                    </div>
+                    {categoryData.actual > 0 && (
+                      <div className="text-sm text-gray-600">
+                        Réel: {categoryData.actual.toFixed(2)} €
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Barre de progression */}
+                <div className="w-full bg-gray-200 rounded-full h-2">
+                  <div 
+                    className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${Math.min(categoryData.percentage, 100)}%` }}
+                  ></div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {budgetItemsForEvent.length === 0 ? (
         <p className="text-gray-500 italic">Aucune ligne budgétaire ajoutée pour cet événement.</p>
