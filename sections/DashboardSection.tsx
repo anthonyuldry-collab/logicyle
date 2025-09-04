@@ -190,6 +190,47 @@ const OperationalDashboardView: React.FC<OperationalDashboardViewProps> = ({
             </div>
           </div>
         )}
+
+        {/* Événements en attente de debriefing */}
+        {recentEventsAwaitingDebriefing.length > 0 && (
+          <div className="bg-white p-6 rounded-xl shadow-md">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">Événements Récents</h3>
+              <span className="text-sm text-gray-500">Débriefing disponible demain</span>
+            </div>
+            <div className="space-y-3">
+              {recentEventsAwaitingDebriefing.map(event => (
+                <div key={event.id} className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="font-semibold text-gray-800">{event.name}</h4>
+                      <p className="text-sm text-gray-600">
+                        {new Date(event.endDate || event.date).toLocaleDateString('fr-FR', { 
+                          weekday: 'long', 
+                          day: 'numeric', 
+                          month: 'long',
+                          year: 'numeric' 
+                        })} - {event.location}
+                      </p>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">
+                        Débriefing demain
+                      </span>
+                      <ActionButton 
+                        onClick={() => navigateTo('eventDetail', event.id)} 
+                        size="sm" 
+                        variant="secondary"
+                      >
+                        Voir l'événement
+                      </ActionButton>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
     </div>
   );
 };
@@ -307,15 +348,28 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({ navigateTo, 
       .slice(0, 5);
   }, [raceEvents, isViewer, today]);
 
-  // Dernier debriefing
+  // Dernier debriefing (seulement pour les événements terminés depuis au moins un jour)
   const lastDebriefing = useMemo(() => {
     if (isViewer || !performanceEntries || !raceEvents) return null;
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // Début de la journée
     
     // Trouver le dernier debriefing avec les informations de l'événement
     const debriefingsWithEvents = performanceEntries
       .map(entry => {
         const event = raceEvents.find(e => e.id === entry.eventId);
-        return event ? { ...entry, event } : null;
+        if (!event) return null;
+        
+        // Vérifier que l'événement est terminé depuis au moins un jour
+        const eventEndDate = new Date(event.endDate || event.date);
+        eventEndDate.setHours(23, 59, 59, 999); // Fin de la journée de l'événement
+        const daysSinceEvent = Math.floor((today.getTime() - eventEndDate.getTime()) / (1000 * 60 * 60 * 24));
+        
+        // L'événement doit être terminé depuis au moins 1 jour
+        if (daysSinceEvent < 1) return null;
+        
+        return { ...entry, event, daysSinceEvent };
       })
       .filter(Boolean)
       .sort((a, b) => {
@@ -326,6 +380,30 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({ navigateTo, 
 
     return debriefingsWithEvents[0] || null;
   }, [isViewer, performanceEntries, raceEvents]);
+
+  // Événements récents qui ne peuvent pas encore être débriefés
+  const recentEventsAwaitingDebriefing = useMemo(() => {
+    if (isViewer || !raceEvents) return [];
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    return raceEvents
+      .filter(event => {
+        const eventEndDate = new Date(event.endDate || event.date);
+        eventEndDate.setHours(23, 59, 59, 999);
+        const daysSinceEvent = Math.floor((today.getTime() - eventEndDate.getTime()) / (1000 * 60 * 60 * 24));
+        
+        // L'événement s'est terminé aujourd'hui (0 jours) ou hier (1 jour) mais n'a pas encore de debriefing
+        return daysSinceEvent >= 0 && daysSinceEvent < 1 && !performanceEntries?.some(pe => pe.eventId === event.id);
+      })
+      .sort((a, b) => {
+        const dateA = new Date(a.endDate || a.date);
+        const dateB = new Date(b.endDate || b.date);
+        return dateB.getTime() - dateA.getTime();
+      })
+      .slice(0, 3); // Limiter à 3 événements récents
+  }, [isViewer, raceEvents, performanceEntries]);
 
   const alerts = useMemo(() => {
     if (isViewer || !raceEvents || !eventTransportLegs || !eventChecklistItems) return [];

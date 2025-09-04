@@ -463,10 +463,23 @@ const PerformancePoleSection: React.FC<PerformancePoleSectionProps> = ({ appStat
             {/* Liste des debriefings */}
             <div className="space-y-4">
               {(() => {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+                
                 const debriefingsWithEvents = (appState.performanceEntries || [])
                   .map(entry => {
                     const event = raceEvents.find(e => e.id === entry.eventId);
-                    return event ? { ...entry, event } : null;
+                    if (!event) return null;
+                    
+                    // Vérifier que l'événement est terminé depuis au moins un jour
+                    const eventEndDate = new Date(event.endDate || event.date);
+                    eventEndDate.setHours(23, 59, 59, 999);
+                    const daysSinceEvent = Math.floor((today.getTime() - eventEndDate.getTime()) / (1000 * 60 * 60 * 24));
+                    
+                    // L'événement doit être terminé depuis au moins 1 jour
+                    if (daysSinceEvent < 1) return null;
+                    
+                    return { ...entry, event, daysSinceEvent };
                   })
                   .filter(Boolean)
                   .sort((a, b) => {
@@ -475,7 +488,24 @@ const PerformancePoleSection: React.FC<PerformancePoleSectionProps> = ({ appStat
                     return dateB.getTime() - dateA.getTime();
                   });
 
-                if (debriefingsWithEvents.length === 0) {
+                // Événements en attente de debriefing (terminés aujourd'hui ou hier)
+                const eventsAwaitingDebriefing = raceEvents
+                  .filter(event => {
+                    const eventEndDate = new Date(event.endDate || event.date);
+                    eventEndDate.setHours(23, 59, 59, 999);
+                    const daysSinceEvent = Math.floor((today.getTime() - eventEndDate.getTime()) / (1000 * 60 * 60 * 24));
+                    
+                    // L'événement s'est terminé aujourd'hui (0 jours) ou hier (1 jour) mais n'a pas encore de debriefing
+                    return daysSinceEvent >= 0 && daysSinceEvent < 1 && !(appState.performanceEntries || []).some(pe => pe.eventId === event.id);
+                  })
+                  .sort((a, b) => {
+                    const dateA = new Date(a.endDate || a.date);
+                    const dateB = new Date(b.endDate || b.date);
+                    return dateB.getTime() - dateA.getTime();
+                  })
+                  .slice(0, 3);
+
+                if (debriefingsWithEvents.length === 0 && eventsAwaitingDebriefing.length === 0) {
                   return (
                     <div className="text-center py-8 text-gray-500">
                       <TrophyIcon className="w-12 h-12 mx-auto mb-4 text-gray-300" />
@@ -485,7 +515,43 @@ const PerformancePoleSection: React.FC<PerformancePoleSectionProps> = ({ appStat
                   );
                 }
 
-                return debriefingsWithEvents.map((debriefing, index) => (
+                return (
+                  <div className="space-y-6">
+                    {/* Événements en attente de debriefing */}
+                    {eventsAwaitingDebriefing.length > 0 && (
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                        <h4 className="font-semibold text-yellow-800 mb-3 flex items-center">
+                          <TrophyIcon className="w-5 h-5 mr-2" />
+                          Événements en Attente de Débriefing
+                        </h4>
+                        <div className="space-y-2">
+                          {eventsAwaitingDebriefing.map(event => (
+                            <div key={event.id} className="flex justify-between items-center p-3 bg-white rounded border border-yellow-200">
+                              <div>
+                                <p className="font-medium text-gray-800">{event.name}</p>
+                                <p className="text-sm text-gray-600">
+                                  {new Date(event.endDate || event.date).toLocaleDateString('fr-FR', { 
+                                    weekday: 'long', 
+                                    day: 'numeric', 
+                                    month: 'long' 
+                                  })} - {event.location}
+                                </p>
+                              </div>
+                              <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">
+                                Débriefing demain
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Debriefings disponibles */}
+                    {debriefingsWithEvents.length > 0 && (
+                      <div>
+                        <h4 className="font-semibold text-gray-800 mb-3">Débriefings Disponibles</h4>
+                        <div className="space-y-4">
+                          {debriefingsWithEvents.map((debriefing, index) => (
                   <div key={debriefing.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                     <div className="flex justify-between items-start mb-3">
                       <div>
@@ -534,7 +600,12 @@ const PerformancePoleSection: React.FC<PerformancePoleSectionProps> = ({ appStat
                       )}
                     </div>
                   </div>
-                ));
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
               })()}
             </div>
           </div>
