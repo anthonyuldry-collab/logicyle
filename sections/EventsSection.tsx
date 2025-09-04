@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { RaceEvent, EventTransportLeg, RiderEventSelection, RiderEventStatus, Rider, StaffMember, TransportStop, MealDay, TeamLevel, Discipline, EventType, TransportDirection, EventBudgetItem, BudgetItemCategory, User, TeamRole, EventRaceDocument, DocumentStatus, StaffRole, PerformanceEntry } from '../types';
+import { RaceEvent, EventTransportLeg, RiderEventSelection, RiderEventStatus, Rider, StaffMember, TransportStop, MealDay, TeamLevel, Discipline, EventType, TransportDirection, EventBudgetItem, BudgetItemCategory, User, TeamRole, EventRaceDocument, DocumentStatus, StaffRole } from '../types';
 import { emptyRaceInformation, EVENT_TYPE_COLORS, ELIGIBLE_CATEGORIES_CONFIG } from '../constants'; 
 import SectionWrapper from '../components/SectionWrapper';
 import ActionButton from '../components/ActionButton';
@@ -27,7 +27,6 @@ interface EventsSectionProps {
   staff: StaffMember[];
   teamLevel?: TeamLevel;
   currentUser: User;
-  performanceEntries?: PerformanceEntry[];
 }
 
 const generateId = () => Date.now().toString(36) + Math.random().toString(36).substring(2, 9);
@@ -133,7 +132,6 @@ export const EventsSection = ({
     staff,
     teamLevel,
     currentUser,
-    performanceEntries,
 }: EventsSectionProps): JSX.Element => {
   // Protection minimale - seulement raceEvents est requis
   if (!raceEvents) {
@@ -158,25 +156,10 @@ export const EventsSection = ({
   const [displayDate, setDisplayDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
   const [showAllEvents, setShowAllEvents] = useState(false);
-  const [activeTab, setActiveTab] = useState<'calendar' | 'past'>('calendar');
 
   // NOTE: Filtering by team level has been removed as per last valid user request to simplify event creation
   const filteredRaceEvents = raceEvents;
 
-  // Filtrer les événements passés pour le debriefing
-  const pastEvents = useMemo(() => {
-    const today = new Date();
-    today.setHours(23, 59, 59, 999); // Fin de la journée
-    
-    return raceEvents.filter(event => {
-      const eventEndDate = event.endDate ? new Date(event.endDate + "T23:59:59Z") : new Date(event.date + "T23:59:59Z");
-      return eventEndDate < today;
-    }).sort((a, b) => {
-      const dateA = new Date(a.endDate || a.date);
-      const dateB = new Date(b.endDate || b.date);
-      return dateB.getTime() - dateA.getTime(); // Plus récent en premier
-    });
-  }, [raceEvents]); 
 
   const handleModalInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -432,226 +415,129 @@ export const EventsSection = ({
       title="Gestion des Événements"
       actionButton={<ActionButton onClick={() => openAddModal()} icon={<PlusCircleIcon className="w-5 h-5"/>}>Ajouter Événement</ActionButton>}
     >
-      {/* Onglets */}
-      <div className="flex space-x-1 mb-6">
-        <button
-          onClick={() => setActiveTab('calendar')}
-          className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-            activeTab === 'calendar'
-              ? 'bg-blue-100 text-blue-700 border-b-2 border-blue-500'
-              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-          }`}
-        >
-          Calendrier
-        </button>
-        <button
-          onClick={() => setActiveTab('past')}
-          className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
-            activeTab === 'past'
-              ? 'bg-blue-100 text-blue-700 border-b-2 border-blue-500'
-              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-          }`}
-        >
-          Événements Passés ({pastEvents.length})
-        </button>
+      {/* Calendrier des événements */}
+      <div className="flex flex-col sm:flex-row justify-between items-center mb-4">
+        <div className="flex items-center space-x-2">
+          <ActionButton onClick={() => setDisplayDate(new Date(year, month - 1, 1))} variant="secondary" size="sm" icon={<ChevronLeftIcon className="w-4 h-4"/>} />
+          <ActionButton onClick={() => setDisplayDate(new Date(year, month + 1, 1))} variant="secondary" size="sm" icon={<ChevronRightIcon className="w-4 h-4"/>} />
+          <h3 className="text-xl font-semibold text-gray-800 w-48 text-center">
+            {displayDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+          </h3>
+        </div>
+        <div className="flex items-center space-x-2 mt-2 sm:mt-0">
+          <input type="checkbox" id="show-all-events" checked={showAllEvents} onChange={(e) => setShowAllEvents(e.target.checked)} className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
+          <label htmlFor="show-all-events" className="text-sm text-gray-600">Afficher toutes les courses</label>
+        </div>
       </div>
 
-      {activeTab === 'calendar' && (
-        <>
-          <div className="flex flex-col sm:flex-row justify-between items-center mb-4">
-            <div className="flex items-center space-x-2">
-              <ActionButton onClick={() => setDisplayDate(new Date(year, month - 1, 1))} variant="secondary" size="sm" icon={<ChevronLeftIcon className="w-4 h-4"/>} />
-              <ActionButton onClick={() => setDisplayDate(new Date(year, month + 1, 1))} variant="secondary" size="sm" icon={<ChevronRightIcon className="w-4 h-4"/>} />
-              <h3 className="text-xl font-semibold text-gray-800 w-48 text-center">
-                {displayDate.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
-              </h3>
-            </div>
-            <div className="flex items-center space-x-2 mt-2 sm:mt-0">
-              <input type="checkbox" id="show-all-events" checked={showAllEvents} onChange={(e) => setShowAllEvents(e.target.checked)} className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500" />
-              <label htmlFor="show-all-events" className="text-sm text-gray-600">Afficher toutes les courses</label>
-            </div>
-          </div>
+      <div className="grid grid-cols-7 gap-1 text-center font-semibold text-gray-600 border-b pb-2 mb-1">
+        {daysOfWeek.map(day => <div key={day}>{day}</div>)}
+      </div>
 
-          <div className="grid grid-cols-7 gap-1 text-center font-semibold text-gray-600 border-b pb-2 mb-1">
-            {daysOfWeek.map(day => <div key={day}>{day}</div>)}
-          </div>
-
-          <div className="grid grid-cols-7 gap-1">
-            {Array.from({ length: adjustedFirstDay }).map((_, i) => <div key={`empty-start-${i}`} className="h-32 bg-gray-100 rounded-md border"></div>)}
-            {Array.from({ length: daysInMonth }).map((_, dayIndex) => {
-              const dayNumber = dayIndex + 1;
-              const currentDate = new Date(Date.UTC(year, month, dayNumber));
-              const currentDateStr = currentDate.toISOString().split('T')[0];
-              
-              const today = new Date();
-              const isToday = today.getUTCFullYear() === year && 
-                              today.getUTCMonth() === month &&
-                              today.getUTCDate() === dayNumber;
-              
-              const eventsForDay = getEventDisplayInfoForDay(currentDate, filteredRaceEvents, eventTransportLegs);
-              const birthdaysForDay = [...riders, ...staff].filter(p => p.birthDate && p.birthDate.substring(5) === currentDateStr.substring(5));
-
-              return (
-                <div
-                  key={dayNumber}
-                  className={`h-32 border rounded-md p-1 overflow-y-auto text-xs relative ${isToday ? 'bg-blue-50 border-blue-300' : 'bg-white'}`}
-                  onClick={() => openAddModal(currentDateStr)}
-                  onDragOver={(e) => e.preventDefault()}
-                  onDragEnter={handleDragEnter}
-                  onDragLeave={handleDragLeave}
-                  onDrop={handleDrop}
-                  data-date={currentDateStr}
-                >
-                  <span className={`font-bold ${isToday ? 'text-blue-600' : 'text-gray-700'}`}>{dayNumber}</span>
-                  <div className="mt-1 space-y-0.5">
-                    {eventsForDay.map(event => (
-                      <div
-                        key={event.id}
-                        draggable
-                        onDragStart={(e) => e.dataTransfer.setData('text/plain', event.id)}
-                        onClick={(e) => { e.stopPropagation(); navigateToEventDetail(event.id); }}
-                        className={`p-1 rounded text-[10px] leading-tight cursor-pointer hover:opacity-80 ${EVENT_TYPE_COLORS[event.eventType]}`}
-                      >
-                        <span className="font-medium">{event.name}</span>
-                      </div>
-                    ))}
-                    {birthdaysForDay.map(person => (
-                      <div key={person.id} className="p-1 rounded text-[10px] bg-pink-100 text-pink-800 flex items-center">
-                        <CakeIcon className="w-3 h-3 mr-1"/> {person.firstName} {person.lastName}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-            {Array.from({ length: (7 - (adjustedFirstDay + daysInMonth) % 7) % 7 }).map((_, i) => <div key={`empty-end-${i}`} className="h-32 bg-gray-100 rounded-md border"></div>)}
-          </div>
+      <div className="grid grid-cols-7 gap-1">
+        {Array.from({ length: adjustedFirstDay }).map((_, i) => <div key={`empty-start-${i}`} className="h-32 bg-gray-100 rounded-md border"></div>)}
+        {Array.from({ length: daysInMonth }).map((_, dayIndex) => {
+          const dayNumber = dayIndex + 1;
+          const currentDate = new Date(Date.UTC(year, month, dayNumber));
+          const currentDateStr = currentDate.toISOString().split('T')[0];
           
-          <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={isEditingModal ? "Modifier Événement" : "Nouvel Événement"}>
-            <form onSubmit={handleEventSubmit} className="space-y-4">
-              <div>
-                <label htmlFor="name" className="block text-sm font-medium text-gray-700">Nom de l'événement</label>
-                <input type="text" name="name" id="name" value={currentEventForModal.name} onChange={handleModalInputChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900 placeholder-gray-500"/>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="date" className="block text-sm font-medium text-gray-700">Date de début</label>
-                  <input type="date" name="date" id="date" value={currentEventForModal.date} onChange={handleModalInputChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"/>
-                </div>
-                <div>
-                  <label htmlFor="endDate" className="block text-sm font-medium text-gray-700">Date de fin (si étape)</label>
-                  <input type="date" name="endDate" id="endDate" value={currentEventForModal.endDate || ''} onChange={handleModalInputChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"/>
-                </div>
-              </div>
-              <div>
-                <label htmlFor="location" className="block text-sm font-medium text-gray-700">Lieu</label>
-                <input type="text" name="location" id="location" value={currentEventForModal.location} onChange={handleModalInputChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"/>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="eventType" className="block text-sm font-medium text-gray-700">Type</label>
-                  <select name="eventType" id="eventType" value={currentEventForModal.eventType} onChange={handleModalInputChange} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md bg-white text-gray-900">
-                    {Object.values(EventType).map(type => <option key={type} value={type}>{type}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <label htmlFor="discipline" className="block text-sm font-medium text-gray-700">Discipline</label>
-                  <select name="discipline" id="discipline" value={currentEventForModal.discipline} onChange={handleModalInputChange} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md bg-white text-gray-900">
-                    {Object.values(Discipline).filter(d => d !== Discipline.TOUS).map(d => <option key={d} value={d}>{d}</option>)}
-                  </select>
-                </div>
-              </div>
-              <div>
-                <label htmlFor="eligibleCategory" className="block text-sm font-medium text-gray-700">Catégorie de l'épreuve</label>
-                <input 
-                  type="text" 
-                  name="eligibleCategory" 
-                  id="eligibleCategory" 
-                  value={currentEventForModal.eligibleCategory} 
-                  onChange={handleModalInputChange} 
-                  required 
-                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900 placeholder-gray-500"
-                  placeholder="Ex: Elite Nationale, UCI 1.1, etc."
-                />
-              </div>
-              <div className="flex justify-end space-x-3 pt-4">
-                <ActionButton type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>Annuler</ActionButton>
-                <ActionButton type="submit">{isEditingModal ? "Sauvegarder" : "Créer"}</ActionButton>
-              </div>
-            </form>
-          </Modal>
-        </>
-      )}
-
-      {activeTab === 'past' && (
-        <div className="space-y-4">
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h3 className="text-lg font-semibold text-blue-800 mb-2">Débriefing des Événements Passés</h3>
-            <p className="text-blue-700 text-sm">
-              Cliquez sur un événement pour accéder au debriefing et remplir les informations de suivi.
-            </p>
-          </div>
+          const today = new Date();
+          const isToday = today.getUTCFullYear() === year && 
+                          today.getUTCMonth() === month &&
+                          today.getUTCDate() === dayNumber;
           
-          {pastEvents.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              <p>Aucun événement passé trouvé.</p>
-            </div>
-          ) : (
-            <div className="grid gap-4">
-              {pastEvents.map(event => {
-                const eventEndDate = event.endDate ? new Date(event.endDate) : new Date(event.date);
-                const hasPerformanceEntry = performanceEntries?.some(pe => pe.eventId === event.id);
-                
-                return (
+          const eventsForDay = getEventDisplayInfoForDay(currentDate, filteredRaceEvents, eventTransportLegs);
+          const birthdaysForDay = [...riders, ...staff].filter(p => p.birthDate && p.birthDate.substring(5) === currentDateStr.substring(5));
+
+          return (
+            <div
+              key={dayNumber}
+              className={`h-32 border rounded-md p-1 overflow-y-auto text-xs relative ${isToday ? 'bg-blue-50 border-blue-300' : 'bg-white'}`}
+              onClick={() => openAddModal(currentDateStr)}
+              onDragOver={(e) => e.preventDefault()}
+              onDragEnter={handleDragEnter}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              data-date={currentDateStr}
+            >
+              <span className={`font-bold ${isToday ? 'text-blue-600' : 'text-gray-700'}`}>{dayNumber}</span>
+              <div className="mt-1 space-y-0.5">
+                {eventsForDay.map(event => (
                   <div
                     key={event.id}
-                    onClick={() => navigateToEventDetail(event.id)}
-                    className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
+                    draggable
+                    onDragStart={(e) => e.dataTransfer.setData('text/plain', event.id)}
+                    onClick={(e) => { e.stopPropagation(); navigateToEventDetail(event.id); }}
+                    className={`p-1 rounded text-[10px] leading-tight cursor-pointer hover:opacity-80 ${EVENT_TYPE_COLORS[event.eventType]}`}
                   >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <h4 className="text-lg font-semibold text-gray-800">{event.name}</h4>
-                        <p className="text-sm text-gray-600 mt-1">
-                          {event.location} • {eventEndDate.toLocaleDateString('fr-FR')}
-                        </p>
-                        <div className="flex items-center mt-2 space-x-4">
-                          <span className={`px-2 py-1 text-xs rounded-full ${EVENT_TYPE_COLORS[event.eventType]}`}>
-                            {event.eventType}
-                          </span>
-                          <span className="text-xs text-gray-500">
-                            {event.discipline} • {event.eligibleCategory}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        {hasPerformanceEntry ? (
-                          <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
-                            Débriefé
-                          </span>
-                        ) : (
-                          <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">
-                            À débriefé
-                          </span>
-                        )}
-                        <ActionButton
-                          variant="secondary"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigateToEventDetail(event.id);
-                          }}
-                        >
-                          Débriefé
-                        </ActionButton>
-                      </div>
-                    </div>
+                    <span className="font-medium">{event.name}</span>
                   </div>
-                );
-              })}
+                ))}
+                {birthdaysForDay.map(person => (
+                  <div key={person.id} className="p-1 rounded text-[10px] bg-pink-100 text-pink-800 flex items-center">
+                    <CakeIcon className="w-3 h-3 mr-1"/> {person.firstName} {person.lastName}
+                  </div>
+                ))}
+              </div>
             </div>
-          )}
-        </div>
-      )}
+          );
+        })}
+        {Array.from({ length: (7 - (adjustedFirstDay + daysInMonth) % 7) % 7 }).map((_, i) => <div key={`empty-end-${i}`} className="h-32 bg-gray-100 rounded-md border"></div>)}
+      </div>
+      
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title={isEditingModal ? "Modifier Événement" : "Nouvel Événement"}>
+        <form onSubmit={handleEventSubmit} className="space-y-4">
+          <div>
+            <label htmlFor="name" className="block text-sm font-medium text-gray-700">Nom de l'événement</label>
+            <input type="text" name="name" id="name" value={currentEventForModal.name} onChange={handleModalInputChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900 placeholder-gray-500"/>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="date" className="block text-sm font-medium text-gray-700">Date de début</label>
+              <input type="date" name="date" id="date" value={currentEventForModal.date} onChange={handleModalInputChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"/>
+            </div>
+            <div>
+              <label htmlFor="endDate" className="block text-sm font-medium text-gray-700">Date de fin (si étape)</label>
+              <input type="date" name="endDate" id="endDate" value={currentEventForModal.endDate || ''} onChange={handleModalInputChange} className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"/>
+            </div>
+          </div>
+          <div>
+            <label htmlFor="location" className="block text-sm font-medium text-gray-700">Lieu</label>
+            <input type="text" name="location" id="location" value={currentEventForModal.location} onChange={handleModalInputChange} required className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900"/>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="eventType" className="block text-sm font-medium text-gray-700">Type</label>
+              <select name="eventType" id="eventType" value={currentEventForModal.eventType} onChange={handleModalInputChange} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md bg-white text-gray-900">
+                {Object.values(EventType).map(type => <option key={type} value={type}>{type}</option>)}
+              </select>
+            </div>
+            <div>
+              <label htmlFor="discipline" className="block text-sm font-medium text-gray-700">Discipline</label>
+              <select name="discipline" id="discipline" value={currentEventForModal.discipline} onChange={handleModalInputChange} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md bg-white text-gray-900">
+                {Object.values(Discipline).filter(d => d !== Discipline.TOUS).map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </div>
+          </div>
+          <div>
+            <label htmlFor="eligibleCategory" className="block text-sm font-medium text-gray-700">Catégorie de l'épreuve</label>
+            <input 
+              type="text" 
+              name="eligibleCategory" 
+              id="eligibleCategory" 
+              value={currentEventForModal.eligibleCategory} 
+              onChange={handleModalInputChange} 
+              required 
+              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-white text-gray-900 placeholder-gray-500"
+              placeholder="Ex: Elite Nationale, UCI 1.1, etc."
+            />
+          </div>
+          <div className="flex justify-end space-x-3 pt-4">
+            <ActionButton type="button" variant="secondary" onClick={() => setIsModalOpen(false)}>Annuler</ActionButton>
+            <ActionButton type="submit">{isEditingModal ? "Sauvegarder" : "Créer"}</ActionButton>
+          </div>
+        </form>
+      </Modal>
     </SectionWrapper>
   );
 };

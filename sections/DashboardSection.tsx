@@ -1,6 +1,6 @@
 
 import React, { useMemo } from 'react';
-import { AppSection, RaceEvent, ChecklistItemStatus, User, TeamRole, HealthCondition, TransportMode, RiderEventStatus, Rider, StaffMember, ScoutingProfile, Vehicle, EventBudgetItem, EventTransportLeg, EventChecklistItem, IncomeItem, RiderEventSelection } from '../types';
+import { AppSection, RaceEvent, ChecklistItemStatus, User, TeamRole, HealthCondition, TransportMode, RiderEventStatus, Rider, StaffMember, ScoutingProfile, Vehicle, EventBudgetItem, EventTransportLeg, EventChecklistItem, IncomeItem, RiderEventSelection, PerformanceEntry } from '../types';
 import SectionWrapper from '../components/SectionWrapper';
 import CheckCircleIcon from '../components/icons/CheckCircleIcon'; 
 import XCircleIcon from '../components/icons/XCircleIcon'; 
@@ -32,6 +32,7 @@ interface DashboardSectionProps {
   eventChecklistItems: EventChecklistItem[];
   incomeItems: IncomeItem[];
   riderEventSelections: RiderEventSelection[];
+  performanceEntries: PerformanceEntry[];
 }
 
 // Define props for the new presentational components
@@ -48,6 +49,7 @@ interface OperationalDashboardViewProps {
   };
   upcomingEvents: RaceEvent[];
   alerts: { id: string; text: string; eventId?: string }[];
+  lastDebriefing: { event: RaceEvent; generalObjectives?: string; resultsSummary?: string; keyLearnings?: string } | null;
   navigateTo: (section: AppSection, eventId?: string) => void;
 }
 
@@ -62,6 +64,7 @@ const OperationalDashboardView: React.FC<OperationalDashboardViewProps> = ({
   stats, 
   upcomingEvents, 
   alerts, 
+  lastDebriefing,
   navigateTo 
 }: OperationalDashboardViewProps) => {
   const { t } = useTranslations();
@@ -131,6 +134,62 @@ const OperationalDashboardView: React.FC<OperationalDashboardViewProps> = ({
                  </div>
             </div>
         </div>
+
+        {/* Dernier Débriefing */}
+        {lastDebriefing && (
+          <div className="bg-white p-6 rounded-xl shadow-md">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">Dernier Débriefing</h3>
+              <ActionButton 
+                onClick={() => navigateTo('eventDetail', lastDebriefing.event.id)} 
+                size="sm" 
+                variant="secondary"
+              >
+                Voir l'événement
+              </ActionButton>
+            </div>
+            <div className="space-y-4">
+              <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                <h4 className="font-semibold text-blue-800 mb-2">{lastDebriefing.event.name}</h4>
+                <p className="text-sm text-blue-600">
+                  {new Date(lastDebriefing.event.endDate || lastDebriefing.event.date).toLocaleDateString('fr-FR', { 
+                    weekday: 'long', 
+                    day: 'numeric', 
+                    month: 'long',
+                    year: 'numeric' 
+                  })} - {lastDebriefing.event.location}
+                </p>
+              </div>
+              
+              {lastDebriefing.generalObjectives && (
+                <div>
+                  <h5 className="font-medium text-gray-700 mb-2">Objectifs Généraux</h5>
+                  <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">{lastDebriefing.generalObjectives}</p>
+                </div>
+              )}
+              
+              {lastDebriefing.resultsSummary && (
+                <div>
+                  <h5 className="font-medium text-gray-700 mb-2">Résumé des Résultats</h5>
+                  <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">{lastDebriefing.resultsSummary}</p>
+                </div>
+              )}
+              
+              {lastDebriefing.keyLearnings && (
+                <div>
+                  <h5 className="font-medium text-gray-700 mb-2">Enseignements Clés</h5>
+                  <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded">{lastDebriefing.keyLearnings}</p>
+                </div>
+              )}
+              
+              {!lastDebriefing.generalObjectives && !lastDebriefing.resultsSummary && !lastDebriefing.keyLearnings && (
+                <p className="text-sm text-gray-500 italic text-center py-4">
+                  Aucun détail de debriefing disponible pour cet événement.
+                </p>
+              )}
+            </div>
+          </div>
+        )}
     </div>
   );
 };
@@ -175,7 +234,7 @@ const AthleteDashboardView: React.FC<AthleteDashboardViewProps> = ({ currentUser
 };
 
 
-export const DashboardSection: React.FC<DashboardSectionProps> = ({ navigateTo, currentUser, riders, staff, vehicles, scoutingProfiles, eventBudgetItems, raceEvents, eventTransportLegs, eventChecklistItems, incomeItems, riderEventSelections }) => {
+export const DashboardSection: React.FC<DashboardSectionProps> = ({ navigateTo, currentUser, riders, staff, vehicles, scoutingProfiles, eventBudgetItems, raceEvents, eventTransportLegs, eventChecklistItems, incomeItems, riderEventSelections, performanceEntries }) => {
   const { t } = useTranslations();
   
   // Protection contre currentUser undefined
@@ -247,6 +306,26 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({ navigateTo, 
       .sort((a, b) => new Date(a.date + "T00:00:00Z").getTime() - new Date(b.date + "T00:00:00Z").getTime())
       .slice(0, 5);
   }, [raceEvents, isViewer, today]);
+
+  // Dernier debriefing
+  const lastDebriefing = useMemo(() => {
+    if (isViewer || !performanceEntries || !raceEvents) return null;
+    
+    // Trouver le dernier debriefing avec les informations de l'événement
+    const debriefingsWithEvents = performanceEntries
+      .map(entry => {
+        const event = raceEvents.find(e => e.id === entry.eventId);
+        return event ? { ...entry, event } : null;
+      })
+      .filter(Boolean)
+      .sort((a, b) => {
+        const dateA = new Date(a.event.endDate || a.event.date);
+        const dateB = new Date(b.event.endDate || b.event.date);
+        return dateB.getTime() - dateA.getTime();
+      });
+
+    return debriefingsWithEvents[0] || null;
+  }, [isViewer, performanceEntries, raceEvents]);
 
   const alerts = useMemo(() => {
     if (isViewer || !raceEvents || !eventTransportLegs || !eventChecklistItems) return [];
@@ -330,6 +409,7 @@ export const DashboardSection: React.FC<DashboardSectionProps> = ({ navigateTo, 
             stats={stats}
             upcomingEvents={upcomingEvents}
             alerts={alerts}
+            lastDebriefing={lastDebriefing}
             navigateTo={navigateTo}
           />
         )

@@ -14,7 +14,7 @@ interface PerformancePoleSectionProps {
   appState: AppState;
 }
 
-type PerformanceTab = 'overview' | 'powerAnalysis';
+type PerformanceTab = 'overview' | 'powerAnalysis' | 'debriefings';
 
 const PerformancePoleSection: React.FC<PerformancePoleSectionProps> = ({ appState }) => {
   const [activeTab, setActiveTab] = useState<PerformanceTab>('overview');
@@ -202,6 +202,10 @@ const PerformancePoleSection: React.FC<PerformancePoleSectionProps> = ({ appStat
           <button onClick={() => setActiveTab('powerAnalysis')} className={tabButtonStyle('powerAnalysis')}>
             <ChartBarIcon className="w-4 h-4 inline mr-2" />
             Analyse des Puissances
+          </button>
+          <button onClick={() => setActiveTab('debriefings')} className={tabButtonStyle('debriefings')}>
+            <TrophyIcon className="w-4 h-4 inline mr-2" />
+            Débriefings
           </button>
         </nav>
       </div>
@@ -445,6 +449,95 @@ const PerformancePoleSection: React.FC<PerformancePoleSectionProps> = ({ appStat
       {activeTab === 'powerAnalysis' && (
         <div className="space-y-6">
           <PowerAnalysisTable riders={riders} scoutingProfiles={scoutingProfiles} />
+        </div>
+      )}
+
+      {activeTab === 'debriefings' && (
+        <div className="space-y-6">
+          <div className="bg-white p-6 rounded-lg shadow-md">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Gestion des Débriefings</h3>
+            <p className="text-gray-600 mb-6">
+              Consultez et gérez tous les debriefings des événements passés pour un suivi optimal des performances.
+            </p>
+            
+            {/* Liste des debriefings */}
+            <div className="space-y-4">
+              {(() => {
+                const debriefingsWithEvents = (appState.performanceEntries || [])
+                  .map(entry => {
+                    const event = raceEvents.find(e => e.id === entry.eventId);
+                    return event ? { ...entry, event } : null;
+                  })
+                  .filter(Boolean)
+                  .sort((a, b) => {
+                    const dateA = new Date(a.event.endDate || a.event.date);
+                    const dateB = new Date(b.event.endDate || b.event.date);
+                    return dateB.getTime() - dateA.getTime();
+                  });
+
+                if (debriefingsWithEvents.length === 0) {
+                  return (
+                    <div className="text-center py-8 text-gray-500">
+                      <TrophyIcon className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                      <p className="text-lg font-medium">Aucun debriefing disponible</p>
+                      <p className="text-sm">Les debriefings apparaîtront ici une fois les événements terminés.</p>
+                    </div>
+                  );
+                }
+
+                return debriefingsWithEvents.map((debriefing, index) => (
+                  <div key={debriefing.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                    <div className="flex justify-between items-start mb-3">
+                      <div>
+                        <h4 className="text-lg font-semibold text-gray-800">{debriefing.event.name}</h4>
+                        <p className="text-sm text-gray-600">
+                          {new Date(debriefing.event.endDate || debriefing.event.date).toLocaleDateString('fr-FR', { 
+                            weekday: 'long', 
+                            day: 'numeric', 
+                            month: 'long',
+                            year: 'numeric' 
+                          })} - {debriefing.event.location}
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
+                          Débriefé
+                        </span>
+                        <button
+                          onClick={() => window.location.href = `#eventDetail-${debriefing.event.id}`}
+                          className="px-3 py-1 text-sm bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition-colors"
+                        >
+                          Voir l'événement
+                        </button>
+                      </div>
+                    </div>
+                    
+                    {/* Résumé du debriefing */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                      {debriefing.generalObjectives && (
+                        <div>
+                          <h5 className="font-medium text-gray-700 mb-1">Objectifs</h5>
+                          <p className="text-gray-600 line-clamp-2">{debriefing.generalObjectives}</p>
+                        </div>
+                      )}
+                      {debriefing.resultsSummary && (
+                        <div>
+                          <h5 className="font-medium text-gray-700 mb-1">Résultats</h5>
+                          <p className="text-gray-600 line-clamp-2">{debriefing.resultsSummary}</p>
+                        </div>
+                      )}
+                      {debriefing.keyLearnings && (
+                        <div>
+                          <h5 className="font-medium text-gray-700 mb-1">Enseignements</h5>
+                          <p className="text-gray-600 line-clamp-2">{debriefing.keyLearnings}</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ));
+              })()}
+            </div>
+          </div>
         </div>
       )}
     </SectionWrapper>

@@ -1152,6 +1152,7 @@ const App: React.FC = () => {
                       eventChecklistItems={appState.eventChecklistItems}
                       incomeItems={appState.incomeItems}
                       riderEventSelections={appState.riderEventSelections}
+                      performanceEntries={appState.performanceEntries}
                     />
                   )}
                   {currentSection === "events" && (
@@ -1173,7 +1174,6 @@ const App: React.FC = () => {
                       staff={appState.staff}
                       teamLevel={appState.teamLevel}
                       currentUser={currentUser}
-                      performanceEntries={appState.performanceEntries}
                     />
                   )}
                   {currentSection === "roster" && appState.riders && (
