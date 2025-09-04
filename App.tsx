@@ -1123,6 +1123,7 @@ const App: React.FC = () => {
                   setPeerRatings={createBatchSetHandler<PeerRating>(
                     "peerRatings"
                   )}
+                  onSavePerformanceEntry={onSavePerformanceEntry}
                 />
               ) : (
                 <div>

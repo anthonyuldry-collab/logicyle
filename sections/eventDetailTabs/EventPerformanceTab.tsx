@@ -9,7 +9,7 @@ interface EventPerformanceTabProps {
   event: RaceEvent;
   eventId: string;
   appState: AppState;
-  setPerformanceEntry: (itemOrUpdater: AppPerformanceEntry | ((prevItem: AppPerformanceEntry | undefined) => AppPerformanceEntry)) => void;
+  setPerformanceEntry: (itemOrUpdater: AppPerformanceEntry | ((prevItem: AppPerformanceEntry | undefined) => AppPerformanceEntry)) => Promise<void>;
 }
 
 export const EventPerformanceTab: React.FC<EventPerformanceTabProps> = ({ 
@@ -107,8 +107,8 @@ export const EventPerformanceTab: React.FC<EventPerformanceTabProps> = ({
         });
     }
 
-    const handleSave = () => {
-        setPerformanceEntry(performanceData);
+    const handleSave = async () => {
+        await setPerformanceEntry(performanceData);
         setIsEditing(false);
     };
 

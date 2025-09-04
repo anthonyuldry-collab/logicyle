@@ -156,9 +156,25 @@ export const EventsSection = ({
   const [displayDate, setDisplayDate] = useState(new Date());
   const [viewMode, setViewMode] = useState<'month' | 'week'>('month');
   const [showAllEvents, setShowAllEvents] = useState(false);
+  const [activeTab, setActiveTab] = useState<'calendar' | 'past'>('calendar');
 
   // NOTE: Filtering by team level has been removed as per last valid user request to simplify event creation
-  const filteredRaceEvents = raceEvents; 
+  const filteredRaceEvents = raceEvents;
+
+  // Filtrer les événements passés pour le debriefing
+  const pastEvents = useMemo(() => {
+    const today = new Date();
+    today.setHours(23, 59, 59, 999); // Fin de la journée
+    
+    return raceEvents.filter(event => {
+      const eventEndDate = event.endDate ? new Date(event.endDate + "T23:59:59Z") : new Date(event.date + "T23:59:59Z");
+      return eventEndDate < today;
+    }).sort((a, b) => {
+      const dateA = new Date(a.endDate || a.date);
+      const dateB = new Date(b.endDate || b.date);
+      return dateB.getTime() - dateA.getTime(); // Plus récent en premier
+    });
+  }, [raceEvents]); 
 
   const handleModalInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -411,10 +427,36 @@ export const EventsSection = ({
 
   return (
     <SectionWrapper
-      title="Calendrier des Événements"
+      title="Gestion des Événements"
       actionButton={<ActionButton onClick={() => openAddModal()} icon={<PlusCircleIcon className="w-5 h-5"/>}>Ajouter Événement</ActionButton>}
     >
-      <div className="flex flex-col sm:flex-row justify-between items-center mb-4">
+      {/* Onglets */}
+      <div className="flex space-x-1 mb-6">
+        <button
+          onClick={() => setActiveTab('calendar')}
+          className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+            activeTab === 'calendar'
+              ? 'bg-blue-100 text-blue-700 border-b-2 border-blue-500'
+              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+          }`}
+        >
+          Calendrier
+        </button>
+        <button
+          onClick={() => setActiveTab('past')}
+          className={`px-4 py-2 text-sm font-medium rounded-t-lg transition-colors ${
+            activeTab === 'past'
+              ? 'bg-blue-100 text-blue-700 border-b-2 border-blue-500'
+              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
+          }`}
+        >
+          Événements Passés ({pastEvents.length})
+        </button>
+      </div>
+
+      {activeTab === 'calendar' && (
+        <>
+          <div className="flex flex-col sm:flex-row justify-between items-center mb-4">
         <div className="flex items-center space-x-2">
           <ActionButton onClick={() => setDisplayDate(new Date(year, month - 1, 1))} variant="secondary" size="sm" icon={<ChevronLeftIcon className="w-4 h-4"/>} />
           <ActionButton onClick={() => setDisplayDate(new Date(year, month + 1, 1))} variant="secondary" size="sm" icon={<ChevronRightIcon className="w-4 h-4"/>} />
@@ -536,6 +578,77 @@ export const EventsSection = ({
           </div>
         </form>
       </Modal>
+      )}
+
+      {activeTab === 'past' && (
+        <div className="space-y-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <h3 className="text-lg font-semibold text-blue-800 mb-2">Débriefing des Événements Passés</h3>
+            <p className="text-blue-700 text-sm">
+              Cliquez sur un événement pour accéder au debriefing et remplir les informations de suivi.
+            </p>
+          </div>
+          
+          {pastEvents.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <p>Aucun événement passé trouvé.</p>
+            </div>
+          ) : (
+            <div className="grid gap-4">
+              {pastEvents.map(event => {
+                const eventEndDate = event.endDate ? new Date(event.endDate) : new Date(event.date);
+                const hasPerformanceEntry = appState?.performanceEntries?.some(pe => pe.eventId === event.id);
+                
+                return (
+                  <div
+                    key={event.id}
+                    onClick={() => navigateToEventDetail(event.id)}
+                    className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex-1">
+                        <h4 className="text-lg font-semibold text-gray-800">{event.name}</h4>
+                        <p className="text-sm text-gray-600 mt-1">
+                          {event.location} • {eventEndDate.toLocaleDateString('fr-FR')}
+                        </p>
+                        <div className="flex items-center mt-2 space-x-4">
+                          <span className={`px-2 py-1 text-xs rounded-full ${EVENT_TYPE_COLORS[event.eventType]}`}>
+                            {event.eventType}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {event.discipline} • {event.eligibleCategory}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        {hasPerformanceEntry ? (
+                          <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
+                            Débriefé
+                          </span>
+                        ) : (
+                          <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">
+                            À débriefé
+                          </span>
+                        )}
+                        <ActionButton
+                          variant="secondary"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigateToEventDetail(event.id);
+                          }}
+                        >
+                          Débriefé
+                        </ActionButton>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
     </SectionWrapper>
   );
 };
